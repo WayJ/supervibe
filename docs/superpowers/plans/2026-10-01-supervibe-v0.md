@@ -63,11 +63,11 @@ Body sections (in order):
 
 Steps:
 
-- [ ] **Step 1:** Read spec §2 + current `skills/roadmap/SKILL.md` (the old-model text being replaced)
-- [ ] **Step 2:** Rewrite `skills/roadmap/SKILL.md` per above (EN source of truth, 90–160 lines)
-- [ ] **Step 3:** Rewrite `skills/roadmap/SKILL.zh.md` (faithful mirror, same frontmatter keys, description value natural Chinese, argument-hint unchanged)
-- [ ] **Step 4:** Validate: `claude plugin validate . --strict` — must pass
-- [ ] **Step 5:** Commit: `git add skills/roadmap && git commit -m "feat!: rewrite roadmap skill to dated-directory artifact model (epic docs, stub breakdown, decentralized ledger), SDO description, EN+ZH"`
+- [x] **Step 1:** Read spec §2 + current `skills/roadmap/SKILL.md` (the old-model text being replaced)
+- [x] **Step 2:** Rewrite `skills/roadmap/SKILL.md` per above (EN source of truth, 90–160 lines)
+- [x] **Step 3:** Rewrite `skills/roadmap/SKILL.zh.md` (faithful mirror, same frontmatter keys, description value natural Chinese, argument-hint unchanged)
+- [x] **Step 4:** Validate: `claude plugin validate . --strict` — must pass
+- [x] **Step 5:** Commit: `git add skills/roadmap && git commit -m "feat!: rewrite roadmap skill to dated-directory artifact model (epic docs, stub breakdown, decentralized ledger), SDO description, EN+ZH"`
 
 ---
 
