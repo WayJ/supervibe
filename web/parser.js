@@ -124,6 +124,85 @@ var BoardParser = (function () {
     return epic;
   }
 
+  function parseClauses(sectionText) {
+    var result = { clauses: [], refs: [], smells: [] };
+    var text = String(sectionText || '');
+    var bullets = parseBullets(text).filter(function (b) { return /HC\d+/.test(b); });
+    if (bullets.length) {
+      // shape 3: target-side reference list — ids only, never bodies
+      bullets.forEach(function (b) {
+        (b.match(/\bHC\d+\b/g) || []).forEach(function (id) {
+          result.refs.push({ id: id, text: b });
+        });
+      });
+      return result;
+    }
+    var t = parseTable(text);
+    if (!t.rows.length) return result; // empty / （无）
+    if (t.headers && t.headers.length >= 5) {
+      // shape 1: entity table (template normative)
+      t.rows.forEach(function (r) {
+        var row = {};
+        t.headers.forEach(function (h, i) { row[h.toLowerCase()] = r[i] || ''; });
+        if (/^HC\d+$/.test(row.id || '')) result.clauses.push(row);
+        else result.smells.push('unrecognized clause row: ' + r.join(' | ').slice(0, 80));
+      });
+      return result;
+    }
+    if (t.headers && t.headers.length === 2) {
+      // shape 2: field/value vertical table — one clause
+      var row2 = {};
+      var known = 0;
+      t.rows.forEach(function (r) {
+        var k = (r[0] || '').toLowerCase();
+        if (CLAUSE_FIELDS.indexOf(k) >= 0) { row2[k] = r[1] || ''; known++; }
+      });
+      if (known >= 3 && row2.id) { result.clauses.push(row2); return result; }
+    }
+    result.smells.push('unrecognized Handover Clauses table shape');
+    return result;
+  }
+
+  function parseSprint(name, text) {
+    var fm = parseFrontmatter(text);
+    var d = fm.data || {};
+    var sec = splitSections(fm.body);
+    var S = sec.sections;
+    var sprint = {
+      file: name,
+      id: d.sprint || null,
+      epic: d.epic || null,
+      state: d.state || null,
+      worktree: d.worktree || '',
+      earlyStart: d['early-start'] === 'true',
+      deferred: d['deferred-dependency'] || '',
+      clausesFront: d.clauses || '',
+      mergedCommit: d['merged-commit'] || '',
+      title: sec.title,
+      frontmatterError: fm.error,
+      dod: parseChecklist(S['Definition of Done'] || ''),
+      decisions: [], stories: [], scenarios: [],
+      clauses: [], refs: [], smells: []
+    };
+    parseTable(S['Decisions (D-x)'] || '').rows.forEach(function (r) {
+      sprint.decisions.push({ id: r[0], decision: r[1], rationale: r[2], evidence: r.slice(3).join(' ').trim() });
+    });
+    parseTable(S['Stories & Tasks'] || '').rows.forEach(function (r) {
+      var joined = r.join(' — ');
+      sprint.stories.push({ text: joined, plans: extractPlanLinks(joined) });
+    });
+    var sc = S['Acceptance Scenarios (S1–Sn)'] || '';
+    var scTable = parseTable(sc);
+    sprint.scenarios = (scTable.rows.length && scTable.headers)
+      ? scTable.rows.map(function (r) { return r.join(' — '); })
+      : parseBullets(sc);
+    var cl = parseClauses(S['Handover Clauses'] || '');
+    sprint.clauses = cl.clauses;
+    sprint.refs = cl.refs;
+    sprint.smells = cl.smells;
+    return sprint;
+  }
+
   return {
     parseFrontmatter: parseFrontmatter,
     splitSections: splitSections,
@@ -131,7 +210,9 @@ var BoardParser = (function () {
     parseChecklist: parseChecklist,
     parseBullets: parseBullets,
     extractPlanLinks: extractPlanLinks,
-    parseEpic: parseEpic
+    parseEpic: parseEpic,
+    parseClauses: parseClauses,
+    parseSprint: parseSprint
   };
 })();
 
