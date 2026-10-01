@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>supervibe board</title>
+<style>
+  /* DESIGN.md warm-editorial tokens — offline local font stacks only */
+  :root {
+    --primary: #cc785c; --primary-active: #a9583e; --primary-disabled: #e6dfd8;
+    --ink: #141413; --body: #3d3d3a; --muted: #6c6a64; --muted-soft: #8e8b82;
+    --hairline: #e6dfd8; --hairline-soft: #ebe6df;
+    --canvas: #faf9f5; --surface-soft: #f5f0e8; --surface-card: #efe9de;
+    --surface-cream-strong: #e8e0d2; --surface-dark: #181715; --surface-dark-elevated: #252320;
+    --on-primary: #fff; --on-dark: #faf9f5; --on-dark-soft: #a09d96;
+    --accent-teal: #5db8a6; --success: #5db872; --warning: #d4a017; --error: #c64545;
+    --serif: Garamond, Georgia, 'Times New Roman', serif;
+    --sans: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --r-md: 8px; --r-lg: 12px; --r-pill: 9999px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--canvas); color: var(--body);
+    font: 400 16px/1.55 var(--sans); }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 400; color: var(--ink);
+    margin: 0; letter-spacing: -0.5px; }
+  button { font: 500 14px/1 var(--sans); cursor: pointer; }
+  .btn-primary { background: var(--primary); color: var(--on-primary);
+    border: none; border-radius: var(--r-md); padding: 12px 20px; height: 40px; }
+  .btn-primary:active { background: var(--primary-active); }
+  .btn-secondary { background: var(--canvas); color: var(--ink);
+    border: 1px solid var(--hairline); border-radius: var(--r-md);
+    padding: 12px 20px; height: 40px; }
+  .topbar { display: flex; align-items: center; gap: 16px; padding: 0 24px;
+    height: 64px; border-bottom: 1px solid var(--hairline); }
+  .topbar .wordmark { font-family: var(--serif); font-size: 18px; color: var(--ink); }
+  .topbar .folder { color: var(--muted); font-size: 13px; }
+  .layout { display: grid; grid-template-columns: 280px 1fr; min-height: calc(100vh - 64px); }
+  .rail { border-right: 1px solid var(--hairline); padding: 16px; }
+  .rail button { display: block; width: 100%; text-align: left; background: none;
+    border: none; padding: 10px 12px; border-radius: var(--r-md); color: var(--muted); }
+  .rail button.active { background: var(--surface-card); color: var(--ink); }
+  .rail .meta { font-size: 12px; color: var(--muted-soft); }
+  .content { padding: 24px 32px; max-width: 1200px; }
+  .epic-head h1 { font-size: 36px; }
+  .badge { display: inline-block; border-radius: var(--r-pill); padding: 4px 12px;
+    font: 500 13px/1.4 var(--sans); background: var(--surface-card); color: var(--ink); }
+  .badge.coral { background: var(--primary); color: var(--on-primary);
+    text-transform: uppercase; letter-spacing: 1.5px; font-size: 12px; }
+  .badge.state-active { color: var(--primary); background: var(--surface-card); }
+  .badge.state-merged, .badge.state-closed { color: var(--success); background: var(--surface-card); }
+  .columns { display: flex; gap: 16px; align-items: flex-start; overflow-x: auto; }
+  .col { flex: 0 0 260px; }
+  .col > h3 { font-size: 12px; font-family: var(--sans); font-weight: 500;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
+  .card { background: var(--surface-card); border-radius: var(--r-lg);
+    padding: 16px; margin-top: 12px; color: var(--ink); }
+  .card:hover { box-shadow: 0 1px 3px rgba(20,20,19,0.08); }
+  .card .id { font: 500 16px/1.4 var(--sans); }
+  .card .sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .chip { display: inline-block; background: var(--surface-dark); color: var(--on-dark);
+    font: 400 12px/1.6 var(--mono); border-radius: 4px; padding: 1px 6px; }
+  .smell { color: var(--warning); }
+  .empty { display: grid; place-items: center; min-height: 60vh; text-align: center; }
+  .empty h1 { font-size: 48px; }
+  .empty p { color: var(--muted); max-width: 480px; }
+  .warnbar { background: var(--surface-soft); border-bottom: 1px solid var(--hairline);
+    padding: 8px 24px; font-size: 13px; }
+  .warnbar div { color: var(--warning); }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 440px;
+    background: var(--canvas); border-left: 1px solid var(--hairline);
+    padding: 24px; overflow-y: auto; }
+  .drawer h2 { font-size: 28px; }
+  .drawer details { border-top: 1px solid var(--hairline-soft); padding: 12px 0; }
+  .drawer summary, .band summary { cursor: pointer; font: 500 14px/1.4 var(--sans); color: var(--muted); }
+  .drawer table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  .drawer td, .drawer th { border-bottom: 1px solid var(--hairline-soft);
+    padding: 6px 8px; text-align: left; vertical-align: top; }
+  .planlink { color: var(--primary); cursor: pointer; text-decoration: underline;
+    font-family: var(--mono); font-size: 12px; word-break: break-all; }
+  .band { margin: 16px 0 24px; }
+  .band details { border-top: 1px solid var(--hairline-soft); padding: 8px 0; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <span class="wordmark">supervibe board</span>
+  <button class="btn-secondary" id="pick">选择 docs/superpowers 文件夹</button>
+  <button class="btn-secondary" id="remember" hidden>记住此文件夹（Chromium）</button>
+  <button class="btn-secondary" id="restore" hidden>恢复上次文件夹</button>
+  <span class="folder" id="folderName"></span>
+  <input type="file" id="dirInput" webkitdirectory multiple hidden>
+</header>
+<div id="warnbar" class="warnbar" hidden></div>
+<main id="app" class="empty">
+  <div>
+    <h1>Roadmap board</h1>
+    <p>选择仓库的 <code>docs/superpowers</code> 文件夹（含 roadmaps/ 与 sprints/）。
+    页面只在本机内存解析，不发出任何网络请求，不写任何文件。</p>
+    <button class="btn-primary" id="pickHero">选择文件夹</button>
+  </div>
+</main>
+<script src="parser.js"></script>
+<script>
+'use strict';
+var P = BoardParser;
+var state = { files: null, model: null, epicIndex: 0, folderName: '' };
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+// ---- directory access ----
+document.getElementById('pick').onclick =
+document.getElementById('pickHero').onclick = function () { document.getElementById('dirInput').click(); };
+document.getElementById('dirInput').onchange = function (ev) {
+  var roadmaps = [], sprints = [];
+  var files = Array.prototype.slice.call(ev.target.files);
+  var pending = files.length;
+  if (!pending) return;
+  state.folderName = (files[0].webkitRelativePath || '').split('/')[0];
+  files.forEach(function (f) {
+    // webkitRelativePath INCLUDES the picked folder name as its first segment
+    // ("superpowers/roadmaps/x.md") — strip it; fall back to bare name when
+    // the browser omits the prefix.
+    var raw = f.webkitRelativePath || f.name;
+    var rel = raw.split('/').slice(1).join('/') || raw;
+    var reader = new FileReader();
+    reader.onload = function () {
+      if (/^roadmaps\/[^/]+\.md$/.test(rel)) roadmaps.push({ name: rel, text: String(reader.result) });
+      if (/^sprints\/[^/]+\.md$/.test(rel)) sprints.push({ name: rel, text: String(reader.result) });
+      if (--pending === 0) load({ roadmaps: roadmaps, sprints: sprints });
+    };
+    reader.readAsText(f);
+  });
+};
+
+// Chromium remember-path: showDirectoryPicker + IndexedDB handle store
+function idb() {
+  return new Promise(function (res, rej) {
+    var rq = indexedDB.open('supervibe-board', 1);
+    rq.onupgradeneeded = function () { rq.result.createObjectStore('handles'); };
+    rq.onsuccess = function () { res(rq.result); };
+    rq.onerror = function () { rej(rq.error); };
+  });
+}
+document.getElementById('remember').onclick = function () {
+  if (!window.showDirectoryPicker) return;
+  window.showDirectoryPicker().then(function (h) {
+    return idb().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction('handles', 'readwrite');
+        tx.objectStore('handles').put(h, 'dir');
+        tx.oncomplete = res; tx.onerror = function () { rej(tx.error); };
+      });
+    });
+  }).then(function () { location.reload(); }).catch(function () {});
+};
+function readHandle(h) {
+  var roadmaps = [], sprints = [];
+  function walk(dir, prefix) {
+    var iter = dir.entries();
+    function step() {
+      var n = iter.next();
+      if (n.done) return Promise.resolve();
+      var entry = n.value;
+      var rel = prefix + entry[0];
+      if (entry[1].kind === 'directory') {
+        if (entry[0] === 'roadmaps' || entry[0] === 'sprints') return walk(entry[1], rel + '/').then(step);
+        return step();
+      }
+      if (/^roadmaps\/[^/]+\.md$/.test(rel)) return entry[1].getFile().then(function (f) {
+        return f.text().then(function (t) { roadmaps.push({ name: rel, text: t }); });
+      }).then(step);
+      if (/^sprints\/[^/]+\.md$/.test(rel)) return entry[1].getFile().then(function (f) {
+        return f.text().then(function (t) { sprints.push({ name: rel, text: t }); });
+      }).then(step);
+      return step();
+    }
+    return step();
+  }
+  return walk(h, '').then(function () { return { roadmaps: roadmaps, sprints: sprints }; });
+}
+(function tryRestore() {
+  if (!window.showDirectoryPicker || !window.indexedDB) return;
+  idb().then(function (db) {
+    return new Promise(function (res) {
+      var tx = db.transaction('handles', 'readonly');
+      var rq = tx.objectStore('handles').get('dir');
+      rq.onsuccess = function () { res(rq.result || null); };
+      rq.onerror = function () { res(null); };
+    });
+  }).then(function (h) {
+    if (!h) return;
+    state.folderName = h.name;
+    var btn = document.getElementById('restore');
+    btn.hidden = false;
+    btn.onclick = function () {
+      h.requestPermission({ mode: 'read' }).then(function (p) {
+        if (p !== 'granted') return;
+        readHandle(h).then(load);
+      });
+    };
+    // auto-load when permission is already granted
+    h.queryPermission({ mode: 'read' }).then(function (p) {
+      if (p === 'granted') readHandle(h).then(load);
+    });
+  }).catch(function () {});
+})();
+
+// ---- model + render ----
+function load(files) {
+  state.files = files;
+  state.model = P.aggregate(files);
+  document.getElementById('folderName').textContent = state.folderName || '(unnamed folder)';
+  var rb = document.getElementById('remember');
+  if (window.showDirectoryPicker) rb.hidden = false;
+  render();
+}
+function render() { /* Task 6 implements rail + columns + drawer */ }
+</script>
+</body>
+</html>
