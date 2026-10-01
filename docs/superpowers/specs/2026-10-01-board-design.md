@@ -19,6 +19,8 @@ epic → sprints (stub rows + sprint docs) → wave plans (links only).
   fonts, no analytics). The page works fully offline from `file://`.
 - No plan-content parsing. Wave plans (`plans/`) are listed by filename from
   sprint-doc links; their bodies belong to the superpowers execution layer.
+- No `acceptances/` parsing — acceptance records are reachable from their
+  sprint docs' evidence links; the board does not model them.
 - No multi-repo or hosted/deployed mode.
 
 ## 3. Architecture
@@ -58,7 +60,8 @@ machine-identifier class as YAML keys and skill headings.
 
 ### 5.1 Epic docs (`roadmaps/*.md`)
 
-- Frontmatter: `epic`, `status`, `date`.
+- Frontmatter: `epic`, `status`, `date`. Epic display title = the doc's H1
+  (frontmatter carries no title field).
 - Sections by heading: `## Sprint Breakdown` (stub rows: sprint id, state
   planned/ready/started, note), `## Decisions (ADR)` (id, decision, rationale),
   `## Definition of Done` (checkboxes), `## Open Questions` (id + statement +
@@ -72,7 +75,19 @@ machine-identifier class as YAML keys and skill headings.
 - Sections: `## Decisions (D-x)`, `## Stories & Tasks` (plan links extracted
   from markdown link targets ending in `.md` under `../plans/`),
   `## Definition of Done`, `## Acceptance Scenarios (S1–Sn)`,
-  `## Handover Clauses` (field/value table form).
+  `## Handover Clauses`.
+- `Acceptance Scenarios` appears in two shapes — the template's four-column
+  table and backfilled bullet lists. Both parse; items are extracted whole
+  (full row / full bullet text) for detail-view rendering, not just counted.
+- `Handover Clauses` appears in three shapes; all are parsed:
+  1. Entity table — one clause per row, columns `| id | target | trigger |
+     obligation | status | evidence |` (the template's normative form).
+  2. Field/value vertical table — a single clause as `| field | value |` rows
+     (backfill-era form, e.g. dsh-enterprise S6's HC1).
+  3. Bullet reference list — target-side docs holding only clause-id
+     references (`clauses: [HC#]` pointers); parsed as references, never as
+     clause bodies.
+  Any other shape surfaces as a data smell, never a silent drop.
 
 ### 5.3 Plans (`plans/`)
 
@@ -86,10 +101,18 @@ machine-identifier class as YAML keys and skill headings.
 - Epics sorted by frontmatter `date`, then id.
 - Sprint cards merged from two sources: epic stub rows and sprint docs, joined
   on sprint id. Where both exist the sprint doc wins (its frontmatter state is
-  truth); a stub whose state is `started` but whose doc is missing is surfaced
-  as a data smell, not hidden.
+  truth). Stub-state vocabulary is the full state chain, not only pre-start:
+  a stub row may carry a post-start state (`active`…`closed`) when the sprint
+  was closed out without a doc (mini close-out) or the doc was later added —
+  column placement follows the effective state either way:
+  - doc exists → doc frontmatter state, no smell;
+  - no doc, stub state pre-start (`planned`/`ready`) → normal stub card;
+  - no doc, stub state post-start → card placed in that state's column AND
+    flagged as a data smell (`started` missing its doc, or a mini close-out
+    recorded only in the stub).
 - Cards grouped by state columns: planned / ready / active / acceptance /
-  merged / closed (stub-only states occupy the first two columns).
+  merged / closed (effective state per §5.4 — stubs carrying post-start
+  states land in their state's column with a smell flag).
 - Handover clauses join issuer sprint → target sprint by id; open clauses get
   an indicator on both cards.
 - No index file is written anywhere; aggregation is in-memory only — the
@@ -104,7 +127,7 @@ machine-identifier class as YAML keys and skill headings.
 - Card click → detail drawer: stories & plan links, DoD checklist, acceptance
   scenarios, handover-clause table, ADR rows relevant to the sprint.
 - Epic header band: DoD checklist, open questions with lifecycle, ADR table,
-  asset disposition (collapsed sections).
+  asset disposition, cross-cutting rows (collapsed sections).
 - Empty/error states are explicit: missing `roadmaps/` or `sprints/` dirs, a
   file with unparsable frontmatter, an orphan sprint doc (epic id unknown) —
   each surfaces as a visible warning row, never silently dropped.
@@ -120,9 +143,10 @@ constraint: no webfont loading, so the documented local fallback stacks apply.
 - Coral `#cc785c` reserved: primary "select folder" CTA, active epic marker,
   inline links. Never a background wash.
 - Display type (epic titles, section heads): serif stack
-  `Georgia, 'Times New Roman', serif`, weight 400, negative letter-spacing.
-  Body/UI: `-apple-system, 'Segoe UI', Roboto, sans-serif` (StyreneB/Inter
-  are licensed; local humanist stack is the documented substitute).
+  `Garamond, Georgia, 'Times New Roman', serif`, weight 400, negative
+  letter-spacing. Body/UI: `-apple-system, 'Segoe UI', Roboto, sans-serif`
+  (StyreneB/Inter are licensed; the Garamond-family and humanist-sans local
+  stacks are the documented substitutes).
 - Radius: 8px controls, 12px cards, pill badges. Spacing scale 4px base,
   32px card padding. State columns use badge pills (`planned` muted, `active`
   coral-text, `merged`/`closed` success-tinted).
@@ -149,9 +173,10 @@ constraint: no webfont loading, so the documented local fallback stacks apply.
 
 ## 10. Wiring
 
-- Optional `skills/board` (sixth skill): description states only its trigger
-  ("view roadmaps/sprints in a browser board"); body = locate plugin `web/`
-  dir, open `board.html` in the default browser, tell the user to pick
+- Optional `skills/board` (sixth skill): description is trigger-only per the
+  repo's SDO rule (e.g. "Use when the user wants to see roadmaps and sprint
+  breakdowns as a visual board"); body = locate plugin `web/` dir, open
+  `board.html` in the default browser, tell the user to pick
   `docs/superpowers`. Read-only, no artifact writes.
 - README (both languages): short "Board" section with a screenshot-free
   description and usage steps.
