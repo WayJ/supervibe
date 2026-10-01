@@ -112,10 +112,15 @@ var BoardParser = (function () {
     parseTable(S['Decisions (ADR)'] || '').rows.forEach(function (r) {
       epic.adr.push({ id: r[0], decision: r[1], rationale: r[2], date: r[3], evidence: r[4] });
     });
-    parseTable(S['Open Questions'] || '').rows.forEach(function (r) {
+    epic.adrHead = parseTable(S['Decisions (ADR)'] || '').headers || null;
+    var q = parseTable(S['Open Questions'] || '');
+    epic.qHead = q.headers || null;
+    q.rows.forEach(function (r) {
       epic.questions.push({ id: r[0], question: r[1], status: r[2], resolution: r.slice(3).join(' ').trim() });
     });
-    parseTable(S['Asset Disposition'] || '').rows.forEach(function (r) {
+    var a = parseTable(S['Asset Disposition'] || '');
+    epic.assetHead = a.headers || null;
+    a.rows.forEach(function (r) {
       epic.assets.push({ asset: r[0], disposition: r[1], note: r.slice(2).join(' ').trim() });
     });
     parseTable(S['Cross-cutting'] || '').rows.forEach(function (r) {
@@ -141,6 +146,7 @@ var BoardParser = (function () {
     if (!t.rows.length) return result; // empty / （无）
     if (t.headers && t.headers.length >= 5) {
       // shape 1: entity table (template normative)
+      result.head = t.headers;
       t.rows.forEach(function (r) {
         var row = {};
         t.headers.forEach(function (h, i) { row[h.toLowerCase()] = r[i] || ''; });
@@ -187,6 +193,7 @@ var BoardParser = (function () {
     parseTable(S['Decisions (D-x)'] || '').rows.forEach(function (r) {
       sprint.decisions.push({ id: r[0], decision: r[1], rationale: r[2], evidence: r.slice(3).join(' ').trim() });
     });
+    sprint.decHead = parseTable(S['Decisions (D-x)'] || '').headers || null;
     parseTable(S['Stories & Tasks'] || '').rows.forEach(function (r) {
       var joined = r.join(' — ');
       sprint.stories.push({ text: joined, plans: extractPlanLinks(joined) });
@@ -198,6 +205,7 @@ var BoardParser = (function () {
       : parseBullets(sc);
     var cl = parseClauses(S['Handover Clauses'] || '');
     sprint.clauses = cl.clauses;
+    sprint.clHead = cl.head || null;
     sprint.refs = cl.refs;
     sprint.smells = cl.smells;
     return sprint;

@@ -82,6 +82,10 @@
   .content tr:last-child td, .drawer tr:last-child td { border-bottom: none; }
   .content td:first-child, .drawer td:first-child { color: var(--ink);
     font-weight: 500; background: var(--surface-soft); }
+  .content th, .drawer th { font: 500 12px/1.4 var(--sans);
+    text-transform: uppercase; letter-spacing: 1px; color: var(--muted);
+    background: var(--surface-cream-strong); padding: 8px 10px;
+    text-align: left; border-bottom: 1px solid var(--hairline); }
   .planlink { color: var(--primary); cursor: pointer; text-decoration: underline;
     font-family: var(--mono); font-size: 12px; word-break: break-all; }
   .band { margin: 16px 0 24px; }
@@ -332,13 +336,13 @@ function renderEpic(root, epic) {
     }).join('') + '</ul>') +
     details('Open Questions', tableHtml(epic.questions.map(function (q) {
       return [q.id, q.question, q.status, q.resolution];
-    }))) +
+    }), epic.qHead || ['id', 'question', 'status', 'resolution'])) +
     details('Decisions (ADR)', tableHtml(epic.adr.map(function (a) {
       return [a.id, a.decision, a.rationale, a.evidence];
-    }))) +
+    }), epic.adrHead || ['id', 'decision', 'rationale', 'evidence'])) +
     details('Asset Disposition', tableHtml(epic.assets.map(function (a) {
       return [a.asset, a.disposition, a.note];
-    }))) +
+    }), epic.assetHead || ['asset', 'disposition', 'note'])) +
     details('Cross-cutting', '<ul>' + epic.crosscut.map(function (c) {
       return '<li>' + esc(c) + '</li>';
     }).join('') + '</ul>');
@@ -408,10 +412,10 @@ function openDrawer(c) {
     }).join('') + '</ul>');
     if (d.decisions.length) html += details('Decisions', tableHtml(d.decisions.map(function (x) {
       return [x.id, x.decision, x.rationale];
-    })));
+    }), d.decHead || ['id', 'decision', 'rationale']));
     if (d.clauses.length) html += details('Handover Clauses (issued)', tableHtml(d.clauses.map(function (cl) {
       return [cl.id, cl['target sprint'] || cl.target, cl.obligation, cl.status, cl.evidence];
-    })));
+    }), d.clHead || ['id', 'target', 'obligation', 'status', 'evidence']));
     if (d.refs.length) html += details('Handover Clauses (references)', '<ul>' + d.refs.map(function (r) {
       return '<li>' + esc(r.id) + ' — ' + esc(r.text) + '</li>';
     }).join('') + '</ul>');
@@ -433,9 +437,12 @@ function openDrawer(c) {
 function details(title, inner) {
   return '<details><summary>' + esc(title) + '</summary>' + inner + '</details>';
 }
-function tableHtml(rows) {
+function tableHtml(rows, headers) {
   if (!rows.length) return '<p class="sub">（空）</p>';
-  return '<table>' + rows.map(function (r) {
+  var h = headers && headers.length
+    ? '<tr>' + headers.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr>'
+    : '';
+  return '<table>' + h + rows.map(function (r) {
     return '<tr>' + r.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>';
   }).join('') + '</table>';
 }

@@ -87,6 +87,9 @@ eq(e.questions[0].id, 'Q1', 'question row');
 eq(e.assets[0].asset, 'superpowers', 'asset row');
 eq(e.crosscut.length, 1, 'crosscut row');
 eq(e.adr[0].decision, 'five skills', 'adr row');
+eq(e.qHead, ['id', 'question', 'status', 'resolution'], 'epic question headers');
+eq(e.adrHead, ['id', 'decision', 'rationale', 'date', 'evidence'], 'epic adr headers');
+eq(e.assetHead, ['asset', 'disposition', 'note'], 'epic asset headers');
 
 // ---- Task 3: sprint doc ----
 const EN = '–'; // en dash — heading contains (S1–Sn), U+2013
@@ -153,6 +156,7 @@ eq(sp.clauses[0].id, 'HC1', 'clause id');
 eq(sp.clauses[0]['target sprint'], 'S5', 'clause target');
 eq(sp.clauses[0].status, 'open', 'clause status');
 eq(sp.refs.length, 0, 'no refs in issuer doc');
+eq(sp.decHead, ['id', 'decision', 'rationale', 'evidence'], 'sprint decision headers');
 
 // clause shape 1: entity table (template normative)
 const entText = [
@@ -166,6 +170,7 @@ const ent = P.parseClauses(entText);
 eq(ent.clauses.length, 1, 'entity-table clause count');
 eq(ent.clauses[0].target, 'S9', 'entity-table clause target');
 eq(ent.clauses[0].obligation, 'review', 'entity-table obligation');
+eq(ent.head, ['id', 'target', 'trigger', 'obligation', 'status', 'evidence'], 'entity clause headers');
 
 // clause shape 3: bullet reference list (target side)
 const refText = '## Handover Clauses\n\n- **HC1** issuer S6 — 复核入口链\n';
