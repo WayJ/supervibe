@@ -73,9 +73,15 @@
   .drawer h2 { font-size: 28px; }
   .drawer details { border-top: 1px solid var(--hairline-soft); padding: 12px 0; }
   .drawer summary, .band summary { cursor: pointer; font: 500 14px/1.4 var(--sans); color: var(--muted); }
-  .drawer table { border-collapse: collapse; width: 100%; font-size: 13px; }
-  .drawer td, .drawer th { border-bottom: 1px solid var(--hairline-soft);
-    padding: 6px 8px; text-align: left; vertical-align: top; }
+  .content table, .drawer table { border-collapse: separate; border-spacing: 0;
+    width: 100%; font-size: 13px; margin: 8px 0 4px;
+    background: var(--canvas); border: 1px solid var(--hairline);
+    border-radius: var(--r-md); overflow: hidden; }
+  .content td, .drawer td { border-bottom: 1px solid var(--hairline-soft);
+    padding: 8px 10px; text-align: left; vertical-align: top; color: var(--body); }
+  .content tr:last-child td, .drawer tr:last-child td { border-bottom: none; }
+  .content td:first-child, .drawer td:first-child { color: var(--ink);
+    font-weight: 500; background: var(--surface-soft); }
   .planlink { color: var(--primary); cursor: pointer; text-decoration: underline;
     font-family: var(--mono); font-size: 12px; word-break: break-all; }
   .band { margin: 16px 0 24px; }
