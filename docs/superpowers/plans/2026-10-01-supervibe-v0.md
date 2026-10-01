@@ -99,7 +99,7 @@ Body sections:
 
 Steps: write EN → write ZH mirror → validate --strict → commit `feat: start skill (stub materialization, adjudication, read-history, dispatch), EN+ZH`.
 
-- [ ] Step 1–4
+- [x] Step 1–4
 
 ---
 
