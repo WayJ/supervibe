@@ -17,9 +17,10 @@ argument-hint: [scaffold|epic|adr|question|asset|debt|ready|close]
 - 配置键：`roadmap`、`notes`、`plans`、`acceptance`、`debt_tracker`、`wip_limit`；子节 `### gates` 与 `### doc_sync_map`。
 - 键缺失时的默认值：`roadmap: docs/roadmap.md`、`notes: .agents/notes/`、`plans: docs/plans/`、`acceptance: docs/acceptance/`、`debt_tracker: docs/tech-debt-tracker.md`、`wip_limit: 3`。
 - 若该节整体缺失，唯一合法的下一步是 `scaffold` 子命令——其余一律拒绝，并向用户言明。
+- 该节确认存在后，解析配置的 `roadmap` 路径并核实文件存在。缺失 → STOP：指引用户运行 `scaffold` 或修正配置路径；绝不在 `scaffold` 之外隐式创建 roadmap.md——配置路径笔误绝不能静默分叉真源。
 - 模板按 `<plugin base dir>/templates/<file>` 解析；绝不假设它们在宿主仓库里。
 - gate 命令从 `### gates` 读取；绝不发明命令、runner 或栈细节。
-- 任何触碰映射路径的编辑之前先查 `### doc_sync_map`；本技能写出的工件本身即文档——不欠进一步 doc-sync。
+- 任何触碰映射路径的编辑之前先查 `### doc_sync_map`。若映射表列出了 `roadmap.md` 本身，以映射表为准——「本技能写出的工件本身即文档、不欠进一步 doc-sync」的豁免仅适用于映射表未覆盖的路径。
 
 ## scaffold
 
@@ -29,7 +30,7 @@ argument-hint: [scaffold|epic|adr|question|asset|debt|ready|close]
 2. 把 `templates/agents-sections.md` 拼接进 AGENTS.md，作为 `## supervibe` 节。
 3. 创建 notes 目录（默认 `.agents/notes/`）。
 
-**幂等：绝不覆盖已有节——改为输出 diff 提案。** 若 `roadmap.md` 或 `## supervibe` 节已存在，保持原样不动；打印 scaffold 将要新增内容的 diff，请用户手动应用。
+**幂等，按工件分别判定：已存在的文件/节保持不动并产出 diff 提案；缺失的正常创建。** 已存在的 `roadmap.md` 或 AGENTS.md `## supervibe` 节，打印 scaffold 将要新增内容的 diff 请用户手动应用；已存在的 notes 目录保持原样。
 
 若 AGENTS.md 尚不存在，则创建它，内容仅为拼接进来的这一节。
 
@@ -68,14 +69,17 @@ argument-hint: [scaffold|epic|adr|question|asset|debt|ready|close]
 ## debt
 
 - 按 `templates/debt-entry.md` 向债务追踪器追加条目：severity、owner、清偿标准（repayment criteria）。缺清偿标准的条目无效。
+- 若债务追踪器文件不存在，按 `templates/debt-entry.md` 的行格式表头创建它——`scaffold` 不创建此文件。
 - 清偿（repay）：引用证据 commit hash 关闭条目——无 hash，不关闭。
 - 观察项（尚无修复决策的症状）路由到归属 epic；它们挂在那个 epic 的 DoD 上，不进追踪器的积压。
 
 ## ready / close
 
-本技能只拥有 Sprint 台账的两个转换；其余一律拒绝（`ready→active` 归 supervibe:start，`→acceptance` 归 supervibe:accept，`→merged` 归 supervibe:merge）。
+本技能只拥有 Sprint 台账的两个转换；其余一律拒绝（`ready→active` 归 supervibe:start，`→acceptance` 归 supervibe:accept，`→merged` 归 supervibe:merge）。台账中没有匹配给定 sprint id 的行 → 拒绝，并言明哪个 sprint id 未知。
 
 - **planned → ready** —— go 决策是战略性的。核实 epic 引用指向一个带 DoD 的 epic，然后把决策记入台账行。细粒度就绪裁决（依赖、WIP 计数、early start、deferred dependency）发生在 ready→active，归 supervibe:start。
 - **→ closed** —— 仅当该 sprint 的 handover clause 全部兑现（discharged）或从未登记。兑现条款归 supervibe:sync；此处核实台账行不存在在途 handover-clause id、且合并 commit hash 已记录。任一核实不通过 → 拒绝并言明缺什么。
+
+## Invariants（不变量）
 
 本技能的每次变更——epic、ADR、question、asset、debt、台账——都在受影响行追加日期 + 证据链接。不做静默编辑，不做删除：`roadmap.md` 是追加式历史。

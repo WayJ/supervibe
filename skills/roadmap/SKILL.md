@@ -17,9 +17,10 @@ Before any subcommand, grep the host AGENTS.md for the `## supervibe` section:
 - Config keys: `roadmap`, `notes`, `plans`, `acceptance`, `debt_tracker`, `wip_limit`; subsections `### gates` and `### doc_sync_map`.
 - Defaults when a key is absent: `roadmap: docs/roadmap.md`, `notes: .agents/notes/`, `plans: docs/plans/`, `acceptance: docs/acceptance/`, `debt_tracker: docs/tech-debt-tracker.md`, `wip_limit: 3`.
 - If the section is absent entirely, the only legal next action is the `scaffold` subcommand — refuse everything else and say so.
+- Once the section exists, resolve the configured `roadmap` path and verify the file exists. Missing → STOP: direct the user to run `scaffold` or fix the config path; never implicitly create roadmap.md outside `scaffold` — a config path typo must not silently fork the truth source.
 - Resolve templates as `<plugin base dir>/templates/<file>`; never assume they live in the host repo.
 - Read gate commands from `### gates`; never invent commands, runners, or stack specifics.
-- Consult `### doc_sync_map` before any edit that touches a mapped path; the artifacts this skill writes are themselves documentation — they owe no further doc-sync.
+- Consult `### doc_sync_map` before any edit that touches a mapped path. If the map lists `roadmap.md` itself, the map takes precedence — the "artifacts this skill writes are documentation and owe no further doc-sync" exemption applies only to paths the map does not cover.
 
 ## scaffold
 
@@ -29,7 +30,7 @@ Wire a repo to supervibe:
 2. Splice `templates/agents-sections.md` into AGENTS.md as the `## supervibe` section.
 3. Create the notes dir (default `.agents/notes/`).
 
-**Idempotent: never overwrite existing sections — emit a diff proposal instead.** If `roadmap.md` or the `## supervibe` section already exists, leave it untouched; print the diff of what scaffold would add and ask the user to apply it manually.
+**Idempotent, per artifact: existing files/sections stay untouched and produce a diff proposal; missing ones are created normally.** An existing `roadmap.md` or AGENTS.md `## supervibe` section gets a printed diff of what scaffold would add, for the user to apply manually; an existing notes dir is left as is.
 
 If AGENTS.md does not exist yet, create it containing just the spliced section.
 
@@ -68,14 +69,17 @@ Update Asset Disposition for inherited assets. Dispositions: reuse / retire / re
 ## debt
 
 - Add an entry to the debt tracker via `templates/debt-entry.md`: severity, owner, repayment criteria. An entry without repayment criteria is invalid.
+- If the debt tracker file does not exist, create it with the row-format header per `templates/debt-entry.md` — `scaffold` does not create it.
 - Repay: close the entry citing the evidence commit hash — no hash, no closure.
 - Route observation items (symptoms without a fix decision) to an owning epic; they ride that epic's DoD, not the tracker's backlog.
 
 ## ready / close
 
-This skill owns exactly two Sprint Ledger transitions; refuse all others (`ready→active` belongs to supervibe:start, `→acceptance` to supervibe:accept, `→merged` to supervibe:merge).
+This skill owns exactly two Sprint Ledger transitions; refuse all others (`ready→active` belongs to supervibe:start, `→acceptance` to supervibe:accept, `→merged` to supervibe:merge). No ledger row matches the given sprint id → reject and state which sprint id is unknown.
 
 - **planned → ready** — the go decision is strategic. Verify the epic ref resolves to an epic with DoD, then record the decision in the ledger row. Detailed readiness adjudication (dependencies, WIP count, early start, deferred dependencies) happens at ready→active under supervibe:start.
 - **→ closed** — only when the sprint's handover clauses are all discharged or none were registered. Discharging clauses belongs to supervibe:sync; here, verify the ledger row shows no open handover-clause ids and the merged commit hash is recorded. Either check fails → refuse and state what is missing.
+
+## Invariants
 
 Every mutation in this skill — epic, ADR, question, asset, debt, ledger — appends date + evidence link to the affected row. No silent edits, no deletions: `roadmap.md` is append-history.
