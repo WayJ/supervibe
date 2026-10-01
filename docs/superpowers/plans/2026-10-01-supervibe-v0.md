@@ -193,7 +193,7 @@ Common rules: plain markdown; fill-in points use the EXACT placeholder syntax `<
 - Create: `templates/debt-entry.md`
 - Create: `templates/agents-sections.md`
 
-- [ ] **Step 1: `templates/epic.md`** — frontmatter `{epic: E#, status: open, date}` + seven required H2s (exact headings, asserted by tests):
+- [x] **Step 1: `templates/epic.md`** — frontmatter `{epic: E#, status: open, date}` + seven required H2s (exact headings, asserted by tests):
 
 ```
 ## Deliverables
@@ -207,7 +207,7 @@ Common rules: plain markdown; fill-in points use the EXACT placeholder syntax `<
 
 Each with a one-row worked example; Sprint Breakdown example shows a `planned` row and a `started` row.
 
-- [ ] **Step 2: `templates/sprint.md`** — frontmatter block with ALL ledger fields (`sprint`, `epic`, `state`, `worktree`, `early-start`, `deferred-dependency`, `clauses`, `merged-commit`) + five required H2s:
+- [x] **Step 2: `templates/sprint.md`** — frontmatter block with ALL ledger fields (`sprint`, `epic`, `state`, `worktree`, `early-start`, `deferred-dependency`, `clauses`, `merged-commit`) + five required H2s:
 
 ```
 ## Decisions (D-x)
@@ -219,11 +219,11 @@ Each with a one-row worked example; Sprint Breakdown example shows a `planned` r
 
 Invariant comment: DoD copied verbatim from the epic doc; changes go to the epic doc, never here. Handover Clauses section carries the clause record format inline (id HC# / target / trigger / obligation / status / evidence).
 
-- [ ] **Step 3: `templates/acceptance-record.md`** — `## Verdict`, `## Scenario Results` (id/command/expected/actual/pass), `## DoD Checklist`, `## Obstacles (verbatim)`, `## Doc-Drift Audit`.
-- [ ] **Step 4: `templates/handover-clause.md`** — field block: `id HC# / issuer sprint / target sprint / trigger / obligation / status (open|discharged) / evidence`.
-- [ ] **Step 5: `templates/debt-entry.md`** — row: `id / date / severity / owner / description / repayment criteria / status / evidence commit`.
-- [ ] **Step 6: `templates/agents-sections.md`** — the exact §5 config block (new keys `roadmaps_dir`/`sprints_dir`/`acceptances_dir`/`notes`/`debt_tracker`/`wip_limit`/gates/doc_sync_map), placeholder commands marked.
-- [ ] **Step 7:** Commit `feat: six artifact templates for the dated-directory model (epic seven-section, sprint frontmatter ledger, clause, debt, agents-sections)`
+- [x] **Step 3: `templates/acceptance-record.md`** — `## Verdict`, `## Scenario Results` (id/command/expected/actual/pass), `## DoD Checklist`, `## Obstacles (verbatim)`, `## Doc-Drift Audit`.
+- [x] **Step 4: `templates/handover-clause.md`** — field block: `id HC# / issuer sprint / target sprint / trigger / obligation / status (open|discharged) / evidence`.
+- [x] **Step 5: `templates/debt-entry.md`** — row: `id / date / severity / owner / description / repayment criteria / status / evidence commit`.
+- [x] **Step 6: `templates/agents-sections.md`** — the exact §5 config block (new keys `roadmaps_dir`/`sprints_dir`/`acceptances_dir`/`notes`/`debt_tracker`/`wip_limit`/gates/doc_sync_map), placeholder commands marked.
+- [x] **Step 7:** Commit `feat: six artifact templates for the dated-directory model (epic seven-section, sprint frontmatter ledger, clause, debt, agents-sections)`
 
 ---
 
