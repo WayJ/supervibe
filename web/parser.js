@@ -203,6 +203,88 @@ var BoardParser = (function () {
     return sprint;
   }
 
+  var POST_START = ['started', 'active', 'acceptance', 'merged', 'closed'];
+
+  function aggregate(input) {
+    var warnings = [];
+    if (!input.roadmaps.length) warnings.push({ kind: 'missing-dir', msg: 'roadmaps/ has no markdown files — pick the docs/superpowers folder' });
+    if (!input.sprints.length) warnings.push({ kind: 'missing-dir', msg: 'sprints/ has no markdown files' });
+
+    var epics = [];
+    input.roadmaps.forEach(function (f) {
+      var e = parseEpic(f.name, f.text);
+      if (!e.id) { warnings.push({ kind: 'bad-frontmatter', msg: f.name + ': ' + (e.frontmatterError || 'no epic key') }); return; }
+      e.cards = [];
+      epics.push(e);
+    });
+    epics.sort(function (a, b) {
+      return String(a.date || '').localeCompare(String(b.date || '')) || String(a.id).localeCompare(String(b.id));
+    });
+    var byEpic = {};
+    epics.forEach(function (e) { byEpic[e.id] = e; });
+
+    var docs = {};
+    input.sprints.forEach(function (f) {
+      var s = parseSprint(f.name, f.text);
+      if (!s.id || !s.epic) { warnings.push({ kind: 'bad-frontmatter', msg: f.name + ': ' + (s.frontmatterError || 'missing sprint/epic key') }); return; }
+      if (docs[s.id]) warnings.push({ kind: 'duplicate', msg: 'two sprint docs claim ' + s.id + ' (' + docs[s.id].file + ', ' + f.name + ')' });
+      s.card = {
+        id: s.id, state: s.state, source: 'doc',
+        smell: s.smells.length > 0,
+        title: s.title || s.id, doc: s
+      };
+      docs[s.id] = s;
+    });
+
+    epics.forEach(function (e) {
+      e.stubs.forEach(function (stub) {
+        var doc = docs[stub.sprint];
+        if (doc) {
+          if (doc.epic !== e.id) warnings.push({ kind: 'cross-epic', msg: stub.sprint + ' stub in epic ' + e.id + ' but doc claims epic ' + doc.epic });
+          e.cards.push(doc.card);
+          return;
+        }
+        var postStart = POST_START.indexOf(stub.state) >= 0;
+        e.cards.push({
+          id: stub.sprint, state: stub.state, source: 'stub', smell: postStart,
+          title: (stub.note || stub.sprint).split('（')[0].slice(0, 60),
+          note: stub.note
+        });
+        if (postStart) warnings.push({ kind: 'stub-no-doc', msg: 'sprint ' + stub.sprint + ' stub carries post-start state ' + stub.state + ' with no sprint doc' });
+      });
+    });
+    Object.keys(docs).forEach(function (id) {
+      var s = docs[id];
+      var e = byEpic[s.epic];
+      if (!e) { warnings.push({ kind: 'orphan', msg: s.file + ' claims unknown epic ' + s.epic }); return; }
+      if (!e.cards.some(function (c) { return c.id === id; })) e.cards.push(s.card);
+    });
+    epics.forEach(function (e) {
+      e.cards.sort(function (a, b) {
+        return (parseInt(a.id.replace(/\D/g, ''), 10) || 0) - (parseInt(b.id.replace(/\D/g, ''), 10) || 0);
+      });
+    });
+
+    // clause join: issuer bodies vs target-side refs
+    var bodies = {};
+    Object.keys(docs).forEach(function (id) {
+      docs[id].clauses.forEach(function (c) {
+        (bodies[c.id] = bodies[c.id] || []).push({ sprint: id, clause: c });
+      });
+    });
+    Object.keys(docs).forEach(function (id) {
+      var refs = docs[id].refs.slice();
+      (String(docs[id].clausesFront).match(/\bHC\d+\b/g) || []).forEach(function (cid) {
+        refs.push({ id: cid, text: 'frontmatter clauses' });
+      });
+      refs.forEach(function (r) {
+        if (!bodies[r.id]) warnings.push({ kind: 'clause-body-not-found', msg: 'sprint ' + id + ' references ' + r.id + ' but no sprint doc holds its body' });
+      });
+    });
+
+    return { epics: epics, warnings: warnings };
+  }
+
   return {
     parseFrontmatter: parseFrontmatter,
     splitSections: splitSections,
@@ -212,7 +294,8 @@ var BoardParser = (function () {
     extractPlanLinks: extractPlanLinks,
     parseEpic: parseEpic,
     parseClauses: parseClauses,
-    parseSprint: parseSprint
+    parseSprint: parseSprint,
+    aggregate: aggregate
   };
 })();
 

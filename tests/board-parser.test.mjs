@@ -187,6 +187,75 @@ eq(none.refs.length, 0, '（无） yields no refs');
 const bad = P.parseClauses('## Handover Clauses\n\n| x | y | z |\n|---|---|---|\n| 1 | 2 | 3 |\n');
 ok(bad.smells.length === 1, 'unrecognized clause table flagged as smell');
 
+// ---- Task 4: aggregate ----
+const epicA = { name: '2026-09-24-e1.md', text: [
+  '---', 'epic: E1', 'status: open', 'date: ' + new Date().toISOString().slice(0, 10), '---', '',
+  '# E1 · demo', '',
+  '## Sprint Breakdown', '',
+  '| sprint | state | note |', '|---|---|---|',
+  '| S1 | merged | has doc |',
+  '| S8 | merged | mini close-out no doc |',
+  '| S10 | planned | future |',
+  '', '## Definition of Done', '', '- [x] one', '',
+  '## Decisions (ADR)', '', '| id | decision | rationale | date | evidence |', '|---|---|---|---|---|',
+  '', '## Asset Disposition', '', '## Open Questions', '', '## Cross-cutting', ''
+].join('\n') };
+const docS1 = { name: '2026-09-24-S1.md', text: sprintText.replace('sprint: S6', 'sprint: S1') };
+const docS9 = { name: '2026-09-30-S9.md', text: [
+  '---', 'sprint: S9', 'epic: E1', 'state: active', 'worktree: wt-9',
+  'early-start: false', 'deferred-dependency:', 'clauses:', 'merged-commit:',
+  '---', '', '# S9 · no stub row', '',
+  '## Handover Clauses', '', '- **HC1** issuer S1 — ref only', ''
+].join('\n') };
+const docOrphan = { name: '2026-10-01-SX.md', text: [
+  '---', 'sprint: SX', 'epic: E9', 'state: active', 'worktree: w', 'early-start: false',
+  'deferred-dependency:', 'clauses:', 'merged-commit:', '---', '', '# SX · orphan', ''
+].join('\n') };
+
+const agg = P.aggregate({ roadmaps: [epicA], sprints: [docS1, docS9, docOrphan] });
+const e1 = agg.epics[0];
+
+// stub/doc merge: doc wins
+const c1 = e1.cards.find((c) => c.id === 'S1');
+ok(c1 && c1.source === 'doc', 'S1 doc wins over merged stub');
+ok(!c1.smell, 'S1 no smell');
+// post-start stub without doc: placed in merged column + smell (S8 mini close-out)
+const c8 = e1.cards.find((c) => c.id === 'S8');
+ok(c8 && c8.state === 'merged' && c8.source === 'stub' && c8.smell === true, 'S8 effective state + smell');
+// pre-start stub: normal
+const c10 = e1.cards.find((c) => c.id === 'S10');
+ok(c10 && c10.source === 'stub' && c10.smell === false, 'S10 normal stub card');
+// doc with no stub row still appears (S9)
+const c9 = e1.cards.find((c) => c.id === 'S9');
+ok(c9 && c9.source === 'doc', 'doc without stub row attached');
+// clause join: S9 refs HC1, S1 (docS1 = sprintText clone) holds HC1 body → no dangling warning
+ok(!agg.warnings.some((w) => w.kind === 'clause-body-not-found'), 'clause ref joined to issuer body');
+// orphan doc → warning
+ok(agg.warnings.some((w) => w.kind === 'orphan' && /SX/.test(w.msg)), 'orphan sprint doc warned');
+// stub-no-doc smell warning
+ok(agg.warnings.some((w) => w.kind === 'stub-no-doc' && /S8/.test(w.msg)), 'post-start stub warning');
+
+// dangling ref
+const dangling = P.aggregate({ roadmaps: [epicA], sprints: [docS9] });
+ok(dangling.warnings.some((w) => w.kind === 'clause-body-not-found'), 'dangling ref warned');
+// empty dirs
+const empty = P.aggregate({ roadmaps: [], sprints: [] });
+ok(empty.warnings.some((w) => w.kind === 'missing-dir'), 'missing-dir warning');
+// started stub without doc (template vocabulary) — spec §5.4 post-start branch
+const epicStarted = { name: '2026-10-02-e2.md', text: [
+  '---', 'epic: E2', 'status: open', 'date: ' + new Date().toISOString().slice(0, 10), '---', '',
+  '# E2 · started stub', '',
+  '## Sprint Breakdown', '',
+  '| sprint | state | note |', '|---|---|---|',
+  '| S12 | started | ghost sprint |',
+  '', '## Definition of Done', '', '## Decisions (ADR)', '',
+  '## Asset Disposition', '', '## Open Questions', '', '## Cross-cutting', ''
+].join('\n') };
+const agg2 = P.aggregate({ roadmaps: [epicStarted], sprints: [] });
+const c12 = agg2.epics[0].cards.find((c) => c.id === 'S12');
+ok(c12 && c12.smell === true, 'started stub without doc = smell');
+ok(agg2.warnings.some((w) => w.kind === 'stub-no-doc' && /S12/.test(w.msg)), 'started stub warning');
+
 console.log(failures.length ? `FAIL (${failures.length}/${checks})` : `PASS (${checks})`);
 failures.forEach((f) => console.error('  - ' + f));
 process.exit(failures.length ? 1 : 0);
