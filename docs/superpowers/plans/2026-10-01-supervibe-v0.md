@@ -177,7 +177,7 @@ Body sections:
 
 Steps: EN → ZH → validate → commit `feat: sync skill (cadence, conflict checklist, HC# resolution, discharge), EN+ZH`.
 
-- [ ] Step 1–4
+- [x] Step 1–4
 
 ---
 
