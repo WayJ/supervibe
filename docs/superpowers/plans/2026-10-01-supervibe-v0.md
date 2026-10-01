@@ -151,7 +151,7 @@ Body sections:
 
 Steps: EN → ZH → validate → commit `feat: merge skill (gates, arrears check, close-out sequence, clause firing), EN+ZH`.
 
-- [ ] Step 1–4
+- [x] Step 1–4
 
 ---
 

@@ -70,7 +70,7 @@ Seven stages, strictly ordered. Each numbered stage is a hard stop: green → th
 5. **Sprint doc frontmatter finalized.**
    - These writes happen on the main-line checkout — the worktree is gone by now, torn down in stage 4 — and land as a follow-up commit on merged main: `state: merged` plus `merged-commit: <the branch-tip hash captured in stage 3>`.
    - `merged-commit` keeps pointing at the sprint branch tip, the pre-merge hash, even after teardown removes the branch. A PR-style host where the branch died with the PR is no different: capture the tip while it lives; the writes still go to the main checkout the same way.
-   - Append date + evidence link — the link is the merge commit hash just written. The whole stage is the same close-out act as the merge itself.
+   - Append date + evidence link — the link is the recorded `merged-commit` hash. The whole stage is the same close-out act as the merge itself.
    - A landed merge whose ledger still reads `acceptance` is an incomplete close-out; a flipped state without its hash is incomplete the other way.
 
 6. **Handover clauses fired.**
@@ -81,7 +81,7 @@ Seven stages, strictly ordered. Each numbered stage is a hard stop: green → th
 
 7. **Closing note.** Write `<notes>/YYYY-MM-DD-<sprint>-close.md` per the four-section notes protocol; the filename date is today, the close-out date.
    - Four sections: background (what this sprint delivered, how it closed) / decisions (close-out rulings: arrears, conflict resolutions, teardown) / lessons (reusable close-out experience — gate failure modes, conflict patterns) / handover (the fired clauses and their binding effect, obligations owed to and from this sprint).
-   - The note carries the merge commit hash as its evidence and cross-references the acceptance record — records and closing notes reference each other. A merged sprint without its closing note is incomplete.
+   - The note carries the recorded `merged-commit` hash as its evidence and cross-references the acceptance record — records and closing notes reference each other. A merged sprint without its closing note is incomplete.
 
 All seven green: the sprint is merged, its ledger final, its clauses binding, its history written. Everything that remains acts on what this skill recorded — →closed and epic closure are roadmap's; clause discharge is sync's.
 
