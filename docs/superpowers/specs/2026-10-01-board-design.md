@@ -43,12 +43,15 @@ plugin/
 
 ## 4. Directory access
 
-- Primary: `<input type="file" webkitdirectory>` — the user picks the
-  `docs/superpowers` folder. Works in Chrome, Edge, Firefox.
-- Chromium enhancement: a "remember this folder" path using
-  `showDirectoryPicker` + IndexedDB handle persistence; on later opens the
+- Primary (Chromium): `showDirectoryPicker()` — the user picks the
+  `docs/superpowers` folder in a native dialog whose confirm button reads
+  "选择文件夹". Fallback where the API is absent (Firefox): `<input type="file"
+  webkitdirectory>` (its native dialog's confirm button is browser-labeled
+  and not page-controllable).
+- Chromium persistence: the same `showDirectoryPicker` handle can be stored
+  in IndexedDB ("remember this folder" button); on later opens the
   page re-reads the stored handle (permission re-grant may prompt) and skips
-  manual picking. Absent API → plain input flow, no persistence.
+  manual picking.
 - A "change folder" button always re-opens the picker.
 - Rationale: a `file://` page cannot read local paths by string (URL params
   included) — the pick gesture is the only portable permission grant.

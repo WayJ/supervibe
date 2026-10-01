@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 const TPL = process.env.TEMPLATES_DIR ?? 'templates';
 const SKILLS = process.env.SKILLS_DIR ?? 'skills';
 
-const SKILL_DIRS = ['roadmap', 'start', 'accept', 'merge', 'sync'];
+const SKILL_DIRS = ['roadmap', 'start', 'accept', 'merge', 'sync', 'board'];
 const EPIC_H2 = ['## Deliverables', '## Definition of Done', '## Sprint Breakdown',
   '## Decisions (ADR)', '## Asset Disposition', '## Open Questions', '## Cross-cutting'];
 const SPRINT_H2 = ['## Decisions (D-x)', '## Stories & Tasks', '## Definition of Done',
@@ -129,10 +129,21 @@ function assemblyDryrun() {
   }
 }
 
+function checkBoard() {
+  // board — static viewer artifacts (spec specs/2026-10-01-board-design.md)
+  ok(existsSync('web/board.html'), 'web/board.html exists');
+  ok(existsSync('web/parser.js'), 'web/parser.js exists');
+  const boardHtml = readFileSync('web/board.html', 'utf8');
+  ok(/<script src="parser\.js">/.test(boardHtml), 'board.html loads parser.js');
+  ok(!/(src|href)="https?:\/\//.test(boardHtml), 'board.html issues no network requests');
+  ok(!/@import\s+url\(/.test(boardHtml), 'board.html loads no remote css');
+}
+
 function main() {
   try {
     checkSkills(listSkillDirs());
     checkTemplates();
+    checkBoard();
     assemblyDryrun();
   } catch (e) {
     failures.push(`unexpected error: ${e.message}`);

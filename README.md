@@ -101,6 +101,19 @@ Key points:
 - **Rework loops**: an accept `blocked` returns to execution; a merge red returns to execution/accept, and merge re-runs from stage 1 after the fix — a half-green run proves nothing
 - **Parallelism**: `start` is bounded by `wip_limit` (default 3); with several lines in flight, `sync` is the drift fence
 
+## Board
+
+A bundled static viewer for the whole artifact tree. Open `web/board.html` in a
+browser, pick the repo's `docs/superpowers` folder, and every epic renders with
+its full breakdown — sprint cards grouped by state (stub rows included), detail
+drawer with DoD, scenarios, handover clauses and wave-plan links. On Chromium,
+"remember this folder" avoids re-picking.
+
+Zero network, zero build, no generator script: parsing happens in the page's
+memory (classic script `web/parser.js`), nothing is written to disk, and no
+index file ever lands in the repo. Rendering gaps surface as visible data
+smells in the warning bar, never silent drops. Design: `docs/superpowers/specs/2026-10-01-board-design.md`.
+
 ## Install
 
 ```
