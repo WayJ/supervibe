@@ -27,6 +27,7 @@ argument-hint: [sprint-id|all]
 
 - 参数是 sprint id 或 `all`，绝非路径——参数给了路径 → 询问它所承载 sprint 的 id。
 - 参数缺失 → 询问，列出 `sprints_dir` 中 frontmatter `state` 为 `active` 或 `acceptance` 的文档备选；绝不猜测。
+- sprint id → 扫 `sprints_dir` 全部文档的 frontmatter `sprint` 字段求匹配；无匹配 → 拒绝，点名该未知 sprint id。
 - 可介入的状态：`active` / `acceptance` → 继续。`merged` / `closed` → 跳过并在报告中点名——已没有可集成的载体。`state` 缺失或无法识别 → 在报告中揭穿该畸形文档并跳过；绝不猜测状态。
 - `all` 的语义恰好是 active+acceptance 集合，不再更宽——绝不含 merged，绝不含 closed。该集合为空 → 没有在途线：报告后停止——空集上的 `all` 是无操作，不是错误。
 - 每个目标各走完整序列——merge、冲突复核清单、条款核查、兑现——并各得一份报告。红结束的是那个 sprint 的集成，绝不是整轮运行：其余目标照样同步，各自出各自的报告。
