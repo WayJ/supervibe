@@ -1,0 +1,12 @@
+{
+  "name": "supervibe",
+  "owner": { "name": "jw083" },
+  "plugins": [
+    {
+      "name": "supervibe",
+      "source": "./",
+      "description": "Iteration management layer for Claude Code. Pairs with superpowers.",
+      "category": "workflow"
+    }
+  ]
+}
