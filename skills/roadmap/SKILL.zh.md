@@ -39,7 +39,7 @@ argument-hint: [scaffold|epic|breakdown|adr|question|asset|debt|ready|close]
 以 `templates/epic.md` 创建 `<roadmaps_dir>/YYYY-MM-DD-<epic>.md`：
 
 - frontmatter：`{epic: E#, status: open, date}`——epic id 扫 `roadmaps/` 内全部文档取 max+1。
-- 正文七节，按模板：核心交付（Deliverables）/ Definition of Done / Sprint Breakdown / 决策（Decisions, ADR）/ 资产处置（Asset Disposition）/ 开放问题（Open Questions）/ 横切关注（Cross-cutting）。
+- 正文七节，按模板：核心交付（Deliverables）/ Definition of Done / Sprint Breakdown / 决策（Decisions (ADR)）/ 资产处置（Asset Disposition）/ 开放问题（Open Questions）/ 横切关注（Cross-cutting）。
 - **缺 DoD 即拒绝**——没有 Definition of Done 的 epic 无效；停下并向用户索要。DoD 挂在 epic 层；sprint 文档逐字复制，后续改动在此处以修订方式进行，绝不在 sprint 文档内改。
 
 `breakdown` 子命令——向 epic 文档的 Sprint Breakdown 节追加桩行：`{sprint id、state: planned、备注}`：
@@ -90,6 +90,7 @@ argument-hint: [scaffold|epic|breakdown|adr|question|asset|debt|ready|close]
 ## Invariants（不变量）
 
 - 本技能的每次变更——epic 文档、分解桩行、ADR 行、question、asset、债务条目、状态翻转——都在受影响行或 frontmatter 追加日期 + 证据链接。
-- id 绝不复用：epic id、sprint id、ADR 编号均取自 max+1 扫描，全树永远唯一。
+- id 绝不复用：epic id、sprint id、ADR 编号均取自 max+1 扫描（空集扫描从 1 起），全树永远唯一。
+- 任何子命令引用不存在的 epic 或 sprint id → 拒绝并言明未知 id——此模式适用于全部子命令，不限于 ready/close。
 - 绝不编辑归属其他技能的状态：closed 之前的 sprint 文档状态、桩行 `started` 翻转、交接条款记录、验收记录。
 - 绝不创建中心索引文件——目录扫描即聚合。

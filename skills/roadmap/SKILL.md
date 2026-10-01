@@ -90,6 +90,7 @@ This skill owns exactly two state transitions; refuse all others (stub materiali
 ## Invariants
 
 - Every mutation in this skill — epic doc, breakdown stub, ADR row, question, asset, debt entry, state flip — appends date + evidence link to the affected row or frontmatter.
-- Ids are never reused: epic ids, sprint ids, and ADR numbers come from max+1 scans and stay unique across the whole tree, forever.
+- Ids are never reused: epic ids, sprint ids, and ADR numbers come from max+1 scans (an empty scan starts at 1) and stay unique across the whole tree, forever.
+- Any subcommand referencing a nonexistent epic or sprint id → reject, naming the unknown id — uniform across all subcommands, not only ready/close.
 - Never edit state owned by another skill: sprint-doc states before `closed`, stub `started` flips, handover-clause records, acceptance records.
 - Never create a central index file — the directory scan is the aggregation.
