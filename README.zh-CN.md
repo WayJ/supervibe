@@ -54,6 +54,48 @@ epic 文档的 Sprint Breakdown 桩行里；实体化时桩行翻为 `started`�
 住在 sprint 文档的 frontmatter 里（`active → acceptance → merged → closed`）。
 每次状态翻转都追加日期 + 证据链接。
 
+## 生命周期
+
+主链（roadmap → start → 执行 → accept → merge → close）：
+
+```mermaid
+flowchart TD
+    A[新仓库] -->|roadmap scaffold| B["宿主 AGENTS.md<br/>## supervibe 配置节"]
+    B -->|roadmap 新建 epic| C["epic 文档<br/>DoD + Sprint Breakdown 桩行"]
+    C --> D["桩行 planned"]
+    D -->|roadmap 裁定| E["桩行 ready"]
+    E -->|start 实体化| F["sprint 文档 + worktree<br/>桩行→started，frontmatter: active"]
+    F --> G["superpowers 执行<br/>brainstorm / spec / plan / TDD"]
+    G -->|执行毕| H{"accept<br/>证据先于断言"}
+    H -->|blocked：回清单点名的阻断项| G
+    H -->|pass：frontmatter→acceptance| I["验收记录落档<br/>场景表 + DoD + 障碍 + 漂移审计"]
+    I --> J{"merge 七阶段<br/>gate→裁决→合并→拆除→台账→发射条款→笔记"}
+    J -->|红：gate 红 / doc-sync 欠账 / 裁决缺| G
+    J -->|绿| K["main + merged-commit<br/>worktree 拆除，条款 binding"]
+    K -->|roadmap close| L["closed"]
+    L -->|epic 还有桩行| D
+    L -->|全部 sprint merged| M["epic closed"]
+```
+
+sync 侧线（固定节拍，独立于主链）：
+
+```mermaid
+flowchart LR
+    O["origin/main"] -->|固定节拍| SY["sync（sprint-id 或 all）"]
+    SY --> C1["merge 进在途 sprint 分支<br/>冲突→双路径复核清单"]
+    SY --> C2{"条款核查<br/>触发 = 签发方 merged-commit 抵达"}
+    C2 -->|已触发 + 已验证| C3["签发方文档<br/>status: discharged<br/>main 上独立 commit"]
+    C2 -->|已触发未验证| C4["报告保持 open<br/>下轮 sync 兑现"]
+    C2 -->|未抵达| C5["报告等待中"]
+```
+
+要点：
+
+- **状态双命名空间**：桩行管 `planned → ready → started`；frontmatter 管 `active → acceptance → merged → closed`
+- **条款三段**：start 登记 → merge 阶段 6 发射（binding）→ sync 兑现（discharged）
+- **回炉路**：accept blocked 回执行；merge 红回执行/accept，修完 merge 从阶段 1 重跑——半绿不算数
+- **并行**：start 受 `wip_limit` 约束（默认 3）；多线并行时 sync 是漂移围栏
+
 ## 安装
 
 ```

@@ -59,6 +59,48 @@ flips to `started` and from then on state lives in the sprint doc's frontmatter
 (`active → acceptance → merged → closed`). Every state flip appends a date +
 evidence link.
 
+## Lifecycle
+
+Main chain (roadmap → start → execution → accept → merge → close):
+
+```mermaid
+flowchart TD
+    A[New repo] -->|roadmap scaffold| B["host AGENTS.md<br/>## supervibe section"]
+    B -->|roadmap: new epic| C["epic doc<br/>DoD + Sprint Breakdown stubs"]
+    C --> D["stub: planned"]
+    D -->|roadmap adjudication| E["stub: ready"]
+    E -->|start materializes| F["sprint doc + worktree<br/>stub → started, frontmatter: active"]
+    F --> G["superpowers executes<br/>brainstorm / spec / plan / TDD"]
+    G -->|execution done| H{"accept<br/>evidence before assertion"}
+    H -->|blocked: fix named blockers| G
+    H -->|pass: frontmatter → acceptance| I["acceptance record filed<br/>scenarios + DoD + obstacles + drift audit"]
+    I --> J{"merge, seven stages<br/>gates → verdict → merge → teardown → ledger → fire clauses → note"}
+    J -->|red: gate / doc-sync arrears / verdict missing| G
+    J -->|green| K["main + merged-commit<br/>worktree torn down, clauses binding"]
+    K -->|roadmap close| L["closed"]
+    L -->|more stubs in epic| D
+    L -->|all sprints merged| M["epic closed"]
+```
+
+Sync side (fixed cadence, independent of the main chain):
+
+```mermaid
+flowchart LR
+    O["origin/main"] -->|fixed cadence| SY["sync (sprint id or all)"]
+    SY --> C1["merge into in-flight sprint branches<br/>conflicts → dual-path review list"]
+    SY --> C2{"clause check<br/>trigger = issuing merged-commit arrived"}
+    C2 -->|triggered + verified| C3["issuing doc<br/>status: discharged<br/>independent commit on main"]
+    C2 -->|triggered, not verified| C4["reported open<br/>discharges at a later sync"]
+    C2 -->|not arrived| C5["reported awaiting"]
+```
+
+Key points:
+
+- **Two state namespaces**: stub rows own `planned → ready → started`; frontmatter owns `active → acceptance → merged → closed`
+- **Clause lifecycle in three acts**: registered at `start`, fired binding at `merge` stage 6, discharged at `sync`
+- **Rework loops**: an accept `blocked` returns to execution; a merge red returns to execution/accept, and merge re-runs from stage 1 after the fix — a half-green run proves nothing
+- **Parallelism**: `start` is bounded by `wip_limit` (default 3); with several lines in flight, `sync` is the drift fence
+
 ## Install
 
 ```
