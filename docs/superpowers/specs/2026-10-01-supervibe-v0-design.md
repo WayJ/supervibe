@@ -1,7 +1,10 @@
 # SuperVibe v0 — 设计 Spec
 
 - 日期：2026-10-01
-- 状态：brainstorming 对话中已批准；spec 评审环两轮通过（Approved）
+- 状态：brainstorming 对话中已批准；spec 评审环两轮通过（Approved）；
+  **2026-10-01 架构修订**（工件树日期化目录 + 去中心化台账 + SDO 铁律 +
+  Sprint 分解桩行 + 条款单一真源，依据 superpowers 6.4.2 / gstack 源码
+  学习与用户指令，评审环见后续轮次）
 - 仓库：`supervibe`（本仓，自举自第一笔 commit 起）
 
 ## 1. 定位
@@ -39,7 +42,7 @@
 
 - **sprint = 价值盒，非时间盒。** 收口判据是 DoD 达成而非到期切刀。
   WIP 上限控制并行数（默认 3），无固定时长、无 velocity 度量。
-- **DoD 挂在 epic 层**，自 roadmap 逐字复制进 sprint plan，不得就地改写。
+- **DoD 挂在 epic 层**，自 epic 文档逐字复制进 sprint 文档，不得就地改写。
 
 Scrum 没有对应物、必须保留的四个新名词（supervibe 的增量能力）：
 
@@ -80,11 +83,13 @@ docs/superpowers/
 无中心索引文件——零静默分叉面）：
 
 - **Epic 文档**（`roadmaps/YYYY-MM-DD-<epic>.md`）：frontmatter
-  `{epic id、状态、日期}` + 六节：核心交付 / **DoD**（无 DoD 的 epic
-  无效）/ ADR 增量（编号全局唯一：扫全部 epic 文档取 max+1；纪律：
-  *先改文档再动代码* doc-before-code）/ 资产处置（复用/退役/重排/观察）
-  / 开放问题（open → closed/deferred，带决策链接；不编号的问题会腐烂）
-  / 横切关注（点名归属 epic）。
+  `{epic id、状态（open|closed，由 roadmap 技能关闭）、日期}` + 七节：
+  核心交付 / **DoD**（无 DoD 的 epic 无效）/ **Sprint 分解**（桩行表：
+  `{sprint id、状态 planned|ready、备注}`——pre-start 状态的唯一载体，
+  start 时实体化）/ ADR 增量（编号全局唯一：扫全部 epic 文档取 max+1；
+  纪律：*先改文档再动代码* doc-before-code）/ 资产处置（复用/退役/重排/
+  观察）/ 开放问题（open → closed/deferred，带决策链接；不编号的问题
+  会腐烂）/ 横切关注（点名归属 epic）。
 - **Sprint 文档**（`sprints/YYYY-MM-DD-<sprint>-plan.md`）：frontmatter
   即 sprint 台账——`{sprint id、epic 引用、状态、worktree/分支、
   early-start 标记、deferred-dependency 引用、在途 handover-clause id、
@@ -107,12 +112,16 @@ planned → ready（候指令）→ active（允许并行，受 WIP 上限约束
 Scrum 对照：planned/ready ≈ backlog 已排期；active ≈ sprint in progress；
 acceptance ≈ sprint review；merged/closed ≈ done。
 
-状态转换归属：`supervibe:roadmap` 拥有 planned→ready（go 决策是战略性的）
-并在该 sprint 的交接条款全部兑现（或从未登记）时关闭（→closed）；
-`supervibe:start` 写 ready→active；`supervibe:accept` 写 →acceptance
-（+ 裁决）；`supervibe:merge` 写 →merged（+ commit hash）。交接条款的
-**兑现（discharge）**归 `supervibe:sync`：目标 sprint 的 sync/merge 验证
-义务履行后，由 sync 记录证据并将条款置为 discharged。
+状态转换归属：`supervibe:roadmap` 拥有 planned→ready（改 epic 文档
+Sprint 分解节桩行状态；go 决策是战略性的）并在该 sprint 的交接条款全部
+兑现（或从未登记）时关闭（→closed，改 sprint 文档 frontmatter）；
+`supervibe:start` 把 epic 分解节 ready 桩行**实体化**为
+`sprints/YYYY-MM-DD-<sprint>-plan.md`（frontmatter 初始 `state: active`，
+分解节桩行标记 started 保留 id 指针）；`supervibe:accept` 写 sprint 文档
+frontmatter →acceptance（+ 裁决）；`supervibe:merge` 写 →merged
+（+ commit hash）。交接条款的**兑现（discharge）**归 `supervibe:sync`：
+目标 sprint 的 sync/merge 验证义务履行后，由 sync 在**签发方 sprint 文档**
+的条款记录处记证据并置 discharged（单一权威，见下）。
 
 特殊流（全部在真实迭代中出现过）：
 
@@ -122,9 +131,14 @@ acceptance ≈ sprint review；merged/closed ≈ done。
 - **候补依赖（deferred dependency）** — 先在当前基线上实现，同时向被
   依赖 sprint 的未来合并登记**交接条款（handover clause）**（真实案例：
   「T4 视同 W2 已合入直接实施；W2 合入时复核顺序耦合」）。
-- **交接条款（handover clause）** — 跨 sprint 复核义务：
-  `{id、签发 sprint、目标 sprint、触发器、义务、状态、证据}`。开线或
-  合并时登记；**只以记录在案的证据兑现**，时机在目标 sprint 的 sync/merge。
+- **交接条款（handover clause）** — 跨 sprint 复核义务。**正文唯一真源 =
+  签发方 sprint 文档的 Handover Clauses 节**：`{id HC#、目标 sprint、
+  触发器、义务、状态 open|discharged、证据}`；id 扫全部 sprint 文档的
+  Handover Clauses 节取 max+1。目标方只存引用：目标 sprint 文档已存在 →
+  其 frontmatter `clauses` 字段加 id；尚未存在（未来 sprint）→ 签发方
+  条款记录内写 `target: <epic> 分解节 S# 桩行`，start 实体化该桩行时
+  迁移引用。**只以记录在案的证据兑现**（discharge 写回签发方文档条款
+  记录），时机在目标 sprint 的 sync/merge。
 
 ### 2.3 Sprint 工件
 
@@ -201,9 +215,9 @@ acceptance ≈ sprint review；merged/closed ≈ done。
 
 | # | 技能 | description（触发条件式，SDO 铁律） | 契约（输入 → 输出与副作用） |
 |---|---|---|---|
-| 1 | `supervibe:roadmap` | Use when the user mentions the roadmap, an epic, ADR decisions, open questions, asset disposition, tech debt, or wiring a project to supervibe. | 战略真源全套。子命令：**scaffold**（建目录树 `roadmaps//sprints//acceptances/` + AGENTS.md supervibe 节 + `.agents/notes/`，幂等——已存在的目录/节不动，输出 diff 提案）/ 加 epic 文档（缺 DoD 即拒绝）/ 记决策（ADR 增量节 + 修订；强制 doc-before-code）/ 开闭问题 / 资产处置 / **debt**（加条目、清偿以证据 commit hash、观察项路由到归属 epic）/ planned→ready 与 →closed 两转换（§2.2，改 epic/sprint 文档 frontmatter 状态字段）。每次变更注记日期 + 证据链接。 |
-| 2 | `supervibe:start` | Use when the user says start, begin, kick off, or pull a sprint, epic, or iteration. | 输入：epic id（定位 `roadmaps/` 内对应文档）。就绪裁决：依赖检查、WIP 计数（扫 sprints/ frontmatter 聚合 active 数）对上限、early-start 裁决（与在途 sprint 文件交集估算）、deferred-dependency 裁决（→ 交接条款登记进 sprint 文档 + 目标 sprint 文档）。**先读史**：按 §2.4 协议检索 notes 历史教训，摘入决策上下文。输出：按模板生成 `sprints/YYYY-MM-DD-<sprint>-plan.md`（frontmatter 台账字段齐全，五节，DoD 逐字复制自 epic 文档）+ 开线条目入 notes。然后调度：superpowers 在 → `superpowers:brainstorming` 再 `superpowers:writing-plans`，**指示其填充脚手架路径——五节结构与逐字 DoD 是对产出 plan 的不可变约束**；不在 → 打印手动指令。 |
-| 3 | `supervibe:accept` | Use when the user asks to accept, review, or verify a sprint, or asks whether a sprint is done. | 输入：sprint/plan 文档。把 S1–Sn 作为真验证执行（浏览器、CLI、栈命令按各场景指定——**证据先于断言，绝不未运行就宣称通过**；遇障碍先查 notes 史上同类绕行，命中复用并注明来源）。填 DoD 清单。障碍逐字留痕。**doc-sync 周期审计**：按映射表出漂移报告。输出 `acceptances/YYYY-MM-DD-<sprint>-acceptance.md` + 裁决（pass/blocked）+ frontmatter 状态 →acceptance。替代证据必须如此标注。 |
+| 1 | `supervibe:roadmap` | Use when the user mentions the roadmap, an epic, ADR decisions, open questions, asset disposition, tech debt, or wiring a project to supervibe. | 战略真源全套。子命令：**scaffold**（按 §5 配置路径建 `roadmaps/`、`sprints/`、`acceptances/` 目录树 + AGENTS.md supervibe 节 + `.agents/notes/`，幂等——已存在的目录/节不动，输出 diff 提案；**不写 `plans/`——那是 superpowers 执行域**）/ 加 epic 文档（缺 DoD 即拒绝；可带 Sprint 分解桩行）/ 记决策（ADR 增量节 + 修订；强制 doc-before-code）/ 开闭问题 / 资产处置 / **debt**（加条目、清偿以证据 commit hash、观察项路由到归属 epic）/ planned→ready（改 epic 文档分解节桩行）与 →closed（改 sprint 文档 frontmatter，前置：条款全部 discharged 或从未登记）两转换。每次变更注记日期 + 证据链接。 |
+| 2 | `supervibe:start` | Use when the user says start, begin, kick off, or pull a sprint, epic, or iteration. | 输入：epic id（定位 `roadmaps/` 内对应文档）。就绪裁决：依赖检查、WIP 计数（扫 sprints/ frontmatter 聚合 active 数）对上限、early-start 裁决（与在途 sprint 文件交集估算）、deferred-dependency 裁决（→ 按条款机制在签发方 sprint 文档 Handover Clauses 节登记，目标引用按 §2.2 迁移规则）。**先读史**：按 §2.4 协议检索 notes 历史教训，摘入决策上下文。输出：把分解节 ready 桩行实体化为 `sprints/YYYY-MM-DD-<sprint>-plan.md`（frontmatter 台账字段齐全、初始 `state: active`，五节，DoD 逐字复制自 epic 文档）+ 开线条目入 notes。然后调度：superpowers 在 → `superpowers:brainstorming` 再 `superpowers:writing-plans`，**指示其填充脚手架路径——五节结构与逐字 DoD 是对产出 plan 的不可变约束**；不在 → 打印手动指令。 |
+| 3 | `supervibe:accept` | Use when the user asks to accept, review, or verify a sprint, or asks whether a sprint is done. | 输入：sprint/plan 文档。把 S1–Sn 作为真验证执行（浏览器、CLI、栈命令按各场景指定——**证据先于断言，绝不未运行就宣称通过**；遇障碍先查 notes 史上同类绕行，命中复用并注明来源）。填 DoD 清单。障碍逐字留痕。**doc-sync 周期审计**：按映射表出漂移报告。输出 `acceptances/YYYY-MM-DD-<sprint>-acceptance.md` + 裁决（pass/blocked）+ **sprint 文档 frontmatter** 状态 →acceptance。替代证据必须如此标注。 |
 | 4 | `supervibe:merge` | Use when the user says merge, close out, ship, finish, or wrap up a sprint. | 有序序列，遇红即停：门禁（含 **doc-sync 欠账终检**）→ 验收裁决在案 → 合 main（冲突按 §2.5 清单）→ 拆 worktree/分支 → sprint 文档 frontmatter 以 commit hash 定稿 + 状态 →merged → 交接条款发射（即刻生效）→ notes 收口条目（证据 commit hash，与验收记录互引）。 |
 | 5 | `supervibe:sync` | Use when the user says sync, pull main, update branches, or integrate upstream changes. | 节拍入口：把 `origin/main` merge 进指定（或全部在途）sprint；冲突分类（生成物 → 重生成；手写 → 复核单）；扫描 sprints/ frontmatter 聚合在途交接条款，对照入站 diff（路径/特性命中 → 呈现义务）；条款义务验证后记录证据并置 discharged（§2.2）。报告。 |
 
@@ -272,6 +286,7 @@ skills/{roadmap,start,accept,merge,sync}/SKILL.zh.md   # 中文镜像
 templates/{epic,sprint,acceptance-record,handover-clause,debt-entry,agents-sections}.md
 tests/check-artifacts.mjs
 docs/superpowers/roadmaps/2026-10-01-v0.md    # 自举 epic 文档
+AGENTS.md                            # 自举仓自身的 supervibe 配置节（狗粮前提）
 README.md  README.zh-CN.md  LICENSE  CHANGELOG.md  .gitignore
 docs/superpowers/specs/2026-10-01-supervibe-v0-design.md   # 本文件
 ```
