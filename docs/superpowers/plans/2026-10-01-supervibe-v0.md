@@ -270,7 +270,7 @@ Exit 0 + `check-artifacts: OK (n checks)`; non-zero + `check-artifacts: FAIL <re
 - [x] **Step 3b:** Local-install smoke (closes the E1 DoD item): one-shot `claude --plugin-dir . -p "list your available supervibe skills, one line each"` — session starts and recognizes the skills; record the form used in the commit message.
 - [x] **Step 4:** CHANGELOG 0.1.0 dated; commit `docs: bilingual README (terminology, artifact tree, install, config, degradation); 0.1.0`.
 - [x] **Step 5:** Sprint state →merged with the Task-10 commit hash recorded in the E1 breakdown stub note (no S1 doc exists — v0 ran on the plan, dogfood ledger note suffices; per spec §2.2 S1 materialization is the post-v0 norm); tag `v0.1.0` optional at publish.
-- [ ] **Step 6: Publish close-out (explicit)** — via superpowers:finishing-a-development-branch: merge `feat/v0-scaffold` to main, push main; then verify public install: `/plugin marketplace add WayJ/supervibe` succeeds and lists supervibe (record the marketplace name used). This closes the exit criterion "public marketplace install verified".
+- [x] **Step 6: Publish close-out (explicit)** — via superpowers:finishing-a-development-branch: merge `feat/v0-scaffold` to main, push main; then verify public install: `/plugin marketplace add WayJ/supervibe` succeeds and lists supervibe (record the marketplace name used). This closes the exit criterion "public marketplace install verified".
 
 ---
 
