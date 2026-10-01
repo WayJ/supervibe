@@ -96,6 +96,17 @@ flowchart LR
 - **回炉路**：accept blocked 回执行；merge 红回执行/accept，修完 merge 从阶段 1 重跑——半绿不算数
 - **并行**：start 受 `wip_limit` 约束（默认 3）；多线并行时 sync 是漂移围栏
 
+## 看板
+
+随包分发的静态查看器，一眼看全工件树。浏览器打开 `web/board.html`，选中仓库的
+`docs/superpowers` 文件夹，每个 epic 即带完整拆解渲染——sprint 卡片按状态分列
+（含桩行），详情抽屉里有 DoD、验收场景、交接条款与波次 plan 链接。Chromium 下
+「记住此文件夹」可免重复选择。
+
+零网络、零构建、无生成脚本：解析全部发生在页面内存（classic 脚本
+`web/parser.js`），不写盘，仓库里永远不落索引文件。渲染不了的形态以可见的
+数据异味出现在警告条，绝不静默丢弃。设计：`docs/superpowers/specs/2026-10-01-board-design.md`。
+
 ## 安装
 
 ```
