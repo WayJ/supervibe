@@ -170,7 +170,7 @@ argument-hint: [sprint-id|all]
 Body sections:
 
 1. `# supervibe:sync — cadence + clause discharge`
-2. `## Cadence merge` — `origin/main` into the named sprint (or all frontmatter-active sprints).
+2. `## Cadence merge` — `origin/main` into the named sprint (or all sprints whose frontmatter state is active or acceptance — acceptance sprints still integrate before close-out; merged/closed named explicitly get a clause-check+discharge-only pass, no merge).
 3. `## Conflict re-verify checklist` — generated → regenerate and compare; handwritten → item-by-item review list; report.
 4. `## Handover clause check` — scan `sprints/` frontmatter `clauses` references; resolve each HC# to its issuing doc's Handover Clauses section for the obligation text; diff incoming changes against triggers (path/feature hit → surface the obligation verbatim).
 5. `## Discharge` — when the obligation is verified on the target side: record evidence (commit hash / verification transcript) and set the clause `status: discharged` **in the issuing doc's clause record** (single authority); leave a dated evidence link.
