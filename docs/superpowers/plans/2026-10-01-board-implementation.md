@@ -209,7 +209,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = BoardParse
 - [ ] **Step 4: Run, verify pass**
 
 Run: `node tests/board-parser.test.mjs`
-Expected: `PASS (10)`.
+Expected: PASS, zero failures (exact count informational).
 
 - [ ] **Step 5: Commit**
 
@@ -336,7 +336,7 @@ In `web/parser.js`, add before `return {` (and add `parseEpic: parseEpic` to the
 - [ ] **Step 4: Run, verify pass**
 
 Run: `node tests/board-parser.test.mjs`
-Expected: `PASS (21)`.
+Expected: PASS, zero failures (exact count informational).
 
 - [ ] **Step 5: Commit**
 
@@ -551,7 +551,7 @@ Add to `web/parser.js` before `return {` (export `parseClauses` and `parseSprint
 - [ ] **Step 4: Run, verify pass**
 
 Run: `node tests/board-parser.test.mjs`
-Expected: `PASS (47)`.
+Expected: PASS, zero failures (exact count informational).
 
 - [ ] **Step 5: Commit**
 
@@ -625,6 +625,20 @@ ok(dangling.warnings.some((w) => w.kind === 'clause-body-not-found'), 'dangling 
 // empty dirs
 const empty = P.aggregate({ roadmaps: [], sprints: [] });
 ok(empty.warnings.some((w) => w.kind === 'missing-dir'), 'missing-dir warning');
+// started stub without doc (template vocabulary) — spec §5.4 post-start branch
+const epicStarted = { name: '2026-10-02-e2.md', text: [
+  '---', 'epic: E2', 'status: open', 'date: ' + new Date().toISOString().slice(0, 10), '---', '',
+  '# E2 · started stub', '',
+  '## Sprint Breakdown', '',
+  '| sprint | state | note |', '|---|---|---|',
+  '| S12 | started | ghost sprint |',
+  '', '## Definition of Done', '', '## Decisions (ADR)', '',
+  '## Asset Disposition', '', '## Open Questions', '', '## Cross-cutting', ''
+].join('\n') };
+const agg2 = P.aggregate({ roadmaps: [epicStarted], sprints: [] });
+const c12 = agg2.epics[0].cards.find((c) => c.id === 'S12');
+ok(c12 && c12.smell === true, 'started stub without doc = smell');
+ok(agg2.warnings.some((w) => w.kind === 'stub-no-doc' && /S12/.test(w.msg)), 'started stub warning');
 ```
 
 - [ ] **Step 2: Run, verify fail**
@@ -637,7 +651,7 @@ Expected: `FAIL` — `P.aggregate is not a function`.
 Add to `web/parser.js` (export `aggregate`):
 
 ```js
-  var POST_START = ['active', 'acceptance', 'merged', 'closed'];
+  var POST_START = ['started', 'active', 'acceptance', 'merged', 'closed'];
 
   function aggregate(input) {
     var warnings = [];
@@ -723,7 +737,7 @@ Add to `web/parser.js` (export `aggregate`):
 - [ ] **Step 4: Run, verify pass**
 
 Run: `node tests/board-parser.test.mjs`
-Expected: `PASS (61)` (count may drift ±1 with count-only asserts; all must pass).
+Expected: PASS, zero failures (exact count informational).
 
 - [ ] **Step 5: Commit**
 
@@ -868,7 +882,11 @@ document.getElementById('dirInput').onchange = function (ev) {
   if (!pending) return;
   state.folderName = (files[0].webkitRelativePath || '').split('/')[0];
   files.forEach(function (f) {
-    var rel = f.webkitRelativePath || f.name;
+    // webkitRelativePath INCLUDES the picked folder name as its first segment
+    // ("superpowers/roadmaps/x.md") — strip it; fall back to bare name when
+    // the browser omits the prefix.
+    var raw = f.webkitRelativePath || f.name;
+    var rel = raw.split('/').slice(1).join('/') || raw;
     var reader = new FileReader();
     reader.onload = function () {
       if (/^roadmaps\/[^/]+\.md$/.test(rel)) roadmaps.push({ name: rel, text: String(reader.result) });
@@ -993,6 +1011,19 @@ Replace `function render() { /* Task 6 ... */ }` with:
 ```js
 var STATES = ['planned', 'ready', 'active', 'acceptance', 'merged', 'closed'];
 
+// Column mapping: template-vocabulary `started` rides the active column;
+// any unknown state gets an explicit catch-all column — never invisible.
+function colOf(state) {
+  if (STATES.indexOf(state) >= 0) return state;
+  if (state === 'started') return 'active';
+  return 'other';
+}
+// Card label without duplicating the sprint id when the title already leads with it.
+function cardLabel(c) {
+  var t = String(c.title || '');
+  return t.indexOf(c.id) === 0 ? t : c.id + ' · ' + t;
+}
+
 function render() {
   var app = document.getElementById('app');
   app.className = '';
@@ -1068,11 +1099,13 @@ function renderEpic(root, epic) {
 
   var cols = document.createElement('div');
   cols.className = 'columns';
-  STATES.forEach(function (st) {
+  var colStates = STATES.slice();
+  if (epic.cards.some(function (c) { return colOf(c.state) === 'other'; })) colStates.push('other');
+  colStates.forEach(function (st) {
     var col = document.createElement('div');
     col.className = 'col';
-    col.innerHTML = '<h3>' + st + '</h3>';
-    epic.cards.filter(function (c) { return c.state === st; }).forEach(function (c) {
+    col.innerHTML = '<h3>' + esc(st) + '</h3>';
+    epic.cards.filter(function (c) { return colOf(c.state) === st; }).forEach(function (c) {
       col.appendChild(cardEl(c));
     });
     cols.appendChild(col);
@@ -1086,14 +1119,14 @@ function cardEl(c) {
   var sub = [];
   if (c.source === 'doc') {
     var d = c.doc;
-    if (d.mergedCommit) sub.push('<span class="chip">' + esc(d.mergedCommit) + '</span>');
+    if (d.mergedCommit && d.mergedCommit !== 'null') sub.push('<span class="chip">' + esc(d.mergedCommit) + '</span>');
     if (d.worktree) sub.push(esc(String(d.worktree).slice(0, 40)));
     if (d.earlyStart) sub.push('<span class="badge">early-start</span>');
     if (d.clauses && d.clauses.length) sub.push('<span class="badge">HC×' + d.clauses.length + '</span>');
     if (d.refs && d.refs.length) sub.push('<span class="badge">HC ref×' + d.refs.length + '</span>');
   }
   if (c.smell) sub.push('<span class="smell">⚠ smell</span>');
-  el.innerHTML = '<div class="id">' + esc(c.id + ' · ' + (c.title || '')) + '</div>' +
+  el.innerHTML = '<div class="id">' + esc(cardLabel(c)) + '</div>' +
     (sub.length ? '<div class="sub">' + sub.join(' · ') + '</div>' : '');
   el.onclick = function () { openDrawer(c); };
   return el;
@@ -1104,7 +1137,7 @@ function openDrawer(c) {
   if (old) old.remove();
   var dr = document.createElement('aside');
   dr.className = 'drawer';
-  var html = '<h2>' + esc(c.id + ' · ' + (c.title || '')) + '</h2>' +
+  var html = '<h2>' + esc(cardLabel(c)) + '</h2>' +
     '<p><span class="badge state-' + esc(c.state) + '">' + esc(c.state) + '</span> ' +
     '<span class="badge">' + esc(c.source) + '</span>' + (c.smell ? ' <span class="smell">⚠ data smell</span>' : '') + '</p>';
   if (c.source === 'stub') {
@@ -1113,7 +1146,7 @@ function openDrawer(c) {
     var d = c.doc;
     html += '<p><span class="chip">' + esc(d.file) + '</span></p>';
     if (d.worktree) html += '<p>worktree: ' + esc(d.worktree) + '</p>';
-    if (d.mergedCommit) html += '<p>merged-commit: <span class="chip">' + esc(d.mergedCommit) + '</span></p>';
+    if (d.mergedCommit && d.mergedCommit !== 'null') html += '<p>merged-commit: <span class="chip">' + esc(d.mergedCommit) + '</span></p>';
     html += details('Stories & Tasks', '<ul>' + d.stories.map(function (s) {
       var plans = s.plans.map(function (p) {
         return '<br><span class="planlink" data-path="' + esc(p) + '">' + esc(p) + '</span>';
@@ -1258,7 +1291,7 @@ Run: `start "" "web/board.html"` (from worktree root), pick `D:\lc_projects\blue
 
 - [ ] **Step 2: Open board against supervibe's own tree**
 
-Pick `D:\lc_projects\blue_dsh\supervibe\docs\superpowers`. Verify E1 renders, S1 merged card, S2 planned stub, Q2–Q7 open count = 6.
+Pick `D:\lc_projects\blue_dsh\supervibe\.claude\worktrees\board\docs\superpowers` (the worktree copy — the S2 stub row exists only on this branch, and the main checkout's docs/superpowers has no `sprints/` dir). Verify E1 renders, S1 merged card, S2 planned stub, Q2–Q7 open count = 6.
 
 - [ ] **Step 3: Record results in a dev note**
 
