@@ -50,8 +50,8 @@ docs/superpowers/
 ```
 
 sprint 状态是一张**去中心化台账**：pre-start 状态（`planned`/`ready`）住在
-epic 文档的 Sprint Breakdown 桩行里；从 `started` 起状态住在 sprint 文档的
-frontmatter 里（`planned → ready → started → acceptance → merged → closed`）。
+epic 文档的 Sprint Breakdown 桩行里；实体化时桩行翻为 `started`，此后状态
+住在 sprint 文档的 frontmatter 里（`active → acceptance → merged → closed`）。
 每次状态翻转都追加日期 + 证据链接。
 
 ## 安装
@@ -94,8 +94,8 @@ claude --plugin-dir /path/to/supervibe
 - wip_limit: 3
 
 ### gates
-- validate: claude plugin validate . --strict
-- artifacts: node tests/check-artifacts.mjs
+- contracts: npm run test:contracts
+- tests: npm test
 
 ### doc_sync_map
 | change | owes |

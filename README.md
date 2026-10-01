@@ -54,9 +54,10 @@ docs/superpowers/
 ```
 
 Sprint state is a **decentralized ledger**: pre-start states (`planned`/`ready`)
-live in the epic doc's Sprint Breakdown stub rows; from `started` on, state
-lives in the sprint doc's frontmatter (`planned → ready → started → acceptance
-→ merged → closed`). Every state flip appends a date + evidence link.
+live in the epic doc's Sprint Breakdown stub rows; at materialization the stub
+flips to `started` and from then on state lives in the sprint doc's frontmatter
+(`active → acceptance → merged → closed`). Every state flip appends a date +
+evidence link.
 
 ## Install
 
@@ -100,8 +101,8 @@ section:
 - wip_limit: 3
 
 ### gates
-- validate: claude plugin validate . --strict
-- artifacts: node tests/check-artifacts.mjs
+- contracts: npm run test:contracts
+- tests: npm test
 
 ### doc_sync_map
 | change | owes |
