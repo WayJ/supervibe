@@ -117,10 +117,26 @@ acceptance ≈ sprint review；merged/closed ≈ done。
 |---|---|
 | Sprint plan | 头部（sprint id、roadmap 引用、状态副本）+ 五节：D-x 决策 / 波次 story-task 复选框 / DoD（**自 roadmap 逐字复制，不得就地改写**）/ S1–Sn 验收场景 / 交接条款 |
 | 验收记录（acceptance record）| 场景结果表 + **障碍逐字留痕**（禁止美化：每个阻塞、绕行、替代证据都按实际发生记录）|
-| 开发日志 | `.agents/notes/` 下带日期条目（≈ sprint 期间工作日志，非 retro）|
+| 开发日志 | 见 §2.4 notes 协议——跨 sprint 资产，非一次性工作日志 |
 | 债务追踪 | 条目含严重度、归属、清偿标准；观察项路由到归属 epic |
 
-### 2.4 并行纪律
+### 2.4 开发日志协议（notes，跨 sprint 资产管理）
+
+`.agents/notes/` 是**知识资产库**而非流水账——教训沉淀防重蹈覆辙，
+交接条款证据链在此留痕。
+
+- **文件名**：`YYYY-MM-DD-<sprint>-<topic>.md`
+- **结构四节**：背景（为什么开这条线/这个话题）/ 决策与理由（含否决项）/
+  教训（可复用经验：环境坑、流程修正、回炉根因）/ 交接（条款引用与
+  复核记录）
+- **写入时机**：`start` 产出开线条目；关键节点（任务回炉、障碍绕行、
+  裁决变更）即时补记；`merge` 产出收口条目（证据 commit hash）
+- **读取时机**：`start` 开工**先读史**——按 epic 域 + 技术栈 + 教训类型
+  检索历史条目，相关教训摘入 plan 的 D-x 决策上下文；`accept` 遇障碍
+  先查史上有无同类绕行，命中则复用并注明来源条目
+- **不变量**：条目只增不改（历史诚实）；收口条目与验收记录互相引用
+
+### 2.5 并行纪律
 
 - 一个 sprint = 一 worktree/分支。WIP 上限来自项目配置（默认 3）。
 - 固定同步节拍：按节奏（而非仅事件驱动）把 `origin/main` merge 进在途
@@ -128,10 +144,13 @@ acceptance ≈ sprint review；merged/closed ≈ done。
 - 冲突复核清单：生成物 → 重新生成后比对；手写文件 → 技能逐项列出复核单。
 - 交接条款在目标 sprint 的 sync/merge 时触发。
 
-### 2.5 门禁（gates）
+### 2.6 门禁（gates）
 
-项目参数化的命令清单（见 §5）。典型：契约/生成物一致性、doc-sync、
-验收场景、测试套件。门禁红或验收裁决缺失，sprint 不得合并。
+项目参数化的命令清单（见 §5）。典型：契约/生成物一致性、doc-sync
+欠账核验、验收场景、测试套件。门禁红或验收裁决缺失，sprint 不得合并。
+**doc-sync 纪律的两级落地**：逐变更纪律（执行层每任务收尾按映射表自查，
+属宿主 AGENTS.md 节内容，不设独立技能）+ 检查点核验（accept 做周期
+漂移审计、merge 做欠账终检）。
 
 ## 3. Plugin 格式（已对照官方文档核实，2026-09-30 版）
 
@@ -153,25 +172,23 @@ acceptance ≈ sprint review；merged/closed ≈ done。
 - 校验：`claude plugin validate --strict`（CI 门禁），行为测试用
   `claude plugin eval`。
 
-## 4. 技能集（8 个）
+## 4. 技能集（5 个）
 
 全部技能可被模型触发（`disable-model-invocation: false`），适用处加
 `argument-hint`。正文双语双文件：`SKILL.md` 英文（**唯一被加载器注册
 与执行的版本，即真源**），同目录 `SKILL.zh.md` 中文（人类阅读参考，
 不被加载器注册——技能目录内非 SKILL.md 文件仅作随插件分发的辅助资产）。
 两版内容镜像；冲突时以英文版为准。正文祈使句、精炼；各自以相对路径
-引用模板并按 §5 读宿主配置。
+引用模板并按 §5 读宿主配置。心智模型五个动词：**战略（roadmap）→
+开（start）→ 验（accept）→ 合（merge）→ 同步（sync）**。
 
 | # | 技能 | 契约（输入 → 输出与副作用） |
 |---|---|---|
-| 1 | `supervibe:init` | 前置仅要求 git 仓。scaffold `roadmap.md`（模板）、AGENTS.md supervibe 节（门禁空、WIP 3、doc-sync 映射桩）、`.agents/notes/`。幂等：检测到已有节绝不覆盖——改为输出 diff 提案。 |
-| 2 | `supervibe:roadmap` | 子命令：加 epic（缺 DoD 即拒绝）/ 记决策（ADR 行 + 修订；强制 doc-before-code 叙述）/ 开闭问题 / 资产处置更新 / 推进 epic 状态；planned→ready 与 →closed 两转换（见 §2.2）。每次变更注记日期 + 证据链接。 |
-| 3 | `supervibe:start` | 输入：epic id。就绪裁决：依赖检查、WIP 计数对上限、early-start 裁决（与在途 sprint 文件交集估算）、deferred-dependency 裁决（→ 交接条款登记进 plan + roadmap 行）。输出：按模板生成 sprint plan 骨架（五节，DoD 逐字复制）至 `plans` 配置目录（默认 `docs/plans/`）下 `YYYY-MM-DD-<sprint>-plan.md`。然后调度：superpowers 在 → `superpowers:brainstorming` 再 `superpowers:writing-plans`，**指示其填充脚手架路径——五节结构与逐字 DoD 是对产出 plan 的不可变约束**；不在 → 打印手动指令。 |
-| 4 | `supervibe:accept` | 输入：sprint/plan。把 S1–Sn 作为真验证执行（浏览器、CLI、栈命令按各场景指定——绝不未运行就宣称通过）。填 DoD 清单。障碍逐字留痕。输出验收记录至 `acceptance` 配置目录（默认 `docs/acceptance/`）下 `YYYY-MM-DD-<sprint>-acceptance.md` + 裁决（pass/blocked）。替代证据必须如此标注。 |
-| 5 | `supervibe:merge` | 有序序列，遇红即停：门禁 → 验收裁决在案 → 合 main（冲突按 §2.4 清单）→ 拆 worktree/分支 → roadmap 行以 commit hash 定稿 → 交接条款发射（即刻生效）→ 开发日志收口条目。 |
-| 6 | `supervibe:sync` | 节拍入口：把 `origin/main` merge 进指定（或全部在途）sprint；冲突分类（生成物 → 重生成；手写 → 复核单）；对照在途交接条款检查入站 diff（路径/特性命中 → 呈现义务）；条款义务验证后记录证据并置 discharged（§2.2）。报告。 |
-| 7 | `supervibe:debt` | 加条目（严重度/归属/清偿标准）、清偿（以证据 commit hash 关闭）、观察项路由到归属 epic。 |
-| 8 | `supervibe:doc-sync` | 泛化两模式纪律：逐变更（暂存 diff → 映射表 → 欠文档清单，同 commit 强制叙述）与周期审计（漂移报告）。映射表在宿主 AGENTS.md——绝不复制进 plugin。 |
+| 1 | `supervibe:roadmap` | 战略真源全套。子命令：**scaffold**（原 init：scaffold `roadmap.md` + AGENTS.md supervibe 节 + `.agents/notes/`，幂等——检测到已有节绝不覆盖，输出 diff 提案）/ 加 epic（缺 DoD 即拒绝）/ 记决策（ADR 行 + 修订；强制 doc-before-code 叙述）/ 开闭问题 / 资产处置 / **debt**（加条目、清偿以证据 commit hash、观察项路由到归属 epic）/ planned→ready 与 →closed 两转换（§2.2）。每次变更注记日期 + 证据链接。 |
+| 2 | `supervibe:start` | 输入：epic id。就绪裁决：依赖检查、WIP 计数对上限、early-start 裁决（与在途 sprint 文件交集估算）、deferred-dependency 裁决（→ 交接条款登记进 plan + roadmap 行）。**先读史**：按 §2.4 协议检索 notes 历史教训，摘入决策上下文。输出：按模板生成 sprint plan 骨架（五节，DoD 逐字复制）至 `plans` 配置目录（默认 `docs/plans/`）下 `YYYY-MM-DD-<sprint>-plan.md` + 开线条目入 notes。然后调度：superpowers 在 → `superpowers:brainstorming` 再 `superpowers:writing-plans`，**指示其填充脚手架路径——五节结构与逐字 DoD 是对产出 plan 的不可变约束**；不在 → 打印手动指令。 |
+| 3 | `supervibe:accept` | 输入：sprint/plan。把 S1–Sn 作为真验证执行（浏览器、CLI、栈命令按各场景指定——绝不未运行就宣称通过；遇障碍先查 notes 史上同类绕行，命中复用并注明来源）。填 DoD 清单。障碍逐字留痕。**doc-sync 周期审计**：按映射表出漂移报告。输出验收记录至 `acceptance` 配置目录（默认 `docs/acceptance/`）下 `YYYY-MM-DD-<sprint>-acceptance.md` + 裁决（pass/blocked）。替代证据必须如此标注。 |
+| 4 | `supervibe:merge` | 有序序列，遇红即停：门禁（含 **doc-sync 欠账终检**）→ 验收裁决在案 → 合 main（冲突按 §2.5 清单）→ 拆 worktree/分支 → roadmap 行以 commit hash 定稿 → 交接条款发射（即刻生效）→ notes 收口条目（证据 commit hash，与验收记录互引）。 |
+| 5 | `supervibe:sync` | 节拍入口：把 `origin/main` merge 进指定（或全部在途）sprint；冲突分类（生成物 → 重生成；手写 → 复核单）；对照在途交接条款检查入站 diff（路径/特性命中 → 呈现义务）；条款义务验证后记录证据并置 discharged（§2.2）。报告。 |
 
 ## 5. 配置面（宿主 AGENTS.md）
 
@@ -220,7 +237,8 @@ acceptance ≈ sprint review；merged/closed ≈ done。
      `SKILL.md` 有对应 `SKILL.zh.md`（双语成对断言）；再做**装配干跑**：
      把 `agents-sections.md` 拼进 fixture AGENTS.md、在临时目录展开模板
      占位注释，断言装配产物含全部必备标题且无必备占位符残留未展开。
-     这验证的是 `supervibe:init` 将产出的工件——**不交付平行 scaffold
+     这验证的是 `supervibe:roadmap` 的 scaffold 子命令将产出的工件——
+     **不交付平行 scaffold
      实现，skill 指令是唯一 scaffold 逻辑**。
 
 ## 8. v0 文件清单
@@ -228,8 +246,8 @@ acceptance ≈ sprint review；merged/closed ≈ done。
 ```
 .claude-plugin/plugin.json          # name supervibe, version 0.1.0, MIT
 .claude-plugin/marketplace.json     # 自兼 marketplace, source "./"
-skills/{init,roadmap,start,accept,merge,sync,debt,doc-sync}/SKILL.md      # 英文（真源）
-skills/{init,roadmap,start,accept,merge,sync,debt,doc-sync}/SKILL.zh.md   # 中文镜像
+skills/{roadmap,start,accept,merge,sync}/SKILL.md      # 英文（真源）
+skills/{roadmap,start,accept,merge,sync}/SKILL.zh.md   # 中文镜像
 templates/{roadmap,plan,acceptance-record,handover-clause,debt-entry,agents-sections}.md
 tests/check-artifacts.mjs
 roadmap.md                          # 自举
