@@ -32,6 +32,8 @@ Then resolve the sprint under review:
 
 Read the sprint doc's `## Acceptance Scenarios (S1–Sn)` section. Each scenario runs for real, exactly as its text specifies — browser, CLI, stack commands. A scenario is an observation to make, not a box to tick.
 
+Reject the malformed doc before anything runs: the Acceptance Scenarios section missing or empty → reject, naming the malformed sprint doc — zero scenarios must never yield a vacuous pass. A missing `## Definition of Done` section → reject the same way; the DoD lives verbatim in the epic doc — direct the fix there, never patch it into the sprint doc.
+
 Run against the sprint's own environment — the worktree/branch the sprint doc's `worktree` frontmatter names, with its stack live — not a stale build elsewhere: a proving run against yesterday's artifact is not evidence.
 
 **Evidence before claims — never claim pass without a fresh run** (explicit discipline pattern, adapted from superpowers' verification-before-completion — no completion claims without fresh verification evidence):
@@ -54,6 +56,7 @@ Read the sprint doc's `## Definition of Done` section. Check every item against 
 - This skill CHECKS the DoD, never edits it: the DoD is copied verbatim from the epic doc, and a DoD change goes back to the epic doc by amendment, never inside a sprint doc. An item that fails or lacks evidence blocks the verdict — it is never resolved by editing the checklist.
 - An item a failed scenario covered stays failed — re-proving it from a friendlier angle is a substitution, and is labeled as one.
 - Substituted evidence — a proof different from what the item or scenario specified (CLI output where a browser check was specified, a fixture where live data was specified) — must be labeled as substituted, with the reason, in both the checklist and the result table. An unlabeled substitution is greenwashing.
+- Substitution has hard bounds: it never applies to inventing a gate command — a scenario naming a gate with no configured command under `### gates` is recorded as not-run and the user directed to fix the config — nor to picking your own runner for a scenario that specified none; that scenario is not-run, its text underspecified.
 
 ## Obstacles log
 
@@ -68,7 +71,7 @@ Each entry carries the exact command line and its observed output — a workarou
 
 The periodic doc-sync checkpoint of this skill — the counterpart to merge's final arrears check:
 
-- Enumerate the sprint's changed paths: the branch recorded in the sprint doc's `worktree` frontmatter diffed against its base, plus the paths named in the doc's Stories & Tasks.
+- Enumerate the sprint's changed paths: the branch recorded in the sprint doc's `worktree` frontmatter diffed against its base — the merge-base with the main line — plus the paths named in the doc's Stories & Tasks.
 - For each row of the host's `### doc_sync_map`: does the row's change pattern match any changed path? Match → open the mapped doc and check that it reflects the change. No match → the row owes nothing this sprint.
 - An absent or empty map is a clean audit — record that no rows were configured; never invent rows.
 - Emit a drift report section in the record: per row — matched paths, the mapped doc's state (current / drifted), drift detail.
@@ -76,7 +79,7 @@ The periodic doc-sync checkpoint of this skill — the counterpart to merge's fi
 
 ## Verdict + record
 
-Write `<acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md` from `templates/acceptance-record.md`; the date is today, the acceptance-run date. The record carries at minimum: the scenario result table, the DoD checklist with evidence, the verbatim obstacles log, the drift report, and the verdict. Records are append-only — a same-day re-run never overwrites an earlier record; it takes a distinguishing suffix.
+Write `<acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md` from `templates/acceptance-record.md`; the date is today, the acceptance-run date. The record carries at minimum: the scenario result table, the DoD checklist with evidence, the verbatim obstacles log, the drift report, and the verdict. Records are append-only — a same-day re-run never overwrites an earlier record; it takes a distinguishing suffix (`-2`, `-3`, …); the frontmatter evidence link points at the passing record.
 
 - **pass** requires all of: every scenario passed with fresh evidence or a labeled substitution; every DoD item checked with evidence; no unpaid drift on triggered rows. Anything less → **blocked**, naming the blocking items.
 - pass → update the sprint doc frontmatter `state: acceptance`, appending date + the record path as the evidence link. The record and the flip are written in the same act — a flipped state without its record is incomplete.

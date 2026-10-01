@@ -32,6 +32,8 @@ sprint 评审门禁：把每条验收场景真跑一遍，逐项以证据核对 
 
 读 sprint 文档的 `## Acceptance Scenarios (S1–Sn)` 节。每条场景按其正文指定的方式真跑——浏览器、CLI、栈命令。场景是一个要做的观察，不是一个要打勾的框。
 
+动跑任何东西之前先拒绝畸形文档：Acceptance Scenarios 节缺失或为空 → 拒绝，点名畸形的 sprint 文档——零场景绝不能产出空洞的 pass。`## Definition of Done` 节缺失 → 同样拒绝；DoD 逐字活在 epic 文档里——指引去那里修，绝不在 sprint 文档内打补丁。
+
 在 sprint 自己的环境里跑——即 sprint 文档 frontmatter `worktree` 记载的 worktree/分支、其栈处于存活状态——而不是别处的一套陈旧构建：对着昨天的工件跑出的证明不是证据。
 
 **证据先于断言——绝不在没有新鲜运行的情况下宣称通过**（显式纪律模式，改编自 superpowers 的 verification-before-completion——没有新鲜验证证据就没有完成断言）：
@@ -54,6 +56,7 @@ sprint 评审门禁：把每条验收场景真跑一遍，逐项以证据核对 
 - 本技能只核对（CHECK）DoD，绝不改写它：DoD 自 epic 文档逐字复制，DoD 变更回 epic 文档以修订方式进行，绝不在 sprint 文档内改。某项失败或缺证据 → 阻断裁决——绝不经由改写清单来解决。
 - 已被失败场景覆盖的条目保持失败——换个更友好的角度重新证明属于替代，须照此标注。
 - 替代证据（substituted evidence）——与条目或场景指定不同的证明（指定浏览器检查却用了 CLI 输出、指定真实数据却用了 fixture）——必须在清单与结果表中标注为替代并附原因。未标注的替代就是 greenwashing。
+- 替代有硬边界：绝不延伸到发明 gate 命令——场景点名的 gate 在 `### gates` 下没有配置命令时，该场景记为 not-run，并指引用户修正配置；也绝不涵盖为未指定 runner 的场景自选 runner——该场景同样记为 not-run，正文未指定运行方式。
 
 ## 障碍日志（Obstacles log）
 
@@ -68,7 +71,7 @@ sprint 评审门禁：把每条验收场景真跑一遍，逐项以证据核对 
 
 本技能的周期 doc-sync 检查点——与 merge 的欠账终检相对应：
 
-- 枚举本 sprint 的变更路径：sprint 文档 frontmatter `worktree` 记载的分支对其 base 的 diff，加上文档 Stories & Tasks 点名的路径。
+- 枚举本 sprint 的变更路径：sprint 文档 frontmatter `worktree` 记载的分支对其 base——即与 main 线的 merge-base——的 diff，加上文档 Stories & Tasks 点名的路径。
 - 对宿主 `### doc_sync_map` 的每一行：该行的 change 模式是否命中任一变更路径？命中 → 打开映射文档，核对它反映了该变更。未命中 → 该行本 sprint 不欠什么。
 - 映射缺失或为空即干净审计——记录「未配置任何行」；绝不发明行。
 - 在记录中发出漂移报告节：逐行——命中路径、映射文档状态（current / drifted）、漂移细节。
@@ -76,7 +79,7 @@ sprint 评审门禁：把每条验收场景真跑一遍，逐项以证据核对 
 
 ## 裁决与记录（Verdict + record）
 
-以 `templates/acceptance-record.md` 写 `<acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md`；日期是今天，即验收运行日。记录至少携带：场景结果表、带证据的 DoD 清单、逐字障碍日志、漂移报告、裁决。记录只增不改——同日重跑绝不覆盖既有记录，改用区分性后缀。
+以 `templates/acceptance-record.md` 写 `<acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md`；日期是今天，即验收运行日。记录至少携带：场景结果表、带证据的 DoD 清单、逐字障碍日志、漂移报告、裁决。记录只增不改——同日重跑绝不覆盖既有记录，改用区分性后缀（`-2`、`-3`、……）；frontmatter 证据链接指向裁决 pass 的那份记录。
 
 - **pass** 需要全部满足：每条场景以新鲜证据或已标注的替代通过；每项 DoD 有证据核对；被触发行上无未偿漂移。任一不满足 → **blocked**，点名阻断项。
 - pass → 更新 sprint 文档 frontmatter `state: acceptance`，追加日期 + 记录路径作为证据链接。记录与翻转在同一动作里写出——翻了状态却没有记录是不完整的。
