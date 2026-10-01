@@ -114,13 +114,25 @@ function esc(s) {
 
 // ---- directory access ----
 // Primary: showDirectoryPicker (Chromium) — its native dialog's confirm
-// button reads 选择文件夹, not 上传. Fallback: webkitdirectory input.
+// button reads 选择文件夹, not 上传. Any non-cancel rejection (e.g. blocked
+// on file:// in some builds) falls back to the webkitdirectory input —
+// never silently dead.
+function fatal(msg) {
+  console.error('supervibe board: ' + msg);
+  var bar = document.getElementById('warnbar');
+  bar.hidden = false;
+  bar.innerHTML = '<div style="color:var(--error)">加载失败：' + esc(msg) + '</div>';
+}
 function pickFolder() {
   if (window.showDirectoryPicker) {
     window.showDirectoryPicker().then(function (h) {
       state.folderName = h.name;
-      readHandle(h).then(load);
-    }).catch(function () { /* user cancelled — stay put */ });
+      return readHandle(h).then(load, function (e) { fatal('读取文件夹失败 — ' + (e && e.message ? e.message : e)); });
+    }).catch(function (e) {
+      if (e && e.name === 'AbortError') return; // user cancelled — stay put
+      console.error('supervibe board: showDirectoryPicker rejected, falling back to input —', e);
+      document.getElementById('dirInput').click();
+    });
     return;
   }
   document.getElementById('dirInput').click();
@@ -133,6 +145,7 @@ document.getElementById('dirInput').onchange = function (ev) {
   var pending = files.length;
   if (!pending) return;
   state.folderName = (files[0].webkitRelativePath || '').split('/')[0];
+  var readErrors = 0;
   files.forEach(function (f) {
     // webkitRelativePath INCLUDES the picked folder name as its first segment
     // ("superpowers/roadmaps/x.md") — strip it; fall back to bare name when
@@ -140,11 +153,18 @@ document.getElementById('dirInput').onchange = function (ev) {
     var raw = f.webkitRelativePath || f.name;
     var rel = raw.split('/').slice(1).join('/') || raw;
     var reader = new FileReader();
+    var done = function () {
+      if (--pending === 0) {
+        if (readErrors) fatal(readErrors + ' 个文件读取失败（被占用或无权限），其余已加载');
+        load({ roadmaps: roadmaps, sprints: sprints });
+      }
+    };
     reader.onload = function () {
       if (/^roadmaps\/[^/]+\.md$/.test(rel)) roadmaps.push({ name: rel, text: String(reader.result) });
       if (/^sprints\/[^/]+\.md$/.test(rel)) sprints.push({ name: rel, text: String(reader.result) });
-      if (--pending === 0) load({ roadmaps: roadmaps, sprints: sprints });
+      done();
     };
+    reader.onerror = function () { readErrors++; done(); };
     reader.readAsText(f);
   });
 };
@@ -225,11 +245,20 @@ function readHandle(h) {
 // ---- model + render ----
 function load(files) {
   state.files = files;
-  state.model = P.aggregate(files);
+  try {
+    state.model = P.aggregate(files);
+  } catch (e) {
+    fatal('解析失败 — ' + (e && e.message ? e.message : e));
+    return;
+  }
   document.getElementById('folderName').textContent = state.folderName || '(unnamed folder)';
   var rb = document.getElementById('remember');
   if (window.showDirectoryPicker) rb.hidden = false;
-  render();
+  try {
+    render();
+  } catch (e) {
+    fatal('渲染失败 — ' + (e && e.message ? e.message : e));
+  }
 }
 function render() { /* Task 6 implements rail + columns + drawer */ }
 
