@@ -3,9 +3,19 @@
   "displayName": "SuperVibe",
   "version": "0.1.0",
   "description": "Iteration management layer for Claude Code: roadmap, sprint adjudication, DoD acceptance, merge close-out. Pairs with superpowers.",
-  "author": { "name": "jw083" },
-  "homepage": "https://example.com/supervibe",
-  "repository": "https://example.com/supervibe",
+  "author": {
+    "name": "WayJ",
+    "url": "https://github.com/WayJ"
+  },
+  "homepage": "https://github.com/WayJ/supervibe",
+  "repository": "https://github.com/WayJ/supervibe",
   "license": "MIT",
-  "keywords": ["iteration", "roadmap", "sprint", "scrum", "planning", "workflow"]
+  "keywords": [
+    "iteration",
+    "roadmap",
+    "sprint",
+    "scrum",
+    "planning",
+    "workflow"
+  ]
 }
