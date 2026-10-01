@@ -62,8 +62,9 @@ machine-identifier class as YAML keys and skill headings.
 
 - Frontmatter: `epic`, `status`, `date`. Epic display title = the doc's H1
   (frontmatter carries no title field).
-- Sections by heading: `## Sprint Breakdown` (stub rows: sprint id, state
-  planned/ready/started, note), `## Decisions (ADR)` (id, decision, rationale),
+- Sections by heading: `## Sprint Breakdown` (stub rows: sprint id, state,
+  note — template vocabulary is planned/ready/started, but §5.4 accepts the
+  full state chain), `## Decisions (ADR)` (id, decision, rationale),
   `## Definition of Done` (checkboxes), `## Open Questions` (id + statement +
   lifecycle markers), `## Asset Disposition`, `## Cross-cutting`.
 - Markdown tables parsed row-wise; checkbox items `- [x]` / `- [ ]` counted.
@@ -114,7 +115,9 @@ machine-identifier class as YAML keys and skill headings.
   merged / closed (effective state per §5.4 — stubs carrying post-start
   states land in their state's column with a smell flag).
 - Handover clauses join issuer sprint → target sprint by id; open clauses get
-  an indicator on both cards.
+  an indicator on both cards. A target-side reference (bullet list or
+  frontmatter `clauses`) whose issuing body is not found renders as a
+  "clause body not found" warning row — never silently dropped.
 - No index file is written anywhere; aggregation is in-memory only — the
   decentralized-ledger principle preserved.
 
@@ -163,8 +166,11 @@ constraint: no webfont loading, so the documented local fallback stacks apply.
 ## 9. Testing
 
 - `tests/board-parser.test.mjs` (Node, same runner pattern as existing
-  tests): fixtures for epic doc, sprint doc, stub/doc merge, clause join,
-  malformed frontmatter, orphan sprint. Parser is DOM-free, so Node covers it.
+  tests): fixtures for epic doc, sprint doc, stub/doc merge (including a
+  post-start stub without a doc — the S8/S9 mini close-out shape), clause
+  join in each of the three clause shapes plus a dangling target-side
+  reference, malformed frontmatter, orphan sprint. Parser is DOM-free, so
+  Node covers it.
 - `tests/check-artifacts.mjs`: extend to assert `web/board.html` +
   `web/parser.js` exist and that board.html references parser.js; assert
   `skills/board/SKILL.md` ⇄ `SKILL.zh.md` pair if the skill ships.
