@@ -264,12 +264,12 @@ Exit 0 + `check-artifacts: OK (n checks)`; non-zero + `check-artifacts: FAIL <re
 - Create: `README.zh-CN.md`
 - Modify: `CHANGELOG.md` (date 2026-10-01)
 
-- [ ] **Step 1: `README.md` (EN)** — 1) what it is + pairing table (strategy vs tactics); 2) terminology first screen: Scrum mapping + four new nouns + two explicit diffs from Scrum; **artifact-tree diagram** (`docs/superpowers/{specs,plans,roadmaps,sprints,acceptances}/` with one line each); 3) install: `/plugin marketplace add WayJ/supervibe` → `/plugin install supervibe@supervibe`; local dev `claude --plugin-dir .`; 4) five skills one line each; 5) host AGENTS.md config block; 6) degradation without superpowers; 7) dev: validate + check-artifacts commands.
-- [ ] **Step 2:** `README.zh-CN.md` faithful mirror.
-- [ ] **Step 3:** Final gates: `claude plugin validate . --strict && node tests/check-artifacts.mjs` — both green.
-- [ ] **Step 3b:** Local-install smoke (closes the E1 DoD item): one-shot `claude --plugin-dir . -p "list your available supervibe skills, one line each"` — session starts and recognizes the skills; record the form used in the commit message.
-- [ ] **Step 4:** CHANGELOG 0.1.0 dated; commit `docs: bilingual README (terminology, artifact tree, install, config, degradation); 0.1.0`.
-- [ ] **Step 5:** Sprint state →merged with the Task-10 commit hash recorded in the E1 breakdown stub note (no S1 doc exists — v0 ran on the plan, dogfood ledger note suffices; per spec §2.2 S1 materialization is the post-v0 norm); tag `v0.1.0` optional at publish.
+- [x] **Step 1: `README.md` (EN)** — 1) what it is + pairing table (strategy vs tactics); 2) terminology first screen: Scrum mapping + four new nouns + two explicit diffs from Scrum; **artifact-tree diagram** (`docs/superpowers/{specs,plans,roadmaps,sprints,acceptances}/` with one line each); 3) install: `/plugin marketplace add WayJ/supervibe` → `/plugin install supervibe@supervibe`; local dev `claude --plugin-dir .`; 4) five skills one line each; 5) host AGENTS.md config block; 6) degradation without superpowers; 7) dev: validate + check-artifacts commands.
+- [x] **Step 2:** `README.zh-CN.md` faithful mirror.
+- [x] **Step 3:** Final gates: `claude plugin validate . --strict && node tests/check-artifacts.mjs` — both green.
+- [x] **Step 3b:** Local-install smoke (closes the E1 DoD item): one-shot `claude --plugin-dir . -p "list your available supervibe skills, one line each"` — session starts and recognizes the skills; record the form used in the commit message.
+- [x] **Step 4:** CHANGELOG 0.1.0 dated; commit `docs: bilingual README (terminology, artifact tree, install, config, degradation); 0.1.0`.
+- [x] **Step 5:** Sprint state →merged with the Task-10 commit hash recorded in the E1 breakdown stub note (no S1 doc exists — v0 ran on the plan, dogfood ledger note suffices; per spec §2.2 S1 materialization is the post-v0 norm); tag `v0.1.0` optional at publish.
 - [ ] **Step 6: Publish close-out (explicit)** — via superpowers:finishing-a-development-branch: merge `feat/v0-scaffold` to main, push main; then verify public install: `/plugin marketplace add WayJ/supervibe` succeeds and lists supervibe (record the marketplace name used). This closes the exit criterion "public marketplace install verified".
 
 ---
