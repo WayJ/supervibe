@@ -238,10 +238,10 @@ Checks:
 
 Exit 0 + `check-artifacts: OK (n checks)`; non-zero + `check-artifacts: FAIL <reason>` otherwise.
 
-- [ ] **Step 1:** Write script
-- [ ] **Step 2:** `node tests/check-artifacts.mjs` → OK, exit 0
-- [ ] **Step 3:** Red path — copy templates+skills to temp, `sed -i 's/^## Definition of Done$/## Done/' "$tmp/templates/sprint.md"`, run with env overrides → FAIL, exit 1; clean up
-- [ ] **Step 4:** Commit `test: check-artifacts — pairing, seven/five-section completeness, ledger keys, assembly dry-run`
+- [x] **Step 1:** Write script
+- [x] **Step 2:** `node tests/check-artifacts.mjs` → OK, exit 0
+- [x] **Step 3:** Red path — copy templates+skills to temp, `sed -i 's/^## Definition of Done$/## Done/' "$tmp/templates/sprint.md"`, run with env overrides → FAIL, exit 1; clean up
+- [x] **Step 4:** Commit `test: check-artifacts — pairing, seven/five-section completeness, ledger keys, assembly dry-run`
 
 ---
 
