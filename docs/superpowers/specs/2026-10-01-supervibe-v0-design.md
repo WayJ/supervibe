@@ -148,7 +148,7 @@ frontmatter；**前置仅为 state: merged——closed 不卡交接条款**：�
 
 | 工件 | 契约 |
 |---|---|
-| Sprint plan（`sprints/YYYY-MM-DD-<sprint>-plan.md`）| frontmatter 台账字段（§2.1）+ 五节：D-x 决策 / 波次 story-task 复选框 / DoD（**自 epic 文档逐字复制，不得就地改写**）/ S1–Sn 验收场景 / 交接条款 |
+| Sprint plan（`sprints/YYYY-MM-DD-<sprint>-plan.md`）| frontmatter 台账字段（§2.1）+ 五节：D-x 决策 / 波次 story-task 复选框 / DoD（**自 epic 文档逐字复制，不得就地改写**）/ S1–Sn 验收场景 / 交接条款（Handover Clauses，正文唯一真源） |
 | 验收记录（`acceptances/YYYY-MM-DD-<sprint>-acceptance.md`）| 场景结果表 + **障碍逐字留痕**（禁止美化：每个阻塞、绕行、替代证据都按实际发生记录）|
 | 开发日志 | 见 §2.4 notes 协议——跨 sprint 资产，非一次性工作日志 |
 | 债务追踪 | 条目含严重度、归属、清偿标准；观察项路由到归属 epic |
