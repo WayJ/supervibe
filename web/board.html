@@ -113,8 +113,20 @@ function esc(s) {
 }
 
 // ---- directory access ----
+// Primary: showDirectoryPicker (Chromium) — its native dialog's confirm
+// button reads 选择文件夹, not 上传. Fallback: webkitdirectory input.
+function pickFolder() {
+  if (window.showDirectoryPicker) {
+    window.showDirectoryPicker().then(function (h) {
+      state.folderName = h.name;
+      readHandle(h).then(load);
+    }).catch(function () { /* user cancelled — stay put */ });
+    return;
+  }
+  document.getElementById('dirInput').click();
+}
 document.getElementById('pick').onclick =
-document.getElementById('pickHero').onclick = function () { document.getElementById('dirInput').click(); };
+document.getElementById('pickHero').onclick = pickFolder;
 document.getElementById('dirInput').onchange = function (ev) {
   var roadmaps = [], sprints = [];
   var files = Array.prototype.slice.call(ev.target.files);
