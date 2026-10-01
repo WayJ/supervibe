@@ -211,7 +211,8 @@ acceptance ≈ sprint review；merged/closed ≈ done。
 | <path pattern> | <doc> |
 ```
 
-技能 grep 这些标题；节缺失 → 技能指示先跑 `supervibe:init`。plugin 绝不
+技能 grep 这些标题；节缺失 → 技能指示先跑 `supervibe:roadmap` 的
+scaffold 子命令。plugin 绝不
 写入栈 specifics。
 
 ## 6. 模板（`templates/`）
