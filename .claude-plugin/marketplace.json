@@ -1,5 +1,6 @@
 {
   "name": "supervibe",
+  "description": "Self-marketplace for the SuperVibe plugin — iteration management for Claude Code, pairing with superpowers.",
   "owner": { "name": "jw083" },
   "plugins": [
     {
