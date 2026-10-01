@@ -32,7 +32,7 @@ Then resolve the sprint under review:
 
 Read the sprint doc's `## Acceptance Scenarios (S1–Sn)` section. Each scenario runs for real, exactly as its text specifies — browser, CLI, stack commands. A scenario is an observation to make, not a box to tick.
 
-Reject the malformed doc before anything runs: the Acceptance Scenarios section missing or empty → reject, naming the malformed sprint doc — zero scenarios must never yield a vacuous pass. A missing `## Definition of Done` section → reject the same way; the DoD lives verbatim in the epic doc — direct the fix there, never patch it into the sprint doc.
+Reject the malformed doc before anything runs: the Acceptance Scenarios section missing or empty → reject, naming the malformed sprint doc — zero scenarios must never yield a vacuous pass. A `## Definition of Done` section missing or empty → reject the same way; the DoD lives verbatim in the epic doc — direct the fix there, never patch it into the sprint doc.
 
 Run against the sprint's own environment — the worktree/branch the sprint doc's `worktree` frontmatter names, with its stack live — not a stale build elsewhere: a proving run against yesterday's artifact is not evidence.
 

@@ -32,7 +32,7 @@ sprint 评审门禁：把每条验收场景真跑一遍，逐项以证据核对 
 
 读 sprint 文档的 `## Acceptance Scenarios (S1–Sn)` 节。每条场景按其正文指定的方式真跑——浏览器、CLI、栈命令。场景是一个要做的观察，不是一个要打勾的框。
 
-动跑任何东西之前先拒绝畸形文档：Acceptance Scenarios 节缺失或为空 → 拒绝，点名畸形的 sprint 文档——零场景绝不能产出空洞的 pass。`## Definition of Done` 节缺失 → 同样拒绝；DoD 逐字活在 epic 文档里——指引去那里修，绝不在 sprint 文档内打补丁。
+动跑任何东西之前先拒绝畸形文档：Acceptance Scenarios 节缺失或为空 → 拒绝，点名畸形的 sprint 文档——零场景绝不能产出空洞的 pass。`## Definition of Done` 节缺失或为空 → 同样拒绝；DoD 逐字活在 epic 文档里——指引去那里修，绝不在 sprint 文档内打补丁。
 
 在 sprint 自己的环境里跑——即 sprint 文档 frontmatter `worktree` 记载的 worktree/分支、其栈处于存活状态——而不是别处的一套陈旧构建：对着昨天的工件跑出的证明不是证据。
 

@@ -127,7 +127,7 @@ Body sections:
 
 Steps: EN → ZH → validate → commit `feat: accept skill (evidence-before-claims scenarios, DoD, obstacles log, drift audit), EN+ZH`.
 
-- [ ] Step 1–4
+- [x] Step 1–4
 
 ---
 
