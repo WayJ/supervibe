@@ -50,10 +50,16 @@ consecutive iteration lines (including three running in parallel at one point):
 
 ### 2.1 Roadmap (strategic truth source)
 
-One `roadmap.md` per project. Five required elements:
+One `roadmap.md` per project. Six required elements:
 
 1. **Stage table** — id, window, core deliverables, **exit criteria**
    (a stage without exit criteria is invalid), status.
+1b. **Line ledger** — the authoritative per-iteration-line record:
+   `{line id, stage ref, state, worktree/branch, early-start flag,
+   deferred-dependency refs, open handover-clause ids, merged commit hash}`.
+   Stages are strategic (one stage may spawn several lines, e.g. parallel
+   waves); the ledger tracks each line's tactical state. All skill
+   references to "roadmap row" below mean a ledger row.
 2. **ADR table** — numbered decisions with rationale and amendment rows.
    Discipline: *change the document first, then the code* (doc-before-code).
 3. **Asset disposition** — reuse / retire / re-order / watch, for inherited
@@ -65,12 +71,18 @@ One `roadmap.md` per project. Five required elements:
 
 ### 2.2 Iteration line (tactical unit)
 
-State machine:
+State machine (authority: the line ledger in `roadmap.md`; the plan-doc
+header carries a human-readable copy, never the reverse):
 
 ```
 planned → ready (awaiting go) → active (parallel allowed, WIP-capped)
         → acceptance → merged → closed
 ```
+
+Transition owners: `supervibe:start` writes planned/ready→active;
+`supervibe:accept` writes →acceptance (+ verdict); `supervibe:merge`
+writes →merged (+ commit hash); `supervibe:roadmap` closes (→closed) once
+the line's handover clauses are discharged or none were registered.
 
 Special flows, all observed in real use:
 
@@ -88,7 +100,7 @@ Special flows, all observed in real use:
 
 | Artifact | Contract |
 |---|---|
-| Plan doc | header (line id, roadmap ref, state) + five sections: D-x decisions / wave-task checkboxes / exit criteria **copied verbatim from roadmap, not editable in place** / S1–Sn acceptance scenarios / handover clauses |
+| Plan doc | header (line id, roadmap ref, state copy) + five sections: D-x decisions / wave-task checkboxes / exit criteria **copied verbatim from roadmap, not editable in place** / S1–Sn acceptance scenarios / handover clauses |
 | Acceptance record | scenario results table + **obstacles logged verbatim** (no greenwashing: every blocker, workaround, or substituted evidence is recorded as it happened) |
 | Dev notes | dated entries under `.agents/notes/` |
 | Debt tracker | entries with severity, owner, repayment criteria; observation items routed to an owning roadmap line |
@@ -139,7 +151,7 @@ references templates by relative path and reads host config per §5.
 |---|---|---|
 | 1 | `supervibe:init` | No preconditions beyond a git repo. Scaffold `roadmap.md` (template), AGENTS.md supervibe section (gates empty, WIP 3, doc-sync map stub), `.agents/notes/`. Idempotent: existing sections detected, never overwritten — emits a diff proposal instead. |
 | 2 | `supervibe:roadmap` | Subcommands: add-stage (rejects missing exit criteria), record-decision (ADR row + amendment; enforces doc-before-code narrative), open/close question, asset disposition update, advance stage status. Every mutation notes date + evidence link. |
-| 3 | `supervibe:start` | Input: stage id. Readiness adjudication: dependency check, WIP count vs limit, early-start ruling (file-intersection estimate vs open lines), deferred-dependency ruling (→ handover clause registered in plan + roadmap row). Output: plan doc scaffold from template (five sections, exit criteria copied verbatim) at `docs/plans/YYYY-MM-DD-<line>-plan.md`. Then dispatch: superpowers present → `superpowers:brainstorming` then `superpowers:writing-plans`; else print manual instructions. |
+| 3 | `supervibe:start` | Input: stage id. Readiness adjudication: dependency check, WIP count vs limit, early-start ruling (file-intersection estimate vs open lines), deferred-dependency ruling (→ handover clause registered in plan + roadmap row). Output: plan doc scaffold from template (five sections, exit criteria copied verbatim) at `docs/plans/YYYY-MM-DD-<line>-plan.md`. Then dispatch: superpowers present → `superpowers:brainstorming` then `superpowers:writing-plans`, **directed to fill the scaffolded path — the five-section structure and the verbatim exit criteria are immutable constraints on the produced plan**; else print manual instructions. |
 | 4 | `supervibe:accept` | Input: line/plan. Execute S1–Sn as real verifications (browser, CLI, stack commands as each scenario dictates — never claim pass without running). Fill exit-criteria checklist. Log obstacles verbatim. Output acceptance record at `docs/acceptance/YYYY-MM-DD-<line>-acceptance.md` + verdict (pass/blocked). Substituted evidence must be marked as such. |
 | 5 | `supervibe:merge` | Ordered sequence, stop on red: gates → acceptance verdict present → merge to main (conflicts per §2.4 checklist) → worktree/branch teardown → roadmap row finalized with commit hash → handover clauses emitted (now-binding) → dev-note closing entry. |
 | 6 | `supervibe:sync` | Cadence entry: merge `origin/main` into named (or all active) lines; classify conflicts (generated → regenerate; handwritten → review list); check incoming diff against open handover clauses (path/feature match → surface obligation); report. |
@@ -152,8 +164,9 @@ One greppable section the skills read:
 
 ```markdown
 ## supervibe
-- roadmap: docs/roadmap.md
+- roadmap: docs/roadmap.md          # default; this self-hosting repo uses roadmap.md at root
 - notes: .agents/notes/
+- debt_tracker: docs/tech-debt-tracker.md
 - wip_limit: 3
 ### gates
 - contracts: <command>
@@ -171,7 +184,9 @@ first. Plugin never writes stack specifics.
 
 Plain markdown, `<!-- -->` placeholder comments, no engine:
 
-- `roadmap.md` — five elements of §2.1 with one worked example row each
+- `roadmap.md` — six elements of §2.1 (stage table, line ledger, ADR table,
+  asset disposition, open questions, cross-cutting) with one worked example
+  row each
 - `plan.md` — the handshake artifact (§2.3), including the invariant comment:
   exit criteria are copied from roadmap and changes go back to the roadmap,
   not edited in the plan
@@ -185,13 +200,17 @@ Plain markdown, `<!-- -->` placeholder comments, no engine:
 - This repo carries its own `roadmap.md` (v0 = one stage: "plugin v0.1.0
   published"), developed via superpowers, specs/plans under
   `docs/superpowers/`.
-- CI (three checks, zero external deps, Node ≥ 20):
+- CI (two checks, zero npm dependencies, Node ≥ 20, `claude` CLI
+  preinstalled):
   1. `claude plugin validate . --strict`
-  2. template completeness — every template contains its required section
-     headings (checked by `tests/check-templates.mjs`)
-  3. init dry-run — `tests/dryrun-init.mjs` scaffolds a temp repo, runs the
-     scaffold logic (pure functions imported, not shell), asserts artifacts
-     and config section presence
+  2. `tests/check-artifacts.mjs` — per template: required section headings
+     present; then an **assembly dry-run**: splice `agents-sections.md` into
+     a fixture AGENTS.md and expand template placeholder comments in a temp
+     dir, asserting every required heading lands in the assembled output and
+     no required placeholder remains unexpanded. This validates the
+     artifacts `supervibe:init` will produce — no parallel scaffold
+     implementation is shipped, the skill instructions remain the only
+     scaffold logic.
 
 ## 8. v0 file manifest
 
@@ -200,7 +219,7 @@ Plain markdown, `<!-- -->` placeholder comments, no engine:
 .claude-plugin/marketplace.json     # self-marketplace, source "./"
 skills/{init,roadmap,start,accept,merge,sync,debt,doc-sync}/SKILL.md
 templates/{roadmap,plan,acceptance-record,handover-clause,debt-entry,agents-sections}.md
-tests/{check-templates,dryrun-init}.mjs
+tests/check-artifacts.mjs
 roadmap.md                          # self-hosting
 README.md  README.zh-CN.md  LICENSE  CHANGELOG.md  .gitignore
 docs/superpowers/specs/2026-10-01-supervibe-v0-design.md   # this file
@@ -209,8 +228,11 @@ docs/superpowers/specs/2026-10-01-supervibe-v0-design.md   # this file
 ## 9. Release
 
 - Version 0.1.0 (semver string; not enforced by the loader, honored by us).
-- Publish: push to public git host → fill `homepage`/`repository` (hard
-  loader requirement on URL validity) → users install via
+- Publish: push to public git host → replace the placeholder
+  `homepage`/`repository` (v0 ships the parsable placeholder
+  `https://example.com/supervibe`; the loader hard-fails on unparsable
+  URLs, so "TBD" strings are not acceptable even during local
+  `--plugin-dir` development) → users install via
   `/plugin marketplace add <owner>/supervibe` → `/plugin install supervibe@supervibe`.
 - README covers pairing with superpowers (recommended, not required) and the
   degradation story.
