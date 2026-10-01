@@ -31,8 +31,9 @@ Then resolve the sprint being closed out:
 - Argument: a sprint id, never a path — a path argument → ask for the id of the sprint it carries.
 - Absent → ask, listing the docs in `sprints_dir` whose frontmatter `state` is `acceptance`; never guess.
 - Scan every doc in `sprints_dir` for a frontmatter `sprint` match. No match → reject, naming the unknown sprint id.
-- State precondition: `merged` → reject: already closed out — name the `merged-commit` the frontmatter carries. `closed` → reject: retired; `supervibe:roadmap close` has already been there. `active` / `acceptance` → proceed; stage 2 rules the verdict.
+- State precondition: `merged` → reject: already closed out — name the `merged-commit` the frontmatter carries. `closed` → reject: retired; `supervibe:roadmap close` has already been there. `active` / `acceptance` → proceed; stage 2 rules the verdict. `state` missing or unrecognized → reject as a malformed sprint doc, naming it — the closed enumeration never continues on an unknown value.
 - The doc's `worktree` frontmatter names the worktree/branch carrying this sprint — stages 1, 3 and 4 operate there. A `worktree` that names nothing → the doc is malformed; reject naming it: there is nothing to gate, merge, or tear down.
+- A `worktree` naming a branch that no longer exists → surface the staleness and confirm with the user before trusting the field — never proceed silently on it.
 - One sprint per run: parallel sprints close one at a time, each through its own full sequence.
 
 ## Ordered sequence, stop on red
@@ -45,9 +46,10 @@ Seven stages, strictly ordered. Each numbered stage is a hard stop: green → th
    - Any red → stop, showing the failing command's full output and naming the gate. A sprint does not merge while any gate is red — no partial credit, no substitution: the configured command runs, or the gate is not green.
    - Then the **arrears final check** — the second of the doc-sync discipline's two checkpoint verifications (accept audits drift periodically; merge runs the final arrears check).
    - Enumerate the sprint's changed paths: the worktree branch diffed against its merge-base with the main line, plus the paths named in the sprint doc's Stories & Tasks — the same enumeration accept's drift audit uses; the two checkpoints must see the same sprint.
-   - For each `### doc_sync_map` row whose change pattern matches a changed path, the mapped doc must carry its update **in the same commit as the change that owes it**. An owed doc without a same-commit change is arrears → stop, naming the row, the mapped doc, and what is owed.
+   - For each `### doc_sync_map` row whose change pattern matches a changed path, verify operationally: a commit exists **in the branch range** (merge-base..tip) touching **both** the changed path and the mapped doc — the doc's update rides in the same commit as the change that owes it. A doc updated in a later branch commit still counts as arrears until the two are squashed together.
+   - No such commit → arrears → stop, naming the row, the mapped doc, and what is owed.
    - Unmatched rows owe nothing. An absent or empty map is a clean check — record that; never invent rows.
-   - Arrears are repaired in the sprint's branch — the owed doc lands in the same commit as the change that owes it — and this stage re-runs. Merge never writes the owed doc itself to green its own gate.
+   - The sanctioned repair is amend/rebase on the branch: rewriting branch history is permitted **before** merge — nothing has landed yet — so the owed doc lands in the same commit as the change that owes it; then this stage re-runs. Merge never writes the owed doc itself to green its own gate.
 
 2. **Acceptance verdict in place.**
    - Green is exactly: the sprint doc frontmatter reads `state: acceptance`, **and** the acceptance record named by the frontmatter evidence link carries verdict `pass`. Never read the verdict off the state flip alone — open the linked record and confirm.
@@ -55,17 +57,20 @@ Seven stages, strictly ordered. Each numbered stage is a hard stop: green → th
    - Linked record `blocked`, missing, or a dangling link → not done. The **latest** record referenced by the evidence link governs, and a blocked record without a later pass stands blocked: route back to execution on the record's named blockers, then accept again.
    - Records are append-only and same-day re-runs take distinguishing suffixes — which record governs is decided by the evidence link, never by file dates or recency guesses: the link names the record; the record rules.
 
-3. **Merge to main.** Merge the sprint's branch into the main line the way this host merges. On conflict, resolve per the §2.5 checklist, dual path:
+3. **Merge to main.** Merge the sprint's branch into the main line the way this host merges — fast-forward, merge commit, or PR. On conflict, resolve per the §2.5 checklist, dual path:
    - **Generated artifacts** → never hand-merge: take the merged result, regenerate, and compare. A hand-edit inside a generated file is a smell to surface, not a resolution.
    - **Handwritten files** → emit the item-by-item review list **before resolving anything**: per conflicted file, per hunk — both sides' intent and the proposed resolution. Then resolve, and carry the list into the closing note's decisions section — it exists so the resolution stays auditable after the fact.
-   - However the host lands it — fast-forward, merge commit, PR — record the hash main ends up holding at this sprint's tip: that hash is the `merged-commit`, the evidence anchor everything downstream reads (dependency checks at start, clause discharge at sync, epic closure at roadmap).
+   - Before the merge reshapes anything, capture the sprint branch tip — the pre-merge hash: that hash is the `merged-commit`, whatever the host's mechanics afterward do to main. It is the evidence anchor everything downstream reads (dependency checks at start, clause discharge at sync, epic closure at roadmap).
+   - A conflict that cannot be resolved → abort the merge (`git merge --abort`), stop, and report — never leave a MERGE_HEAD or conflict markers behind: a half-merged main line is worse than an unmerged sprint.
 
 4. **Worktree/branch teardown.** Only after the merge has landed — never before: tearing down ahead of the merge orphans the sprint's carrier.
    - Remove the worktree and its branch per the host's tooling. The sprint doc survives in `sprints_dir` — the ledger outlives the worktree.
    - A teardown failure is reported and repaired but rolls nothing back: the merge has landed, and stages 5–7 record that fact regardless.
 
 5. **Sprint doc frontmatter finalized.**
-   - Write `state: merged` and `merged-commit: <hash>` into the sprint doc's frontmatter, appending date + evidence link — the same close-out act as the merge itself.
+   - These writes happen on the main-line checkout — the worktree is gone by now, torn down in stage 4 — and land as a follow-up commit on merged main: `state: merged` plus `merged-commit: <the branch-tip hash captured in stage 3>`.
+   - `merged-commit` keeps pointing at the sprint branch tip, the pre-merge hash, even after teardown removes the branch. A PR-style host where the branch died with the PR is no different: capture the tip while it lives; the writes still go to the main checkout the same way.
+   - Append date + evidence link — the link is the merge commit hash just written. The whole stage is the same close-out act as the merge itself.
    - A landed merge whose ledger still reads `acceptance` is an incomplete close-out; a flipped state without its hash is incomplete the other way.
 
 6. **Handover clauses fired.**

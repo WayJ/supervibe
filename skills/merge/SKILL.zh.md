@@ -31,8 +31,9 @@ sprint 收口——一个 sprint 的最后一幕：跑门禁、核实验收裁�
 - 参数是 sprint id，绝非路径——参数给了路径 → 询问它所承载 sprint 的 id。
 - 参数缺失 → 询问，列出 `sprints_dir` 中 frontmatter `state` 为 `acceptance` 的文档备选；绝不猜测。
 - 扫 `sprints_dir` 内全部文档找 frontmatter `sprint` 匹配。没有匹配 → 拒绝，言明未知的 sprint id。
-- 状态前置：`merged` → 拒绝：已收口——点名 frontmatter 携带的 `merged-commit`。`closed` → 拒绝：已退役；`supervibe:roadmap close` 已经来过。`active` / `acceptance` → 继续；裁决归阶段 2。
+- 状态前置：`merged` → 拒绝：已收口——点名 frontmatter 携带的 `merged-commit`。`closed` → 拒绝：已退役；`supervibe:roadmap close` 已经来过。`active` / `acceptance` → 继续；裁决归阶段 2。`state` 缺失或无法识别 → 以畸形 sprint 文档拒绝并点名——封闭枚举绝不在未知取值上继续。
 - 文档的 `worktree` frontmatter 记载承载本 sprint 的 worktree/分支——阶段 1、3、4 都在那里操作。`worktree` 空缺 → 文档畸形；点名拒绝：没有可跑门禁、可合入、可拆除的载体。
+- `worktree` 指向一条已不存在的分支 → 揭穿这处过期、与用户确认之后才信任该字段——绝不静默继续。
 - 每次运行只收口一个 sprint：并行 sprint 逐个收口，各自走完整序列。
 
 ## 有序序列，遇红即停（Ordered sequence, stop on red）
@@ -45,9 +46,10 @@ sprint 收口——一个 sprint 的最后一幕：跑门禁、核实验收裁�
    - 任一红 → 停，展示失败命令的完整输出并点名该 gate。门禁红着 sprint 就不合并——没有部分分，没有替代：配置的命令要么运行，要么这个 gate 不算绿。
    - 然后做**欠账终检**——doc-sync 纪律两个检查点核验中的第二个（accept 周期审计漂移；merge 跑欠账终检）。
    - 枚举本 sprint 的变更路径：worktree 分支对其与 main 线 merge-base 的 diff，加上 sprint 文档 Stories & Tasks 点名的路径——与 accept 漂移审计同一套枚举；两个检查点必须看到同一个 sprint。
-   - 对 `### doc_sync_map` 中 change 模式命中任一变更路径的行：被映射文档必须**与欠下该变更的代码同一 commit** 携带其更新。欠了文档却没有同 commit 变更 = 欠账 → 停，点名该行、被映射文档与所欠内容。
+   - 对 `### doc_sync_map` 中 change 模式命中任一变更路径的行，按操作化方式核验：**分支范围**（merge-base..tip）内存在**同时**触碰该变更路径与被映射文档的 commit——文档的更新搭载在欠下该变更的同一 commit 里。在更晚的分支 commit 里更新的文档仍算欠账，直到两者被压合在一起。
+   - 不存在这样的 commit → 欠账 → 停，点名该行、被映射文档与所欠内容。
    - 未命中的行不欠什么。映射缺失或为空即干净——记录之；绝不发明行。
-   - 欠账在本 sprint 分支内修复——所欠文档与欠下它的变更落在同一 commit——然后本阶段重跑。merge 绝不自己动手写所欠文档，给自己的门禁刷绿。
+   - 受认可的修复是在分支上 amend/rebase：合并**之前**允许改写分支历史——尚未有任何东西落地——让所欠文档与欠下它的变更落在同一 commit；然后本阶段重跑。merge 绝不自己动手写所欠文档，给自己的门禁刷绿。
 
 2. **验收裁决在案。**
    - 绿的定义恰好是：sprint 文档 frontmatter 读作 `state: acceptance`，**且** frontmatter 证据链接点名的验收记录裁决为 `pass`。绝不只看状态翻转就读出裁决——打开被链接的记录并确认。
@@ -55,17 +57,20 @@ sprint 收口——一个 sprint 的最后一幕：跑门禁、核实验收裁�
    - 被链接记录 `blocked`、缺失或链接悬空 → 未完成。以证据链接引用的**最新**记录为准，没有后续 pass 的 blocked 记录保持 blocked：按记录点名的阻断项路由回执行层，之后重新验收。
    - 记录只增不改，同日重跑带区分性后缀——哪份记录作准由证据链接决定，绝不靠文件日期或新旧猜测：链接点名记录；记录说了算。
 
-3. **合入 main。** 把本 sprint 的分支按此宿主合并的方式合入 main 线。遇冲突按 §2.5 清单解决，双路径：
+3. **合入 main。** 把本 sprint 的分支按此宿主合并的方式合入 main 线——fast-forward、merge commit 或 PR。遇冲突按 §2.5 清单解决，双路径：
    - **生成物（generated artifacts）** → 绝不手工合并：拿合并结果重新生成后比对。生成文件里的手改是要揭穿的坏味道，不是解决方案。
    - **手写文件（handwritten files）** → **解决任何冲突之前**先逐项列出复核单：逐冲突文件、逐 hunk——两侧意图与拟议解法。然后解决，并把复核单带进收口条目的 decisions 节——它存在的意义是让解决方案事后可审计。
-   - 无论宿主怎么落地——fast-forward、merge commit、PR——记录合并后 main 在本 sprint 顶端所指的 hash：它就是 `merged-commit`，是下游一切环节读取的证据锚点（start 的依赖检查、sync 的条款兑现、roadmap 的 epic 收口）。
+   - 在合并重塑任何东西之前，先捕获 sprint 分支顶端——pre-merge hash：无论宿主的合并机制随后把 main 变成什么样，这个 hash 就是 `merged-commit`。它是下游一切环节读取的证据锚点（start 的依赖检查、sync 的条款兑现、roadmap 的 epic 收口）。
+   - 无法解决的冲突 → 中止合并（`git merge --abort`）、停下、报告——绝不留下 MERGE_HEAD 或冲突标记：半合并的 main 线比未合并的 sprint 更糟。
 
 4. **拆除 worktree/分支。** 仅在合并已落地之后——绝不提前：抢在合并前拆除等于遗弃 sprint 的载体。
    - 按宿主工具移除 worktree 及其分支。sprint 文档存续于 `sprints_dir`——台账比 worktree 活得久。
    - 拆除失败如实上报、照常修复，但什么也不回滚：合并已落地，阶段 5–7 无论如何都要记录这个事实。
 
 5. **sprint 文档 frontmatter 定稿。**
-   - 向 sprint 文档 frontmatter 写入 `state: merged` 与 `merged-commit: <hash>`，追加日期 + 证据链接——与合并本身同一个收口动作。
+   - 这些写入发生在 main 线检出上——worktree 此时已不在，阶段 4 已拆除——并以合并后 main 上的后续 commit 落地：`state: merged` 加 `merged-commit: <阶段 3 捕获的分支顶端 hash>`。
+   - `merged-commit` 始终指向 sprint 分支顶端，即 pre-merge hash，即使拆除已移除该分支。PR 式宿主里分支随 PR 消失也不两样：趁它还在时捕获顶端；写入照样以同一方式落到 main 检出。
+   - 追加日期 + 证据链接——链接即刚写入的 merge commit hash。整个阶段与合并本身属同一个收口动作。
    - 合并已落地而台账仍读 `acceptance` 是不完整的收口；翻了状态却没 hash 则是另一个方向的不完整。
 
 6. **交接条款发射（fired）。**
