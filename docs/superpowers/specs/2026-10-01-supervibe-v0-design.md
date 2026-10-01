@@ -79,10 +79,13 @@ planned → ready (awaiting go) → active (parallel allowed, WIP-capped)
         → acceptance → merged → closed
 ```
 
-Transition owners: `supervibe:start` writes planned/ready→active;
+Transition owners: `supervibe:roadmap` owns planned→ready (the go decision
+is strategic) and closes (→closed) once the line's handover clauses are
+discharged or none were registered; `supervibe:start` writes ready→active;
 `supervibe:accept` writes →acceptance (+ verdict); `supervibe:merge`
-writes →merged (+ commit hash); `supervibe:roadmap` closes (→closed) once
-the line's handover clauses are discharged or none were registered.
+writes →merged (+ commit hash). Handover-clause **discharge** belongs to
+`supervibe:sync`: when the target line's sync/merge verifies the obligation,
+sync records the evidence and sets the clause discharged.
 
 Special flows, all observed in real use:
 
@@ -166,6 +169,8 @@ One greppable section the skills read:
 ## supervibe
 - roadmap: docs/roadmap.md          # default; this self-hosting repo uses roadmap.md at root
 - notes: .agents/notes/
+- plans: docs/plans/                # default plan-doc directory
+- acceptance: docs/acceptance/      # default acceptance-record directory
 - debt_tracker: docs/tech-debt-tracker.md
 - wip_limit: 3
 ### gates
