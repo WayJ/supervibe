@@ -29,7 +29,7 @@
 - Create: `LICENSE`
 - Create: `CHANGELOG.md`
 
-- [ ] **Step 1: Write `.claude-plugin/plugin.json`**
+- [x] **Step 1: Write `.claude-plugin/plugin.json`**
 
 ```json
 {
@@ -47,7 +47,7 @@
 
 Note: `homepage` placeholder MUST stay a parsable URL (loader hard-fails otherwise; replaced at publish).
 
-- [ ] **Step 2: Write `.claude-plugin/marketplace.json`**
+- [x] **Step 2: Write `.claude-plugin/marketplace.json`**
 
 ```json
 {
@@ -66,9 +66,9 @@ Note: `homepage` placeholder MUST stay a parsable URL (loader hard-fails otherwi
 
 Note: entry `name` MUST equal manifest `name` (official rule). Version intentionally omitted here — `plugin.json` is authoritative.
 
-- [ ] **Step 3: Write `LICENSE`** — standard MIT text, copyright `2026 supervibe contributors`.
+- [x] **Step 3: Write `LICENSE`** — standard MIT text, copyright `2026 supervibe contributors`.
 
-- [ ] **Step 4: Write `CHANGELOG.md`**
+- [x] **Step 4: Write `CHANGELOG.md`**
 
 ```markdown
 # Changelog
@@ -80,7 +80,7 @@ templates, self-marketplace manifest, bilingual skill bodies, artifact
 validation script.
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .claude-plugin LICENSE CHANGELOG.md
