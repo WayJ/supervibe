@@ -241,6 +241,22 @@ function readHandle(h) {
 })();
 
 // ---- model + render ----
+// Zero-pick mode: when supervibe:board bakes a sibling board-data.js next to
+// this page, it loads automatically — open and see, no folder picking.
+// No baked data → picker flow (below) stays available.
+(function tryBakedData() {
+  var s = document.createElement('script');
+  s.src = 'board-data.js';
+  s.onload = function () {
+    if (typeof BOARD_DATA === 'undefined') return;
+    state.folderName = BOARD_DATA.folderName || 'docs/superpowers';
+    document.getElementById('folderName').textContent = state.folderName + ' · 生成时快照（重跑 supervibe:board 取最新）';
+    load({ roadmaps: BOARD_DATA.roadmaps || [], sprints: BOARD_DATA.sprints || [] });
+  };
+  s.onerror = function () { /* no baked data — picker flow stays */ };
+  document.head.appendChild(s);
+})();
+
 function load(files) {
   state.files = files;
   try {

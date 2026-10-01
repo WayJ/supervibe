@@ -103,16 +103,20 @@ Key points:
 
 ## Board
 
-A bundled static viewer for the whole artifact tree. Open `web/board.html` in a
-browser, pick the repo's `docs/superpowers` folder, and every epic renders with
-its full breakdown — sprint cards grouped by state (stub rows included), detail
-drawer with DoD, scenarios, handover clauses and wave-plan links. On Chromium,
-"remember this folder" avoids re-picking.
+A bundled static viewer for the whole artifact tree. Say "board" and
+`supervibe:board` generates `.agents/board/` in the host repo (page +
+parser + baked `board-data.js`); opening that page shows every epic with its
+full breakdown immediately — sprint cards grouped by state (stub rows
+included), detail drawer with DoD, scenarios, handover clauses and wave-plan
+links. Zero folder picking; refresh by re-running the skill (baked data is a
+generation-time snapshot).
 
-Zero network, zero build, no generator script: parsing happens in the page's
-memory (classic script `web/parser.js`), nothing is written to disk, and no
-index file ever lands in the repo. Rendering gaps surface as visible data
-smells in the warning bar, never silent drops. Design: `docs/superpowers/specs/2026-10-01-board-design.md`.
+Zero network, zero build: parsing happens in the page's memory (classic
+script `web/parser.js`), nothing is written to disk by the page itself, and
+no index file ever lands in the repo. The plugin copy of `web/board.html`
+keeps a folder picker as fallback. Rendering gaps surface as visible data
+smells in the warning bar, never silent drops. Design:
+`docs/superpowers/specs/2026-10-01-board-design.md`.
 
 ## Install
 

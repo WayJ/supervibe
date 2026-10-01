@@ -133,8 +133,10 @@ function checkBoard() {
   // board — static viewer artifacts (spec specs/2026-10-01-board-design.md)
   ok(existsSync('web/board.html'), 'web/board.html exists');
   ok(existsSync('web/parser.js'), 'web/parser.js exists');
+  ok(existsSync('web/build-data.mjs'), 'web/build-data.mjs exists');
   const boardHtml = readFileSync('web/board.html', 'utf8');
   ok(/<script src="parser\.js">/.test(boardHtml), 'board.html loads parser.js');
+  ok(/board-data\.js/.test(boardHtml), 'board.html supports baked board-data.js');
   ok(!/(src|href)="https?:\/\//.test(boardHtml), 'board.html issues no network requests');
   ok(!/@import\s+url\(/.test(boardHtml), 'board.html loads no remote css');
 }

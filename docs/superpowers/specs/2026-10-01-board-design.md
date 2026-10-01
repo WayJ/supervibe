@@ -43,12 +43,19 @@ plugin/
 
 ## 4. Directory access
 
-- Picker: `<input type="file" webkitdirectory>` — the user picks the
-  `docs/superpowers` folder in the browser's native dialog (its confirm
-  button is browser-labeled 上传 and not page-controllable; accepted by user
-  preference 2026-10-01 over showDirectoryPicker's dialog). Any read or
-  parse failure surfaces in a visible fatal banner — never a silent dead
-  end.
+- Zero-pick mode (primary): `supervibe:board` bakes the corpus texts into a
+  `board-data.js` beside a host-local copy of the page (`.agents/board/` —
+  board.html + parser.js + board-data.js). Opening that page autoloads the
+  baked data — no folder selection, ever. Baked data is a generation-time
+  snapshot (page label says so); refresh = re-run the skill. A `file://`
+  page cannot read local paths without a user gesture, and a classic
+  sibling `<script src>` is the only gesture-free channel — hence baking.
+- Picker (fallback when opened without baked data): `<input type="file"
+  webkitdirectory>` — the user picks the `docs/superpowers` folder in the
+  browser's native dialog (its confirm button is browser-labeled 上传 and
+  not page-controllable; accepted by user preference 2026-10-01 over
+  showDirectoryPicker's dialog). Any read or parse failure surfaces in a
+  visible fatal banner — never a silent dead end.
 - Chromium persistence: `showDirectoryPicker` + IndexedDB handle storage,
   wired only behind the "remember this folder" button; on later opens the
   page re-reads the stored handle (permission re-grant may prompt) and skips

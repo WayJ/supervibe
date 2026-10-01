@@ -5,17 +5,25 @@ description: Use when the user wants to view roadmaps and sprint breakdowns as a
 
 # supervibe:board — read-only roadmap viewer
 
-Open the plugin's bundled static board in the user's browser.
+Generate a zero-pick board: the user opens the page and the content is
+already there — no folder selection, ever.
 
-1. Resolve the HTML: `<this skill's base dir>/../../web/board.html` (the
-   plugin ships `web/board.html` + `web/parser.js` together).
-2. Open it in the default browser — Windows: `start "" "<path>"`, macOS:
-   `open "<path>"`, Linux: `xdg-open "<path>"`.
-3. Tell the user: in the page, pick the host's configured `roadmaps_dir`
-   parent — normally `docs/superpowers` (from the host AGENTS.md `## supervibe`
-   section). On Chromium, "记住此文件夹" avoids re-picking.
+1. Resolve the plugin's `web/` dir: `<this skill's base dir>/../../web`
+   (ships `board.html`, `parser.js`, `build-data.mjs`).
+2. Target dir in the host: `.agents/board/` (create it).
+3. Copy `web/board.html` and `web/parser.js` into `.agents/board/`.
+4. Bake the data (roadmaps_dir's parent is normally `docs/superpowers`,
+   from the host AGENTS.md `## supervibe` section):
+   `node <plugin web>/build-data.mjs <docs/superpowers> <host>/.agents/board/board-data.js`
+5. Open `<host>/.agents/board/board.html` in the default browser — Windows:
+   `start "" "<path>"`, macOS: `open`, Linux: `xdg-open`. The baked data
+   autoloads; the folder picker stays as fallback only.
 
-Read-only: this skill writes no artifacts, flips no state, and touches no
-ledger. Board rendering issues (missing columns, unparsed tables) are data
+Refresh: re-run steps 3–4 (the user says board/看板 again). The baked copy is
+a generation-time snapshot — the page's folder label says so.
+
+Boundaries: read-only for artifacts; `.agents/board/` is derived output —
+recommend the host gitignore it, and never copy host data into the plugin
+repo. Board rendering issues (missing columns, unparsed tables) are data
 smells surfaced in the page's warning bar — report them, do not edit files
 to silence them.
