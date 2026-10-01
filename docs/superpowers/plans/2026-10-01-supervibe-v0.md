@@ -16,7 +16,7 @@
 - Commit identity: `git -c user.name="jw083" -c user.email="jw083@local" commit`.
 - Every SKILL.md (EN and ZH) starts with `---` on line 1 (loader rule; ZH mirrors keep frontmatter for symmetry).
 - EN skill bodies: imperative, terse, ≤ ~150 lines each. ZH mirror: faithful translation, technical terms stay English.
-- Frontmatter `description` ≤ ~200 chars, Scrum vocabulary in the first sentence (sprint/epic/DoD/review) for trigger matching.
+- Frontmatter `description` ≤ ~300 chars (hard loader cap 1,536 far above), Scrum vocabulary in the first sentence (sprint/epic/DoD/review) for trigger matching.
 - No file outside spec §8 manifest gets created (YAGNI).
 
 ---
@@ -332,8 +332,8 @@ Zero npm deps, Node ≥ 20. Reads templates dir from `process.env.TEMPLATES_DIR 
 
 Checks:
 1. **Bilingual pairing** — every `skills/*/SKILL.md` has a sibling `SKILL.zh.md`; both non-empty; both start with `---` on line 1; exactly 5 skill dirs.
-2. **Template completeness** — required H2 headings per template (exact sets from Task 7 Steps 1–3; the other three templates: non-empty + expected heading presence per their Step definitions).
-3. **Assembly dry-run** — in a temp dir: splice `agents-sections.md` into a fixture AGENTS.md; assert the assembled output contains every config key (`roadmap`, `notes`, `plans`, `acceptance`, `debt_tracker`, `wip_limit`, `gates`, `doc_sync_map`); copy `roadmap.md`/`plan.md` templates and assert no `<!-- placeholder:` comment remains in required sections (headers block + all required H2s present).
+2. **Template completeness** — required H2 headings per template (exact sets from Task 7 Steps 1–3). For `handover-clause.md` and `debt-entry.md`: assert the defined field labels are present verbatim (`id`, `trigger`, `obligation`, `status`, `evidence` / `id`, `date`, `severity`, `owner`, `repayment criteria`, `status`, `evidence commit`).
+3. **Assembly dry-run** — in a temp dir: splice `agents-sections.md` into a fixture AGENTS.md; assert the assembled output contains every config key (`roadmap`, `notes`, `plans`, `acceptance`, `debt_tracker`, `wip_limit`, `gates`, `doc_sync_map`); copy `roadmap.md`/`plan.md` templates, **simulate the fill-in first (regex-replace each `<!-- placeholder: ... -->` comment with an example line — a bare copy would fail its own check by construction)**, then assert headers block + all required H2s present and no `<!-- placeholder:` remains.
 
 Exit 0 with a summary line `check-artifacts: OK (n checks)`; non-zero + `check-artifacts: FAIL <reason>` on any miss.
 
@@ -372,7 +372,7 @@ git commit -m "test: check-artifacts — bilingual pairing, template completenes
   - Epic: `E1 — plugin v0.1.0 published` with DoD (5 skills validate clean / templates complete via check-artifacts / bilingual pairs / README bilingual / marketplace installs locally via `--plugin-dir`)
   - Sprint Ledger row: `S1` → this v0 sprint, epic `E1`, worktree `-` (main), state `active`
   - ADR row: `D1` — skills-only (no commands/), artifact-contract coupling to superpowers, five-skill set (cites spec)
-  - Open Questions: the two from spec §10
+  - Open Questions: the two from spec §10, plus a third: **CI workflow file deferred until hosting is decided (§10.1) — local final gates stand in; record here so the deferral is not silent drift**
 - [ ] **Step 2: Run `node tests/check-artifacts.mjs`** — still OK (roadmap.md at root is not the template; no interference).
 - [ ] **Step 3: Commit** — `git add roadmap.md && git commit -m "docs: self-hosting roadmap (E1 plugin v0.1.0, ledger S1, ADR D1)"`
 
@@ -401,6 +401,8 @@ claude plugin validate . --strict && node tests/check-artifacts.mjs
 ```
 
 Expected: both green.
+
+- [ ] **Step 3b: Local-install smoke (closes the E1 DoD item "marketplace installs locally via --plugin-dir")** — run `claude --plugin-dir . -p "list your available supervibe skills, one line each" ` (or equivalent one-shot invocation); expected: the session starts and recognizes the supervibe skills. If the one-shot form is impractical in the harness, an interactive `claude --plugin-dir .` start with a `/supervibe:roadmap` skill listing counts as evidence — record which form was used in the commit message.
 
 - [ ] **Step 4: CHANGELOG 0.1.0 dated**; **Step 5: Commit**
 
