@@ -27,7 +27,7 @@ Before anything, grep the host AGENTS.md for the `## supervibe` section:
 ## Locate the stub
 
 - Find the epic doc in `roadmaps_dir` whose frontmatter `epic` id matches. No doc matches → reject, naming the unknown epic id.
-- In its Sprint Breakdown section, find the stub row carrying the given sprint id — the id is mandatory because one epic may hold several `ready` stubs (parallel waves). No matching row → reject, naming the unknown sprint id.
+- In its Sprint Breakdown section, find the stub row carrying the given sprint id — the id is mandatory because one epic may hold several `ready` stubs (parallel waves). No matching row → reject, naming the unknown sprint id. No Sprint Breakdown section at all → reject, naming the malformed epic doc — not an unknown sprint id.
 - The stub must be in `ready` state:
   - `planned` → reject and route to `supervibe:roadmap ready` — the go decision is strategic and is not made here.
   - `started` → reject: already materialized; name the existing sprint doc (frontmatter `sprint` match in `sprints_dir`).
@@ -38,19 +38,20 @@ Before anything, grep the host AGENTS.md for the `## supervibe` section:
 Four rulings before any file is written — each either blocks the start or shapes the doc being created. Every ruling outcome lands in the new doc's frontmatter flags and the opening note's decisions section:
 
 1. **Dependencies** — read the stub note and the epic doc (Deliverables, Cross-cutting) for dependencies naming other sprints.
-   - Dependency already merged → satisfied; verify and move on.
+   - Dependency already merged → satisfied: verify the target sprint doc's frontmatter reads `state: merged` with `merged-commit` set, then move on.
    - Dependency on an unmerged sprint → not a stopper; route to ruling 4.
 2. **WIP limit** — count active sprints by scanning every doc in `sprints_dir` for frontmatter `state: active`.
    - Count at or above `wip_limit` → stop, naming the active sprints; one of them must merge or close before this start can proceed.
    - An early-started sprint is `active` and counts toward the limit like any other.
-3. **Early start** — applies when a sprint this one follows is still in flight (not merged).
-   - Estimate the file intersection between this sprint's expected scope (epic Deliverables + stub note) and the in-flight sprints' scopes (from their sprint docs).
-   - Intersection ≈ zero → safe: set `early-start: true` in the new doc's frontmatter and record the estimate in the opening note.
+3. **Early start** — applies whenever any sprint is still in flight (frontmatter `state` not `merged`) — not only ones this sprint depends on.
+   - Estimate the file intersection: the number of files both this sprint (epic Deliverables + stub note) and each in-flight sprint (its sprint doc) are expected to touch.
+   - That number ≈ zero → safe: set `early-start: true` in the new doc's frontmatter and record the estimate in the opening note.
    - Material overlap → not safe as an early start: wait, or route the overlap through ruling 4.
 4. **Deferred dependency** — implement now on the current baseline as if the depended-on sprint were already merged, and bind the future review with a handover clause.
    - Register the clause per `templates/handover-clause.md` in this sprint doc's Handover Clauses section — the issuing side is the single source of truth for clause text; every other artifact holds references only.
    - **Clause id HC#: scan every sprint doc's Handover Clauses sections for max+1 (an empty scan starts at 1).**
    - Target reference per the migration rule: target sprint doc exists → append the HC# to its frontmatter `clauses` list; future sprint with no doc yet → record `target: <epic> breakdown S#` inside the clause itself.
+   - Two write moments: the clause body goes into the doc being created now; the target-side frontmatter append happens immediately when the target doc exists — a future target's reference migrates at its own materialization.
 
 ## Read history first
 
@@ -62,6 +63,8 @@ Notes are a cross-sprint knowledge asset, not a diary — read them before writi
 - An empty notes dir is not an error — a first sprint has no history. Say so and proceed.
 
 ## Materialize the sprint doc
+
+Pre-flight, before creating anything — duplicate-materialization guard: scan `sprints_dir` for any doc whose frontmatter `sprint` equals this id. A doc exists while the stub says `ready` → STOP and name the collision — fork risk (a git rollback lost the stub flip, or the doc was materialized out of band); never overwrite, never create a second doc. The mirrored anomaly — stub already `started` while no doc matches → STOP and surface it (the doc was lost); never silently re-materialize.
 
 1. Create `<sprints_dir>/YYYY-MM-DD-<sprint>-plan.md` from `templates/sprint.md`. The file date is the materialization date (today), not the stub's planning date. Frontmatter `{sprint, epic, state: active, worktree, early-start, deferred-dependency, clauses, merged-commit: null}`:
    - `worktree` — the worktree/branch that will carry this sprint (one sprint = one worktree/branch).

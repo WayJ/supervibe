@@ -19,7 +19,7 @@ pre-start 状态活在桩行里；自实体化起，sprint 文档 frontmatter �
 - 本技能读取的配置键：`roadmaps_dir`、`sprints_dir`、`notes`、`wip_limit`；子节 `### doc_sync_map`。
 - 键缺失时的默认值：`roadmaps_dir: docs/superpowers/roadmaps/`、`sprints_dir: docs/superpowers/sprints/`、`notes: .agents/notes/`、`wip_limit: 3`。
 - 该节整体缺失 → STOP：唯一合法的下一步是 `supervibe:roadmap scaffold`——指引过去，其余一律拒绝。
-- 该节确认存在后，解析本技能涉及的已配置目录（`roadmaps_dir`、`sprints_dir`、`notes`）并核实其存在。缺失 → STOP：指引用户运行 `supervibe:roadmap scaffold` 或修正配置路径；绝不明着隐式创建工件——配置路径笔误绝不能静默分叉真源。
+- 该节确认存在后，解析本技能涉及的已配置目录（`roadmaps_dir`、`sprints_dir`、`notes`）并核实其存在。缺失 → STOP：指引用户运行 `supervibe:roadmap scaffold` 或修正配置路径；绝不隐式创建工件——配置路径笔误绝不能静默分叉真源。
 - 模板按 `<plugin base dir>/templates/<file>` 解析（此处为 `sprint.md` 与 `handover-clause.md`）；绝不假设它们在宿主仓库里。
 - 写 sprint 文档之前先查 `### doc_sync_map`：若映射表覆盖了本技能写的工件路径，以映射表为准——「本技能写出的工件不欠进一步 doc-sync」的豁免仅适用于未覆盖的路径。
 - `### gates` 的 gate 命令与本技能无关——gate 在 accept 与 merge 处生效；start 不运行任何 gate。
@@ -27,7 +27,7 @@ pre-start 状态活在桩行里；自实体化起，sprint 文档 frontmatter �
 ## 定位桩行（Locate the stub）
 
 - 在 `roadmaps_dir` 中找到 frontmatter `epic` id 匹配的 epic 文档。没有匹配 → 拒绝，言明未知的 epic id。
-- 在其 Sprint Breakdown 节中找到携带给定 sprint id 的桩行——id 必填，因为一个 epic 可同时挂多条 `ready` 桩行（并行波次）。没有匹配行 → 拒绝，言明未知的 sprint id。
+- 在其 Sprint Breakdown 节中找到携带给定 sprint id 的桩行——id 必填，因为一个 epic 可同时挂多条 `ready` 桩行（并行波次）。没有匹配行 → 拒绝，言明未知的 sprint id。根本没有 Sprint Breakdown 节 → 拒绝，点名畸形的 epic 文档——而非未知 sprint id。
 - 桩行必须处于 `ready` 状态：
   - `planned` → 拒绝并路由到 `supervibe:roadmap ready`——go 决策是战略性的，不在此处做出。
   - `started` → 拒绝：已实体化；点名既存的 sprint 文档（在 `sprints_dir` 中按 frontmatter `sprint` 匹配）。
@@ -38,19 +38,20 @@ pre-start 状态活在桩行里；自实体化起，sprint 文档 frontmatter �
 动笔写任何文件之前的四项裁决——每一项要么阻断本次 start，要么塑造即将创建的文档。每项裁决结果落入新文档的 frontmatter 标记与开线条目的 decisions 节：
 
 1. **依赖（Dependencies）**——读桩行备注与 epic 文档（Deliverables、Cross-cutting）中点名其他 sprint 的依赖。
-   - 依赖已合入 → 已满足；核实后继续。
+   - 依赖已合入 → 已满足：核实目标 sprint 文档 frontmatter 为 `state: merged` 且 `merged-commit` 已填，然后继续。
    - 依赖未合入 → 并非阻断项；路由到裁决 4。
 2. **WIP 上限（WIP limit）**——扫 `sprints_dir` 内全部文档的 frontmatter `state: active`，计数在途 sprint。
    - 计数已达或超过 `wip_limit` → 停，点名在途 sprint；其中之一必须先 merge 或 close，本次 start 才能继续。
    - 提前启动的 sprint 就是 `active`，与其他在途 sprint 同等计入上限。
-3. **提前启动（early start）**——当本 sprint 所跟随的 sprint 仍在途（未 merged）时适用。
-   - 估算本 sprint 预期范围（epic Deliverables + 桩行备注）与在途 sprint 范围（其 sprint 文档）的文件交集。
-   - 交集 ≈ 零 → 安全：在新文档 frontmatter 置 `early-start: true`，并把估算记入开线条目。
+3. **提前启动（early start）**——只要还有任何 sprint 在途（frontmatter `state` 非 `merged`）即适用——不限于本 sprint 所依赖的那些。
+   - 估算文件交集：本 sprint（epic Deliverables + 桩行备注）与每个在途 sprint（其 sprint 文档）预计都会触碰的文件数量。
+   - 该数量 ≈ 零 → 安全：在新文档 frontmatter 置 `early-start: true`，并把估算记入开线条目。
    - 实质重叠 → 作为 early start 不安全：等待，或把重叠部分路由到裁决 4。
 4. **候补依赖（deferred dependency）**——在当前基线上视同被依赖 sprint 已合入先行实现，并以交接条款绑定未来复核。
    - 按 `templates/handover-clause.md` 在本 sprint 文档的 Handover Clauses 节登记条款——签发方是条款正文的唯一真源；其他一切工件只存引用。
    - **条款 id HC#：扫全部 sprint 文档的 Handover Clauses 节取 max+1（空集扫描从 1 起）。**
    - 目标引用按迁移规则：目标 sprint 文档已存在 → 把 HC# 追加进其 frontmatter `clauses` 列表；目标是尚无文档的未来 sprint → 在条款本身记录 `target: <epic> breakdown S#`。
+   - 两个写入时机：条款正文写入现在创建的文档；目标侧 frontmatter 追加在目标文档已存在时立即发生——未来目标的引用在其自身实体化时迁移。
 
 ## 先读史（Read history first）
 
@@ -63,6 +64,8 @@ notes 是跨 sprint 的知识资产，不是流水账——写一行 plan 之前
 
 ## 实体化 sprint 文档（Materialize the sprint doc）
 
+动笔创建任何东西之前先预检——防重复实体化：扫 `sprints_dir`，找出 frontmatter `sprint` 等于本 id 的文档。文档存在而桩行仍是 `ready` → STOP 并点名碰撞——分叉风险（git 回滚丢了桩行翻转，或文档被带外实体化）；绝不覆盖，绝不创建第二份文档。镜像异常——桩行已是 `started` 却无文档匹配 → STOP 并揭开异常（文档丢了）；绝不静默重新实体化。
+
 1. 以 `templates/sprint.md` 创建 `<sprints_dir>/YYYY-MM-DD-<sprint>-plan.md`。文件日期是实体化日期（今天），不是桩行的规划日期。frontmatter `{sprint, epic, state: active, worktree, early-start, deferred-dependency, clauses, merged-commit: null}`：
    - `worktree`——承载本 sprint 的 worktree/分支（一个 sprint = 一个 worktree/分支）。
    - `early-start`——上文的裁决结果；未适用时为 `false`。
@@ -70,7 +73,7 @@ notes 是跨 sprint 的知识资产，不是流水账——写一行 plan 之前
    - `clauses`——以迁移进来的 HC# 引用作种子：扫全部 sprint 文档的 Handover Clauses 节，找出记录了匹配本桩行的 `target: <此 epic> breakdown S#` 的条款，把其 id 收进来——条款正文留在签发方，引用落到 sync 将要扫描的位置。没有条款瞄准本桩行则为空。
 2. 按模板填满五节正文——Decisions (D-x) / Stories & Tasks / Definition of Done / Acceptance Scenarios (S1–Sn) / Handover Clauses。**DoD 自 epic 文档的 Definition of Done 逐字复制——绝不在 sprint 文档内就地改写；DoD 变更回 epic 文档以修订方式进行，再自此重新复制。**
 3. 桩行状态翻转为 `started`，保留 sprint id 指针；向桩行备注追加日期 + 证据链接（新文档路径）。
-4. 按 §2.4 四节协议写开线条目 `<notes>/YYYY-MM-DD-<sprint>-open.md`：背景（为何开这条线、做了哪些裁决）/ 决策（含理由与被否决项）/ 教训（上文摘出的历史，带引用）/ 交接（在此登记的条款、所欠义务）。
+4. 按四节协议写开线条目 `<notes>/YYYY-MM-DD-<sprint>-open.md`：背景（为何开这条线、做了哪些裁决）/ 决策（含理由与被否决项）/ 教训（上文摘出的历史，带引用）/ 交接（在此登记的条款、所欠义务）。
 
 ## 调度执行（Dispatch execution）
 
