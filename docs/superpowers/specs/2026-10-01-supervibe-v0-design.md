@@ -133,8 +133,11 @@ planned → ready（候指令）→ active（允许并行，受 WIP 上限约束
 ## 4. 技能集（8 个）
 
 全部技能可被模型触发（`disable-model-invocation: false`），适用处加
-`argument-hint`。正文英文、祈使句、精炼；各自以相对路径引用模板并按
-§5 读宿主配置。
+`argument-hint`。正文双语双文件：`SKILL.md` 英文（**唯一被加载器注册
+与执行的版本，即真源**），同目录 `SKILL.zh.md` 中文（人类阅读参考，
+不被加载器注册——技能目录内非 SKILL.md 文件仅作随插件分发的辅助资产）。
+两版内容镜像；冲突时以英文版为准。正文祈使句、精炼；各自以相对路径
+引用模板并按 §5 读宿主配置。
 
 | # | 技能 | 契约（输入 → 输出与副作用） |
 |---|---|---|
@@ -190,7 +193,8 @@ planned → ready（候指令）→ active（允许并行，受 WIP 上限约束
   以 superpowers 开发，specs/plans 在 `docs/superpowers/` 下。
 - CI（两项检查，零 npm 依赖，Node ≥ 20，预装 `claude` CLI）：
   1. `claude plugin validate . --strict`
-  2. `tests/check-artifacts.mjs` — 逐模板：必备节标题在；再做**装配干跑**：
+  2. `tests/check-artifacts.mjs` — 逐模板：必备节标题在；每个
+     `SKILL.md` 有对应 `SKILL.zh.md`（双语成对断言）；再做**装配干跑**：
      把 `agents-sections.md` 拼进 fixture AGENTS.md、在临时目录展开模板
      占位注释，断言装配产物含全部必备标题且无必备占位符残留未展开。
      这验证的是 `supervibe:init` 将产出的工件——**不交付平行 scaffold
@@ -201,7 +205,8 @@ planned → ready（候指令）→ active（允许并行，受 WIP 上限约束
 ```
 .claude-plugin/plugin.json          # name supervibe, version 0.1.0, MIT
 .claude-plugin/marketplace.json     # 自兼 marketplace, source "./"
-skills/{init,roadmap,start,accept,merge,sync,debt,doc-sync}/SKILL.md
+skills/{init,roadmap,start,accept,merge,sync,debt,doc-sync}/SKILL.md      # 英文（真源）
+skills/{init,roadmap,start,accept,merge,sync,debt,doc-sync}/SKILL.zh.md   # 中文镜像
 templates/{roadmap,plan,acceptance-record,handover-clause,debt-entry,agents-sections}.md
 tests/check-artifacts.mjs
 roadmap.md                          # 自举
