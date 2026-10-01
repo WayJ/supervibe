@@ -135,14 +135,23 @@ frontmatter；**前置仅为 state: merged——closed 不卡交接条款**：�
 - **候补依赖（deferred dependency）** — 先在当前基线上实现，同时向被
   依赖 sprint 的未来合并登记**交接条款（handover clause）**（真实案例：
   「T4 视同 W2 已合入直接实施；W2 合入时复核顺序耦合」）。
-- **交接条款（handover clause）** — 跨 sprint 复核义务。**正文唯一真源 =
+- **交接条款（handover clause）** — 跨 sprint 复核义务。**本条为条款生命
+  周期的唯一规范真源（TD-1 收敛，2026-10-01）：merge/sync 技能只承载操作
+  指令并以锚点引用本条，修订只发生在本条。**正文唯一真源 =
   签发方 sprint 文档的 Handover Clauses 节**：`{id HC#、目标 sprint、
   触发器、义务、状态 open|discharged、证据}`；id 扫全部 sprint 文档的
-  Handover Clauses 节取 max+1。目标方只存引用：目标 sprint 文档已存在 →
-  其 frontmatter `clauses` 字段加 id；尚未存在（未来 sprint）→ 签发方
-  条款记录内写 `target: <epic> 分解节 S# 桩行`，start 实体化该桩行时
-  迁移引用。**只以记录在案的证据兑现**（discharge 写回签发方文档条款
-  记录），时机在目标 sprint 的 sync/merge。
+  Handover Clauses 节取 max+1（空扫描自 1 起）。目标方只存引用：目标
+  sprint 文档已存在 → 其 frontmatter `clauses` 字段加 id；尚未存在（未来
+  sprint）→ 签发方条款记录内写 `target: <epic> 分解节 S# 桩行`，start
+  实体化该桩行时迁移引用。**生效（binding）**：条款自签发方 sprint 合并
+  起（merge 阶段 6 发射）对其目标生效；签发方未合入的条款是信息不是义务。
+  **触发 = 抵达（arrival）**：签发方 `merged-commit` 已可从目标载体到达
+  （在途目标对其分支做祖先检查；已 merged 目标按 main 可达性判定）即触发
+  ——无论抵达多久以前；入站区间只作报告层（fresh/standing 之分），绝不作
+  检测门。**只以记录在案的证据兑现**（discharge 写回签发方文档条款记录：
+  目标方分支内 commit hash、merged 目标在 main 上的 hash、或验证
+  transcript；预期不是证据），时机在目标 sprint 的 sync；merge 发射但绝不
+  写条款状态。
 
 ### 2.3 Sprint 工件
 
@@ -174,7 +183,9 @@ frontmatter；**前置仅为 state: merged——closed 不卡交接条款**：�
 - 一个 sprint = 一 worktree/分支。WIP 上限来自项目配置（默认 3）。
 - 固定同步节拍：按节奏（而非仅事件驱动）把 `origin/main` merge 进在途
   sprint。
-- 冲突复核清单：生成物 → 重新生成后比对；手写文件 → 技能逐项列出复核单。
+- 冲突复核清单（**规范真源，TD-1 收敛**——merge/sync 以锚点引用本行，
+  修订只发生在本行）：生成物 → 重新生成后比对；手写文件 → 技能逐项列出
+  复核单。
 - 交接条款在目标 sprint 的 sync/merge 时触发。
 
 ### 2.6 门禁（gates）

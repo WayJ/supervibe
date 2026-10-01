@@ -55,13 +55,13 @@ On conflict, classify every conflicted path dual-path per spec §2.5:
 
 ## Handover clause check
 
-The read side of the clause mechanism — body text lives only in issuing docs, references everywhere else:
+The read side of the clause mechanism — body text lives only in issuing docs, references everywhere else. Lifecycle semantics are normative in spec §2.2; this section operationalizes them — on any wording conflict, the spec rules.
 
 - Read the target sprint doc's own frontmatter `clauses` field — it names the clauses owed **by** this sprint; no other doc's list is this target's business. Empty field → nothing owed; report the clean no-op.
 - Resolve each HC# through the reference chain, per id:
   1. Scan every sprint doc's `## Handover Clauses` section for the record carrying that id — the doc whose section holds it is the issuing doc.
   2. Read `{id HC#, target, trigger, obligation, status: open|discharged, evidence}` from that record and nowhere else — the clause body lives only there.
-  3. A reference resolving to no record → surface it as dangling; never guess, never mint a record to match. Id allocation (max+1; an empty scan starts at 1) belongs to `supervibe:start` — this skill only reads existing ids.
+  3. A reference resolving to no record → surface it as dangling; never guess, never mint a record to match. Ids are read-only here; allocation is `supervibe:start`'s (spec §2.2).
 - A record already `discharged` → the obligation is met; list it as discharged in the report and move on.
 - **Trigger = arrival, never this round's range**: a clause is triggered for the target when the issuing sprint's `merged-commit` is already reachable from the target's carrier — an in-flight target: ancestor check against its branch; a merged target in the discharge-only pass: reachability on main (both sprints already landed there; if the issuing merge happened after the target's, the clause arrives late — still triggered, still owed). Arrival counts however long ago it happened — an obligation owed for three syncs is still owed — and it never fires off the target's own work: the issuing commit can only arrive from main.
 - Every triggered open clause surfaces its obligation **verbatim** — the issuing doc's obligation text, unedited — even when discharge is not possible this round: the text reaches the user when the obligation is owed, not only when it can be closed.
@@ -76,7 +76,7 @@ The write side — the one mutation this skill owns:
 
 - Discharge requires both: the clause is triggered (arrival, above), **and** the obligation was verified on the target side with evidence in hand — a commit hash in the sprint branch or, for a merged target, on main, or a verification transcript (command + observed output). Expectation is not evidence; the bar is accept's.
 - Write location: the issuing doc lives on **main** — its sprint is merged, that is why the clause binds — so the discharge write happens on the main-line checkout as an independent follow-up commit, exactly where merge's stage 5 writes its ledger finals. It never rides the target's sprint branch and never leaves a dirty tree.
-- Verified → set `status: discharged` in the **issuing doc's clause record** — the single authority — and append date + evidence link to that same record. The issuing doc may belong to another epic or wave — cross-sprint by construction; the write goes there, wherever it lives. Never edit the target's reference list to fake closure: the reference outlives the obligation it pointed at, and closure is read from the issuing record, nowhere else.
+- Verified → set `status: discharged` in the **issuing doc's clause record** — the single authority — and append date + evidence link to that same record. The write goes to the issuing doc wherever it lives (cross-sprint by construction); the target's reference list is never edited to fake closure — normative in spec §2.2.
 - The discharge write touches `status`, date, and the evidence link only — never the trigger or obligation text: an obligation is closed as written or stays open.
 - Not yet verifiable → partial: leave the clause open and report why — what was checked, what evidence is missing. It discharges at a later sync; a verification produced at the target's merge time (merge fires them; verification is the target's to produce — and merge never writes clause status) is recorded by the next sync, on that evidence.
 - Report per sprint: integration result (merge commit / up-to-date / aborted / clause-pass only), the conflict checklist with its review list, and the clause table — open, discharged this round (with evidence links), already discharged, awaiting arrival, dangling.

@@ -74,8 +74,7 @@ Seven stages, strictly ordered. Each numbered stage is a hard stop: green → th
    - A landed merge whose ledger still reads `acceptance` is an incomplete close-out; a flipped state without its hash is incomplete the other way.
 
 6. **Handover clauses fired.**
-   - Every clause recorded in this sprint doc's Handover Clauses section is now **binding** on its target sprint: from this merge on, the target's sync/merge must verify the obligation when it integrates.
-   - Nothing moves — target references were placed at registration (the target doc's frontmatter `clauses` list where the doc existed; the in-clause `target: <epic> breakdown S#` row for a future sprint, migrated at that sprint's materialization).
+   - Every clause recorded in this sprint doc's Handover Clauses section is now **binding** on its target sprint. Clause lifecycle semantics — registration, reference placement, migration, trigger, discharge — are normative in spec §2.2; this stage only fires them and nothing moves here.
    - State the binding effect — fired HC#s with their targets — in the close-out summary and the closing note's handover section.
    - **Discharge belongs to `supervibe:sync`, never here**: this skill fires obligations; it never edits a clause's `status`.
 

@@ -74,8 +74,7 @@ sprint 收口——一个 sprint 的最后一幕：跑门禁、核实验收裁�
    - 合并已落地而台账仍读 `acceptance` 是不完整的收口；翻了状态却没 hash 则是另一个方向的不完整。
 
 6. **交接条款发射（fired）。**
-   - 本 sprint 文档 Handover Clauses 节记录的每条条款自此对其目标 sprint **生效（binding）**：自本次合并起，目标方的 sync/merge 在集成时必须核实该义务。
-   - 没有任何东西要搬——目标引用在登记时就已就位（目标文档已存在 → 其 frontmatter `clauses` 列表；未来 sprint → 条款内的 `target: <epic> breakdown S#` 行，在该 sprint 实体化时迁移）。
+   - 本 sprint 文档 Handover Clauses 节记录的每条条款自此对其目标 sprint **生效（binding）**。条款生命周期语义——登记、引用就位、迁移、触发、兑现——规范真源在 spec §2.2；本阶段只发射，没有任何东西要搬。
    - 在收口总结与收口条目的 handover 节言明生效效果——已发射的 HC# 及其目标。
    - **兑现（discharge）归 `supervibe:sync`，绝不在此**：本技能发射义务；绝不改写条款的 `status`。
 
