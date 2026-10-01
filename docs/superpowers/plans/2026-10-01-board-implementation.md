@@ -293,7 +293,7 @@ eq(e.adr[0].decision, 'five skills', 'adr row');
 - [ ] **Step 2: Run, verify fail**
 
 Run: `node tests/board-parser.test.mjs`
-Expected: `FAIL` — `P.parseEpic is not a function`.
+Expected: crash with `P.parseEpic is not a function` (uncaught TypeError — the graceful FAIL summary only comes from assertion failures, a crash is the correct red signal here).
 
 - [ ] **Step 3: Implement**
 
@@ -461,7 +461,7 @@ Note the parse order inside `parseClauses` below: bullets are checked **first** 
 - [ ] **Step 2: Run, verify fail**
 
 Run: `node tests/board-parser.test.mjs`
-Expected: `FAIL` — `P.parseSprint is not a function`.
+Expected: crash with `P.parseSprint is not a function` (uncaught TypeError).
 
 - [ ] **Step 3: Implement**
 
@@ -644,7 +644,7 @@ ok(agg2.warnings.some((w) => w.kind === 'stub-no-doc' && /S12/.test(w.msg)), 'st
 - [ ] **Step 2: Run, verify fail**
 
 Run: `node tests/board-parser.test.mjs`
-Expected: `FAIL` — `P.aggregate is not a function`.
+Expected: crash with `P.aggregate is not a function` (uncaught TypeError).
 
 - [ ] **Step 3: Implement**
 
@@ -1002,7 +1002,7 @@ git -c user.name="jw083" -c user.email="jw083@local" commit -m "feat(board): htm
 ### Task 6: board.html — render (rail, columns, drawer, warnings)
 
 **Files:**
-- Modify: `web/board.html` (replace the stub `render()` and empty `<script>` tail)
+- Modify: `web/board.html` (replace the stub `render()` function only — leave the `<script src="parser.js">` tag untouched)
 
 - [ ] **Step 1: Implement render inside the inline script**
 
@@ -1285,7 +1285,7 @@ git -c user.name="jw083" -c user.email="jw083@local" commit -m "feat(board): ski
 Run: `start "" "web/board.html"` (from worktree root), pick `D:\lc_projects\blue_dsh\dsh-enterprise\docs\superpowers`. Verify:
 
 - E1 appears in rail with DoD 4/6, open questions count
-- Six state columns; S1–S7 in merged (docs), S8/S9 in merged **with ⚠ smell**, S10/S11 in planned
+- Six state columns; S1–S4, S6, S7 in merged (docs), S5 in active, S8/S9 in merged **with ⚠ smell**, S10/S11 in planned
 - S5 card: active, worktree text, HC ref badge; S6 drawer: HC1 clause table (field/value shape parsed), plan links list (2 plans: w1, w2)
 - Warning bar lists the two stub-no-doc smells; no crash on `（已拆除）` worktree values
 
