@@ -30,6 +30,64 @@ eq(headerless.headers, null, 'headerless table');
 const cl = P.parseChecklist('- [x] done thing\n- [ ] open thing\nplain line');
 eq(cl, [{ done: true, text: 'done thing' }, { done: false, text: 'open thing' }], 'checklist');
 
+// ---- Task 2: epic doc ----
+const epicText = [
+  '---',
+  'epic: E1',
+  'status: open',
+  'date: 2026-09-24',
+  '---',
+  '',
+  '# E1 · Xiaolan platform v1',
+  '',
+  '## Sprint Breakdown',
+  '',
+  '| sprint | state | note |',
+  '|---|---|---|',
+  '| S1 | merged | r0 poc |',
+  '| S9 | planned | later |',
+  '',
+  '## Decisions (ADR)',
+  '',
+  '| id | decision | rationale | date | evidence |',
+  '|---|---|---|---|---|',
+  '| D1 | five skills | small | 2026-10-01 | spec §4 |',
+  '',
+  '## Definition of Done',
+  '',
+  '- [x] first',
+  '- [ ] second',
+  '',
+  '## Open Questions',
+  '',
+  '| id | question | status | resolution |',
+  '|---|---|---|---|',
+  '| Q1 | where? | closed | commit |',
+  '',
+  '## Asset Disposition',
+  '',
+  '| asset | disposition | note |',
+  '|---|---|---|',
+  '| superpowers | reuse | execution layer |',
+  '',
+  '## Cross-cutting',
+  '',
+  '| concern | note |',
+  '|---|---|',
+  '| brand | later |'
+].join('\n');
+const e = P.parseEpic('2026-09-24-e1.md', epicText);
+eq(e.id, 'E1', 'epic id');
+eq(e.status, 'open', 'epic status');
+eq(e.title, 'E1 · Xiaolan platform v1', 'epic title from H1');
+eq(e.stubs.length, 2, 'stub count');
+eq(e.stubs[0], { sprint: 'S1', state: 'merged', note: 'r0 poc' }, 'stub row shape');
+eq(e.dod.filter((d) => d.done).length, 1, 'dod checked count');
+eq(e.questions[0].id, 'Q1', 'question row');
+eq(e.assets[0].asset, 'superpowers', 'asset row');
+eq(e.crosscut.length, 1, 'crosscut row');
+eq(e.adr[0].decision, 'five skills', 'adr row');
+
 console.log(failures.length ? `FAIL (${failures.length}/${checks})` : `PASS (${checks})`);
 failures.forEach((f) => console.error('  - ' + f));
 process.exit(failures.length ? 1 : 0);

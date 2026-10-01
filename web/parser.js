@@ -92,13 +92,46 @@ var BoardParser = (function () {
     return out;
   }
 
+  function parseEpic(name, text) {
+    var fm = parseFrontmatter(text);
+    var sec = splitSections(fm.body);
+    var S = sec.sections;
+    var epic = {
+      file: name,
+      id: fm.data ? fm.data.epic : null,
+      status: fm.data ? fm.data.status : null,
+      date: fm.data ? fm.data.date : null,
+      title: sec.title,
+      frontmatterError: fm.error,
+      dod: parseChecklist(S['Definition of Done'] || ''),
+      stubs: [], adr: [], questions: [], assets: [], crosscut: []
+    };
+    parseTable(S['Sprint Breakdown'] || '').rows.forEach(function (r) {
+      epic.stubs.push({ sprint: r[0], state: r[1], note: r.slice(2).join(' ').trim() });
+    });
+    parseTable(S['Decisions (ADR)'] || '').rows.forEach(function (r) {
+      epic.adr.push({ id: r[0], decision: r[1], rationale: r[2], date: r[3], evidence: r[4] });
+    });
+    parseTable(S['Open Questions'] || '').rows.forEach(function (r) {
+      epic.questions.push({ id: r[0], question: r[1], status: r[2], resolution: r.slice(3).join(' ').trim() });
+    });
+    parseTable(S['Asset Disposition'] || '').rows.forEach(function (r) {
+      epic.assets.push({ asset: r[0], disposition: r[1], note: r.slice(2).join(' ').trim() });
+    });
+    parseTable(S['Cross-cutting'] || '').rows.forEach(function (r) {
+      epic.crosscut.push(r.join(' — '));
+    });
+    return epic;
+  }
+
   return {
     parseFrontmatter: parseFrontmatter,
     splitSections: splitSections,
     parseTable: parseTable,
     parseChecklist: parseChecklist,
     parseBullets: parseBullets,
-    extractPlanLinks: extractPlanLinks
+    extractPlanLinks: extractPlanLinks,
+    parseEpic: parseEpic
   };
 })();
 
