@@ -4,8 +4,8 @@ epic: E1                   <!-- placeholder: owning epic id -->
 state: active              <!-- placeholder: active|acceptance|merged|closed -->
 worktree:                  <!-- placeholder: branch/worktree path -->
 early-start: false         <!-- placeholder: true|false -->
-deferred-dependency: []    <!-- placeholder: list of sprint ids -->
-clauses: []                <!-- placeholder: list of HC# references -->
+deferred-dependency: []    <!-- placeholder: list of sprint ids, e.g. [S3, S4] -->
+clauses: []                <!-- placeholder: list of HC# references, e.g. [HC2, HC5] -->
 merged-commit: null        <!-- placeholder: branch-tip hash recorded at merge -->
 ---
 

@@ -5,7 +5,7 @@
 acceptance-run date. Records are append-only: a same-day re-run never
 overwrites an earlier record, it takes a distinguishing suffix (-2, -3, …);
 the sprint doc's frontmatter evidence link points at the passing record.
-Fill every placeholder fill-in, replace the example-marked rows with real
+Fill every placeholder fill-in, replace the example-marked rows/lines with real
 content, keep the five section headings verbatim, then delete template
 notes. -->
 
@@ -16,7 +16,7 @@ every scenario passed with fresh evidence or a labeled substitution; every
 DoD item checked with evidence; no unpaid doc-sync drift on triggered rows.
 Anything less is blocked, naming the blocking items. -->
 
-pass — all scenarios green on fresh runs; no drift on triggered rows <!-- example -->
+pass — all scenarios green on fresh runs; no unpaid drift on triggered rows <!-- example -->
 
 ## Scenario Results
 
@@ -51,7 +51,7 @@ one also becomes a notes entry citing this record back. -->
 ## Doc-Drift Audit
 
 <!-- Per doc_sync_map row: the paths this sprint changed that match the row's
-pattern, the mapped doc's state (current or drifted), drift detail. An absent
+pattern, the mapped doc's state (current or drifted, as found this run), drift detail. An absent
 or empty map is a clean audit — record that no rows were configured; never
 invent rows. Drift on a triggered row is arrears: fix and re-audit, or the
 verdict carries it. -->

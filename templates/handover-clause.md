@@ -15,7 +15,7 @@ recorded back HERE in the issuing doc's clause record; never at merge. -->
 Field block per clause:
 
 - id HC#: <!-- placeholder: clause id, max+1 across every sprint doc's Handover Clauses sections -->
-- issuer sprint: <!-- placeholder: sprint id whose doc holds the clause text -->
+- issuer sprint: <!-- placeholder: sprint id whose doc holds the clause text; omitted as a column when the record lands in the issuing doc's table — the doc itself is the issuer -->
 - target sprint: <!-- placeholder: target sprint id, or "<epic> breakdown S#" while no target doc exists -->
 - trigger: <!-- placeholder: incoming change that fires re-verification, as a path or feature hit -->
 - obligation: <!-- placeholder: the review owed, stated verbatim -->
