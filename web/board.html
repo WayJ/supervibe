@@ -113,10 +113,9 @@ function esc(s) {
 }
 
 // ---- directory access ----
-// Primary: showDirectoryPicker (Chromium) — its native dialog's confirm
-// button reads 选择文件夹, not 上传. Any non-cancel rejection (e.g. blocked
-// on file:// in some builds) falls back to the webkitdirectory input —
-// never silently dead.
+// Picker = webkitdirectory input (user preference 2026-10-01: the native
+// dialog's 上传 confirm button is accepted over showDirectoryPicker's).
+// showDirectoryPicker stays only behind the 记住此文件夹 button.
 function fatal(msg) {
   console.error('supervibe board: ' + msg);
   var bar = document.getElementById('warnbar');
@@ -124,17 +123,6 @@ function fatal(msg) {
   bar.innerHTML = '<div style="color:var(--error)">加载失败：' + esc(msg) + '</div>';
 }
 function pickFolder() {
-  if (window.showDirectoryPicker) {
-    window.showDirectoryPicker().then(function (h) {
-      state.folderName = h.name;
-      return readHandle(h).then(load, function (e) { fatal('读取文件夹失败 — ' + (e && e.message ? e.message : e)); });
-    }).catch(function (e) {
-      if (e && e.name === 'AbortError') return; // user cancelled — stay put
-      console.error('supervibe board: showDirectoryPicker rejected, falling back to input —', e);
-      document.getElementById('dirInput').click();
-    });
-    return;
-  }
   document.getElementById('dirInput').click();
 }
 document.getElementById('pick').onclick =
