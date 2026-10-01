@@ -20,7 +20,7 @@
 - EN skill bodies: imperative, terse, ≤ ~160 lines each. ZH mirror: faithful translation, technical terms stay English.
 - **SDO 铁律 (from superpowers 6.x writing-skills, spec §3): `description` = trigger conditions ONLY ("Use when..." style, Scrum trigger words first), NEVER a workflow summary. Keep frontmatter ≤ 1,024 chars; description aim < 300.**
 - Config keys (host AGENTS.md `## supervibe` section, spec §5): `roadmaps_dir` / `sprints_dir` / `acceptances_dir` / `notes` / `debt_tracker` / `wip_limit` + `### gates` + `### doc_sync_map`. Skills never hardcode paths; defaults mirror spec §5.
-- No file outside spec §8 manifest gets created (YAGNI). Exceptions already landed by orchestrator: `AGENTS.md` (self-host config, spec §8), `.gitignore`.
+- No file outside spec §8 manifest gets created (YAGNI). Exception already landed by orchestrator: `.gitignore`. (`AGENTS.md` is created by Task 9, not yet present.)
 
 ---
 
@@ -92,7 +92,7 @@ Body sections:
 1. `# supervibe:start — open a sprint`
 2. `## Read host config` — same gate pattern as the rewritten roadmap skill (copy from it: section-existence + path-resolution existence + stop-don't-create).
 3. `## Locate the stub` — inputs are epic id + sprint id; find the epic doc in `roadmaps/`; find the `ready` stub row in its Sprint-breakdown section (stub id mandatory — one epic may hold several ready stubs = parallel waves). Unknown ids → reject naming them; stub not in ready state → reject.
-4. `## Readiness adjudication` — dependency check; count active sprints (scan `sprints/` frontmatter `state`) vs `wip_limit` (at limit → stop, name them); early-start ruling (estimate file intersection with active sprints — safe if ≈ zero; set `early-start: true` in the new doc's frontmatter); deferred-dependency ruling (register a handover clause per `templates/handover-clause.md` in THIS sprint doc's Handover Clauses section — issuing side is the single source of truth; target reference per migration rule: target doc exists → add HC# to its frontmatter `clauses`; future sprint → record `target: <epic> breakdown S#` in the clause itself).
+4. `## Readiness adjudication` — dependency check; count active sprints (scan `sprints/` frontmatter `state`) vs `wip_limit` (at limit → stop, name them); early-start ruling (estimate file intersection with active sprints — safe if ≈ zero; set `early-start: true` in the new doc's frontmatter); deferred-dependency ruling (register a handover clause per `templates/handover-clause.md` in THIS sprint doc's Handover Clauses section — issuing side is the single source of truth; **clause id HC#: scan all sprint docs' Handover Clauses sections for max+1**; target reference per migration rule: target doc exists → add HC# to its frontmatter `clauses`; future sprint → record `target: <epic> breakdown S#` in the clause itself).
 5. `## Read history first` — search the notes dir for prior entries matching this epic's domain + stack; extract relevant lessons into the plan's Decisions (D-x) context; cite source entries.
 6. `## Materialize the sprint doc` — create `sprints/YYYY-MM-DD-<sprint>-plan.md` from `templates/sprint.md`: frontmatter `{sprint id, epic ref, state: active, worktree/branch, early-start, deferred-dependency refs, clauses: [], merged commit hash: null}`; five body sections with **DoD copied verbatim from the epic doc — never edited in place; changes go back to the epic doc**; stub row state →`started` (id pointer kept). Write the opening note `<notes>/YYYY-MM-DD-<sprint>-open.md` (four-section structure per spec §2.4).
 7. `## Dispatch execution` — if superpowers skills available: invoke `superpowers:brainstorming` then `superpowers:writing-plans`, directing both to fill the materialized doc path; five-section structure + verbatim DoD are immutable. Otherwise print manual instructions.
@@ -183,6 +183,8 @@ Steps: EN → ZH → validate → commit `feat: sync skill (cadence, conflict ch
 
 ### Task 7: Six artifact templates (revised model)
 
+Common rules: plain markdown; fill-in points use the EXACT placeholder syntax `<!-- placeholder: ... -->` (Task 8's dry-run regex asserts on this precise prefix — generic `<!-- -->` comments would make the no-residue check vacuously pass); one worked example row per table; no templating engine.
+
 **Files:**
 - Create: `templates/epic.md`
 - Create: `templates/sprint.md`
@@ -249,7 +251,7 @@ Exit 0 + `check-artifacts: OK (n checks)`; non-zero + `check-artifacts: FAIL <re
 - Create: `docs/superpowers/roadmaps/2026-10-01-v0.md`
 - Create: `AGENTS.md` (repo root)
 
-- [ ] **Step 1:** Epic doc from `templates/epic.md`: `epic: E1`, title "plugin v0.1.0 published"; DoD (5 skills validate clean / templates complete via check-artifacts / bilingual pairs / README bilingual / marketplace installs via `--plugin-dir`); **Sprint Breakdown row: `S1, started, v0 implementation sprint (this branch)`** — demonstrating the stub lifecycle; ADR `D1` skills-only + artifact-contract coupling + five-skill set (cite spec); ADR `D2` dated-directory artifact model + decentralized ledger (cite spec revision f3133be); Open Questions: acceptance-verifier subagent (v0.2, YAGNI), CI workflow file deferred until hosting CI chosen (local gates stand in).
+- [ ] **Step 1:** Epic doc from `templates/epic.md`: `epic: E1`, title "plugin v0.1.0 published"; DoD (5 skills validate clean / templates complete via check-artifacts / bilingual pairs / README bilingual / marketplace installs via `--plugin-dir`); **Sprint Breakdown row: `S1, started, v0 implementation sprint (this branch)`** — demonstrating the stub lifecycle; ADR `D1` skills-only + artifact-contract coupling + five-skill set (cite spec); ADR `D2` dated-directory artifact model + decentralized ledger (cite spec revision f3133be); Open Questions: three entries — hosting (status closed, resolved by bfab215 → github.com/WayJ/supervibe), acceptance-verifier subagent (v0.2, YAGNI, open), CI workflow file deferred until hosting CI chosen (open; local gates stand in).
 - [ ] **Step 2:** `AGENTS.md` — the §5 supervibe section with this repo's real values (roadmaps/sprints/acceptances dirs under `docs/superpowers/`, notes `.agents/notes/`, debt tracker path, wip_limit 1, gates: `claude plugin validate . --strict` + `node tests/check-artifacts.mjs`).
 - [ ] **Step 3:** `node tests/check-artifacts.mjs` still OK; commit `docs: self-hosting epic E1 (S1 started stub demo) + AGENTS.md supervibe config`
 
@@ -268,6 +270,7 @@ Exit 0 + `check-artifacts: OK (n checks)`; non-zero + `check-artifacts: FAIL <re
 - [ ] **Step 3b:** Local-install smoke (closes the E1 DoD item): one-shot `claude --plugin-dir . -p "list your available supervibe skills, one line each"` — session starts and recognizes the skills; record the form used in the commit message.
 - [ ] **Step 4:** CHANGELOG 0.1.0 dated; commit `docs: bilingual README (terminology, artifact tree, install, config, degradation); 0.1.0`.
 - [ ] **Step 5:** Sprint state →merged with the Task-10 commit hash recorded in the E1 breakdown stub note (no S1 doc exists — v0 ran on the plan, dogfood ledger note suffices; per spec §2.2 S1 materialization is the post-v0 norm); tag `v0.1.0` optional at publish.
+- [ ] **Step 6: Publish close-out (explicit)** — via superpowers:finishing-a-development-branch: merge `feat/v0-scaffold` to main, push main; then verify public install: `/plugin marketplace add WayJ/supervibe` succeeds and lists supervibe (record the marketplace name used). This closes the exit criterion "public marketplace install verified".
 
 ---
 
