@@ -121,14 +121,14 @@ Body sections (in order):
 8. `## debt` — add entry (severity/owner/repayment criteria via `templates/debt-entry.md`), repay (close with evidence commit hash), route observation items to an owning epic.
 9. `## ready / close` — ledger transitions: planned→ready (go decision); →closed only when the sprint's handover clauses are discharged or none were registered (spec §2.2). Every mutation: append date + evidence link.
 
-- [ ] **Step 1: Write `skills/roadmap/SKILL.md`** (EN source of truth, per above)
-- [ ] **Step 2: Write `skills/roadmap/SKILL.zh.md`** (faithful ZH mirror, same frontmatter, same section order)
-- [ ] **Step 3: Validate**
+- [x] **Step 1: Write `skills/roadmap/SKILL.md`** (EN source of truth, per above)
+- [x] **Step 2: Write `skills/roadmap/SKILL.zh.md`** (faithful ZH mirror, same frontmatter, same section order)
+- [x] **Step 3: Validate**
 
 Run: `claude plugin validate . --strict`
 Expected: pass, no errors. If `--strict` flags missing components beyond warnings, read the message; skills present since this task so errors here are real defects — fix before commit.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add skills/roadmap
