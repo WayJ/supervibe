@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Accept Windows path forms in worker-placement canonicality: `realpathSync`
+  returns native separators and on-disk casing on Windows, so a forward-slash
+  absolute worktree path never equaled its own realpath and every
+  `worker-lifecycle reserve` failed placement. Compare through separator- and
+  case-normalized equality on win32 (strict identity elsewhere).
+
 - Sprint doc frontmatter `worktree` is now a machine-neutral identity: write the
   sprint branch name; the absolute local carrier path lives only in the shared
   ledger. Relative locations (`../dir`, `./dir`, `~/dir`) fail closed in

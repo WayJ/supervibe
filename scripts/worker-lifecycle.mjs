@@ -12,6 +12,10 @@ const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], {encod
 const text = (v, label) => { if (typeof v !== 'string' || !v.trim()) fail(`${label} required`); return v; };
 const canonical = v => Array.isArray(v) ? v.map(canonical) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k => [k,canonical(v[k])])) : v;
 const equal = (a,b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+// realpathSync returns native separators (backslashes on Windows) and on-disk casing,
+// so a forward-slash or differently-cased absolute input never equals its own realpath
+// there. Compare through the same normalization instead of raw string identity.
+const selfResolved = (p) => { const r = realpathSync(p); if (process.platform === 'win32') return r.toLowerCase().replaceAll('\\', '/') === p.toLowerCase().replaceAll('\\', '/'); return r === p; };
 export const activeWorkers = (state, epic) => Object.values(state.workerExecutions?.entries ?? {}).filter(e => (!epic || e.epic === epic) && ['pending','running','unknown'].includes(e.state));
 export function workerEntry(state, task) {
   const e = state.workerExecutions?.entries?.[task.workerExecutionId];
@@ -19,7 +23,7 @@ export function workerEntry(state, task) {
   return e;
 }
 function placement(root, path, branch) {
-  if (!isAbsolute(path) || realpathSync(path) !== path || commonDir(path) !== commonDir(root)) fail('Worker placement must be canonical within same local Git common-dir');
+  if (!isAbsolute(path) || !selfResolved(path) || commonDir(path) !== commonDir(root)) fail('Worker placement must be canonical within same local Git common-dir');
   if (git(path,'symbolic-ref','--quiet','--short','HEAD') !== branch) fail('Worker placement branch differs from registration');
 }
 function quiescent(q, execution) {
