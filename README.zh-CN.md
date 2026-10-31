@@ -166,7 +166,14 @@ Skill 调用命令并处理结果，不再重复手工执行这些固定步骤�
 claude --plugin-dir /path/to/supervibe
 ```
 
-## 六个技能
+## 手动项目 Doctor
+
+用户消息以 `/supervibe:doctor` 开头，才能检查当前项目对 SuperVibe 的适配情况。
+禁止 agent 自动调用；正文提及或引用命令也不算授权。报告结构性阻塞、警告与需手动
+确认的项目，不修复、不执行 gates、不写盘。新项目缺少配置是正常情况；真实 harness/
+Orca、浏览器及 SSH 环境仍需另外核实，结构检查绝不代表验收通过。
+
+## 七个技能
 
 | 技能 | 一句话 |
 |---|---|
@@ -176,6 +183,7 @@ claude --plugin-dir /path/to/supervibe
 | `supervibe:complete` | 七阶段收口：门禁 → 裁决 → 合并 → 台账 → 拆除 → 发射条款 → 收口笔记 |
 | `supervibe:sync` | 事件驱动地把 `origin/main` merge 进在途 sprint；核查并兑现交接条款；报告持久落 notes |
 | `supervibe:board` | 生成 epic、sprint 与交接条款的本地只读快照看板 |
+| `supervibe:doctor` | 仅用户消息开头输入 `/supervibe:doctor` 手动触发；只读适配检查，禁止自动调用 |
 
 每个技能双语交付：`SKILL.md`（英文真源）+ `SKILL.zh.md`（忠实中文镜像）。
 

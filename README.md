@@ -186,7 +186,16 @@ Local development:
 claude --plugin-dir /path/to/supervibe
 ```
 
-## The six skills
+## Manual project doctor
+
+Start a user message with `/supervibe:doctor` to inspect the current project's
+SuperVibe compatibility. The agent must not invoke it automatically, including
+when a message merely mentions or quotes the command. It reports structural
+blockers, warnings and manual checks without repairs, gate execution or writes.
+Missing setup is expected for a new project; live harness/Orca, browser and SSH
+readiness remain unknown until separately checked. It never grants acceptance.
+
+## The seven skills
 
 | skill | one line |
 |---|---|
@@ -196,6 +205,7 @@ claude --plugin-dir /path/to/supervibe
 | `supervibe:complete` | seven-stage close-out: gates → verdict → merge → ledger → teardown → fire clauses → note |
 | `supervibe:sync` | event-driven merge of `origin/main` into in-flight sprints; check and discharge handover clauses; durable report note |
 | `supervibe:board` | generate a local read-only snapshot of epics, sprints, and handover clauses |
+| `supervibe:doctor` | user-only `/supervibe:doctor` at the start of a message; read-only compatibility findings, never automatic |
 
 Every skill ships bilingual: `SKILL.md` (English truth source) + `SKILL.zh.md`
 (faithful Chinese mirror).

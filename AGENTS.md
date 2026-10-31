@@ -28,6 +28,7 @@ for the code, supervibe artifacts for the iteration.
 - preflight: node --test tests/host-config.test.mjs tests/artifact-inventory.test.mjs tests/doc-sync.test.mjs
 - clause-ids: node --test tests/clause-ids.test.mjs
 - site: node --test tests/site.test.mjs
+- doctor-fixtures: node --test tests/project-doctor.test.mjs
 - board: node --test tests/board-parser.test.mjs
 
 ### doc_sync_map

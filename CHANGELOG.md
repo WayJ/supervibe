@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add user-only `/supervibe:doctor` with a deterministic read-only compatibility
+  report. Never auto-invoke, repair, run gates or claim live harness/browser
+  readiness; preserve explicit unknowns and redact raw configuration/state.
+
 - Move mechanical host configuration, artifact inventory and per-commit document
   obligations into shared scripts with fail-closed JSON reports. Reserve handover
   clause IDs atomically in the local ledger after explicit legacy bootstrap.

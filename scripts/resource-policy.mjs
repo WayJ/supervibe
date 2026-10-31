@@ -81,6 +81,11 @@ function maps(state) {
   for (const c of held(claims)) for (const target of groups[c.group].targets) { if (targets.has(target)) fail('Corrupt conflicting physical resource claims'); targets.add(target); }
   return { hosts, groups, claims };
 }
+// Read-only structural inventory; no probing, claims, credentials or remote access.
+export function inspectResourceMetadata(state) {
+  const { hosts, groups, claims } = maps(state);
+  return { hosts: Object.keys(hosts).length, groups: Object.keys(groups).length, held: held(claims).length };
+}
 function currentConfig(state, p) {
   if (p.scope === 'sprint') {
     const sprint = state.sprints[p.sprint];
