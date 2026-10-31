@@ -36,18 +36,20 @@ Omit selectors to inventory all artifacts. Nonzero means resolve the reported am
 missing artifact, stub mismatch, ledger/projection or carrier issue explicitly before proceeding.
 Missing runtime needs explicit init/import, not reconstruction from branch Markdown.
 Carrier-loss recovery still follows complete's evidenced-landing protocol; inventory is
-not permission to recreate a carrier or merge. HC duplicate detection is diagnostic only:
-HC allocation is **not yet atomic across worktrees**; serialize clause creation through the
-current coordinator until a migrated shared allocator exists.
-使用唯一解析结果，报错不自动修复；HC 重号检测不是并发安全分配器。
+not permission to recreate a carrier or merge. HC duplicate detection is diagnostic only;
+allocate new identifiers with `clause-ids.mjs reserve` after the explicit quiescent
+bootstrap described in [clause ID migration](clause-id-allocation.md). The inventory
+does not allocate identifiers or replace the shared allocator's lock/CAS.
+使用唯一解析结果，报错不自动修复；HC 重号检测不分配编号，新增编号必须走共享原子分配器。
 
 ## Doc-sync
 
 `node "<plugin base dir>/scripts/doc-sync.mjs" --base "<stored-mainRef>" --tip HEAD --epic-document "<epic-doc>" --task-path "<explicit-task-path>"`
 
 Repeat `--task-path` for paths explicitly listed in Stories & Tasks; omit when none.
-The script never infers paths from task prose. It enumerates merge-base..tip diff paths plus
-these paths and checks source/document co-occurrence in commits. Each source-touching
+The script never infers paths from task prose. It enumerates the net merge-base..tip diff,
+the union of paths touched by every commit in that range, and the explicit task paths.
+It then checks source/document co-occurrence in commits. Each source-touching
 commit must carry its owed document; a later doc-only commit does not repay earlier arrears.
 Nonzero blocks completion. At accept also inspect document **meaning**, reporting current/drifted
 and evidence; a green precheck says nothing about correctness. Run both checkpoints in the same

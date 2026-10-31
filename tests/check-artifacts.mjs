@@ -193,6 +193,7 @@ function main() {
     for (const skill of ['roadmap', 'start', 'accept', 'complete', 'sync']) for (const file of ['SKILL.md', 'SKILL.zh.md']) ok((readIf(join(SKILLS, skill, file)) ?? '').includes('host-config.mjs'), `${skill}/${file}: shared host parser`);
     for (const file of ['SKILL.md', 'SKILL.zh.md']) ok((readIf(join(SKILLS, 'start', file)) ?? '').includes('clause-ids.mjs'), `start/${file}: atomic clause ID allocator`);
     ok((readIf(join(TPL, 'handover-clause.md')) ?? '').includes('clause-ids.mjs'), 'clause template uses reserved IDs');
+    ok((readIf(join(TPL, 'sprint.md')) ?? '').includes('clause-ids.mjs'), 'sprint template uses reserved clause IDs');
     checkBoard();
     ok(existsSync('scripts/validate-workflow.mjs'), 'workflow validator exists');
     ok(existsSync('scripts/shared-ledger.mjs'), 'shared ledger CLI exists');

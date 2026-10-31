@@ -1,5 +1,9 @@
 # SuperVibe v0.1.0 Implementation Plan
 
+> Historical implementation plan, retained for provenance. Current runtime,
+> allocation and acceptance procedures are defined by the current Skills and
+> scripts; do not reuse this plan's superseded branch-local/max+1 procedures.
+
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ship supervibe v0.1.0 — a Claude Code plugin (iteration-management layer pairing with superpowers) with 5 bilingual skills, 6 artifact templates, 1 validation test script, self-marketplace manifest, and bilingual README.

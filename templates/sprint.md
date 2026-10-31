@@ -82,8 +82,9 @@ HERE, in the issuing doc; every other artifact holds references only):
 
 id HC# | target | trigger | obligation | status open|discharged | evidence
 
-id: HC# by max+1 across every sprint doc's Handover Clauses sections; an
-empty scan starts at 1; ids are never reused. target: target sprint id, or
+id: HC# returned by scripts/clause-ids.mjs reserve after the issuer is reserved/active;
+explicit legacy bootstrap is required once, and abandoned IDs are never recycled.
+target: target sprint id, or
 "<epic> breakdown S#" while the target has no doc yet. trigger: the incoming
 change that fires re-verification (path or feature hit). obligation: the
 review owed, verbatim. status: open at registration; set to discharged only
