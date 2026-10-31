@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Separate Sprint WIP, worker execution slots and physical worktree cleanup. Add
+  explicit-migration, fenced CAS worker lifecycle commands; register development
+  child worktrees under their parent Sprint without another WIP reservation.
+  Outcome plus quiescence settles successful/failed/blocked executions; safe child
+  cleanup preserves branches and retains dirty content without holding worker quota.
+  Unknown executions still count; no TTL, forced removal or installed backend hooks.
+  Independent Roadmap acceptance shares the epic cap on borrowed canonical main
+  without a Sprint reservation; this is not a backend scheduler.
+
 - Add user-only `/supervibe:doctor` with a deterministic read-only compatibility
   report. Never auto-invoke, repair, run gates or claim live harness/browser
   readiness; preserve explicit unknowns and redact raw configuration/state.

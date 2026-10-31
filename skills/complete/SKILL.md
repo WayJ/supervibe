@@ -111,3 +111,7 @@ A close-out that stops partway resumes by re-running, and the run routes on what
 - Never renumber ids — sprint ids and HC#s stay unique forever.
 - Never tear down the worktree or branch before the merge has landed and the ledger is finalized.
 - Never skip or reorder stages — the sequence itself is the gate.
+
+## Worker release is independent of carrier teardown
+
+Before landing, reconcile and settle all Sprint worker executions (including failed/blocked) with exact outcome and quiescence using [worker lifecycle](../../docs/worker-lifecycle.md). Do not let a retained dirty child worktree hold an execution slot. The coordinator handles completion/error events and runs authorized managed child cleanup, preserving branches; no new user request is needed for already-authorized safe cleanup. This script does not remove the canonical Sprint carrier. Stage 5 remains host-tooling cleanup after stage 4: require stopped writers, clean content and preserved/integrated results, never force removal. Record blocked cleanup for repair; shared `merged` already releases Sprint WIP. Resource groups require their own release proofs.

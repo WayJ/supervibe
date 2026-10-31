@@ -29,6 +29,7 @@ for the code, supervibe artifacts for the iteration.
 - clause-ids: node --test tests/clause-ids.test.mjs
 - site: node --test tests/site.test.mjs
 - doctor-fixtures: node --test tests/project-doctor.test.mjs
+- worker-lifecycle: node --test tests/worker-lifecycle.test.mjs
 - board: node --test tests/board-parser.test.mjs
 
 ### doc_sync_map

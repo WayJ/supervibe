@@ -200,3 +200,44 @@ test('independent acceptance claim must match actual executor for native and ext
     assert.equal(verifyAcceptanceResources(f.root, expected, plan, receipt + execution('worker-1')).policyChecked, true);
   }
 });
+
+test('registry quota ignores settled retained claims, but checks active execution ownership and cap', t => {
+  const f = fixture(t);
+  f.mutate('acquire', f.acquire()); // Legacy environment retained after migration/settlement.
+  const seed = entries => {
+    const state = readLedger(f.root);
+    state.workerExecutions = { schema: 1, entries };
+    writeFileSync(join(commonDir(f.root), 'supervibe', 'state.json'), JSON.stringify(state));
+  };
+  const entry = (id, state = 'running') => ({ id, token: `token-${id}`, epic: 'E1', sprint: 'S1', branch: 'main', ownership: 'borrowed', commonDir: commonDir(f.root), state,
+    task: { workerExecutionId: id, worktree: f.root, mode: 'native', workerHarness: 'inherit' }, execution: { workerId: id },
+    ...(state === 'settled' ? { outcome: { status: 'pass' }, quiescence: { stopped: true }, cleanup: 'cleanup_pending' } : {}) });
+  const entries = { 'worker-1': entry('worker-1', 'settled'), 'worker-2': entry('worker-2'), 'worker-3': entry('worker-3') };
+  seed(entries);
+  f.mutate('group', f.group('g2', ['host/machine-1/port/3002']));
+  f.mutate('acquire', f.acquire('c2', 'g2', { owner: { ...owner, workerId: 'worker-2' } }));
+  assert.equal(readLedger(f.root).resourceClaims.c1.status, 'held');
+  f.release('c2');
+  assert.throws(() => f.mutate('acquire', f.acquire('c2', 'g2')), /registered active/);
+  seed({ ...entries, 'worker-4': entry('worker-4', 'unknown') });
+  assert.throws(() => f.mutate('acquire', f.acquire('c2', 'g2', { owner: { ...owner, workerId: 'worker-2' } })), /worker cap/);
+  assert.equal(readLedger(f.root).resourceClaims.c2.status, 'released');
+});
+
+test('external resource owner requires actual executor identity, not a compatible dispatch', t => {
+  const f = fixture(t), state = readLedger(f.root);
+  const config = { ...f.config, mode: 'external', provider: 'orca', workerHarnesses: ['claude-code'] };
+  delete config.workerHarness;
+  state.iterationConfigs.E1 = config;
+  const entry = { id: 'external', token: 'fixture-token', epic: 'E1', sprint: 'S1', branch: 'main', ownership: 'borrowed', commonDir: commonDir(f.root), state: 'running',
+    task: { workerExecutionId: 'external', worktree: f.root, mode: 'external', workerHarness: 'claude-code' }, execution: { runId: 'run', taskId: 'task', dispatchId: 'dispatch' } };
+  state.workerExecutions = { schema: 1, entries: { external: entry } };
+  const statePath = join(commonDir(f.root), 'supervibe', 'state.json');
+  writeFileSync(statePath, JSON.stringify(state));
+  const claim = f.acquire('c1', 'g1', { owner: { role: 'worker', mode: 'external', workerId: 'executor', workerHarness: 'claude-code' }, configFingerprint: iterationConfigFingerprint(config) });
+  assert.throws(() => f.mutate('acquire', claim), /executor identity unavailable or mismatched/);
+  entry.execution.executorIdentity = { id: 'executor' };
+  writeFileSync(statePath, JSON.stringify(state));
+  f.mutate('acquire', claim);
+  assert.equal(readLedger(f.root).resourceClaims.c1.owner.workerId, 'executor');
+});

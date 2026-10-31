@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { activeWorkers } from './worker-lifecycle.mjs';
 import { execFileSync } from 'node:child_process';
 import { realpathSync, lstatSync, readFileSync } from 'node:fs';
 import { resolve, isAbsolute } from 'node:path';
@@ -119,6 +120,7 @@ export function mutate(root, command, options) {
       e.evidence = null;
     } else if (command === 'land') {
       if (e.state !== 'acceptance') fail('land requires shared acceptance');
+      if (activeWorkers(state, e.epic).some(worker => worker.sprint === e.id)) fail('Settle active child worker executions before landing Sprint; unknown liveness keeps WIP');
       const landing = options['--landing'], main = options['--main'];
       if (!/^[a-f0-9]{40,64}$/.test(landing ?? '') || !main) fail('land requires full --landing commit and --main ref');
       if (main !== state.mainRef) fail('Landing target differs from the approved shared mainRef');

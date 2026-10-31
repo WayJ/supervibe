@@ -275,3 +275,7 @@ Zero npm dependencies; Node ≥ 20.
 ## License
 
 MIT
+
+## Worker slots and worktree release
+
+A Sprint may own multiple registered development child worktrees in the same Git common-dir without consuming extra Sprint WIP. `worker-lifecycle.mjs` separates execution settlement from physical cleanup: success/failure/blockage plus verified quiescence releases the worker slot; dirty or borrowed storage may remain safely retained. The current main agent handles native/Orca completion events and invokes these commands; no backend listener or automatic TTL release is installed. Explicit legacy migration is required. Independent Roadmap acceptance shares the epic worker cap on borrowed main, without Sprint WIP; canonical Sprint teardown remains a separate operational path. See [lifecycle and CLI](docs/worker-lifecycle.md).

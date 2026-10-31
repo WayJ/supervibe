@@ -122,9 +122,9 @@ node <plugin-root>/scripts/collaboration-contract.mjs result < result-envelope.j
 - Result input envelope / 结果输入封装：`{"task": <original request>, "result": <worker result>}`. Identities, worker harness, config revision/fingerprint and configured route must match / 身份、worker harness、配置 revision/指纹及路由必须一致。
 - Native execution / 原生执行身份：actual `workerId`, optional `sessionId` when exposed by the harness / 真实 `workerId`，harness 提供时可附 `sessionId`；Orca execution：`runId`, `taskId`, `dispatchId`. Orca Run groups work; it is not a harness conversation/session / Orca Run 是工作分组，不等于 harness 对话/会话。
 
-New tasks require the ledger's active sprint; result receipts may be collected in active/acceptance. Canonical worktree must match the sprint carrier and local common-dir, and its current branch must equal the registered sprint branch (detached HEAD is rejected). Successful results require evidence; failed/blocked results cannot imply acceptance. These are shape/identity/boundary checks, not proof that commands ran or evidence is true. The coordinator still checks artifacts and runs acceptance.
+New tasks require the ledger's active sprint; result receipts may be collected in active/acceptance. Without an enabled worker registry, worktree placement follows the canonical Sprint carrier. After explicit migration, development tasks may use their exact registered child worktree/branch under that Sprint in the same local common-dir; Sprint acceptance still uses the canonical integrated carrier. Detached HEAD and unregistered or mismatched placements are rejected. See [worker lifecycle](worker-lifecycle.md). Successful results require evidence; failed/blocked results cannot imply acceptance. These are shape/identity/boundary checks, not proof that commands ran or evidence is true. The coordinator still checks artifacts and runs acceptance.
 
-新任务要求台账中 sprint 为 active；active/acceptance 可收集结果回执。规范化 worktree 必须匹配 sprint 载体与本地 common-dir，当前分支必须匹配登记的 sprint 分支（拒绝 detached HEAD）。成功需证据；失败/阻塞不代表验收通过。helper 检查结构、身份与边界，不证明命令执行过或证据真实；负责人仍要核实工件并完成验收。
+新任务要求台账中 sprint 为 active；active/acceptance 可收集结果回执。未启用 worker 登记时沿用规范 Sprint 载体；显式迁移后，开发任务可使用该 Sprint 下精确登记的子 worktree/分支，仍限同一本地 common-dir；Sprint 验收仍使用规范集成载体。拒绝 detached HEAD、未登记或不匹配的工作区。见 [worker 生命周期](worker-lifecycle.md)。成功需证据；失败/阻塞不代表验收通过。helper 检查结构、身份与边界，不证明命令执行过或证据真实；负责人仍要核实工件并完成验收。
 
 Persist task/result, execution references and actual workspace/terminal receipts (terminal when present) in a sprint-linked handoff note, before acceptance fingerprinting. Keep secrets and raw sensitive logs out. This versioned handoff is separate from the untracked common-dir runtime ledger; task/result validation does not write either automatically.
 
@@ -165,12 +165,12 @@ Inspect the current harness's actual available worker creation and result capabi
 ## Orca route / Orca 路由
 
 1. Locate the installed CLI and read `orca skills get orchestration` plus relevant current references before use. The shipped guide, not remembered flags, owns CLI syntax.
-2. Follow `worker-start`, `send`, `check`, `inbox` and the documented task/run lifecycle. Launch from the validated sprint carrier, usually with `--worktree current`; the worker must verify common-dir/carrier as its first action before writes. Retain run/task/dispatch and workspace receipts; verify the actual workspace before any write.
+2. Follow `worker-start`, `send`, `check`, `inbox` and the documented task/run lifecycle. Launch from the validated registered workspace, usually with `--worktree current`; the worker must verify common-dir/carrier as its first action before writes. Retain run/task/dispatch and workspace receipts; verify the actual workspace before any write.
 3. End the turn after dispatch and await event-driven wakes. Use the wake's `check` as documented: it consumes pending mail, so never poll it. `check --peek` is a non-consuming diagnostic, not a polling scheduler; `inbox` is history. Questions and completion events require explicit handling; `worker_done` is not proof of successful acceptance.
 4. An unknown start outcome requires receipt/state inspection before any repeat. A failed start requires its recovery guidance, not blind respawn. Authorized retries preserve the same Task and `--retry-of` dispatch linkage. Retry placement is not inherited: validate it again. Follow `failedStage`/`next`; three failed starts in a chain require explicit user authorization to retry the same Task. Silence/timeouts do not prove termination; do not clean up or duplicate work on that assumption.
 
 1. 定位已安装 CLI，先读 `orca skills get orchestration` 与相关当前参考。CLI 语法以随附指南为准，不凭记忆拼参数。
-2. 遵循 `worker-start`、`send`、`check`、`inbox` 及官方 task/run 生命周期。从已校验 sprint 载体启动，通常用 `--worktree current`；worker 首个动作须在写入前核实 common-dir/载体。保留 run/task/dispatch 与工作区回执；写入前核实实际工作区。
+2. 遵循 `worker-start`、`send`、`check`、`inbox` 及官方 task/run 生命周期。从已校验并登记的工作区启动，通常用 `--worktree current`；worker 首个动作须在写入前核实 common-dir/载体。保留 run/task/dispatch 与工作区回执；写入前核实实际工作区。
 3. 派发后结束回合，等待事件唤醒。按唤醒指示使用 `check`：它会消费待收消息，绝不轮询。`check --peek` 是不消费的诊断，不是轮询调度器；`inbox` 是历史。明确处理提问与完成事件；`worker_done` 不证明验收成功。
 4. 启动结果不确定时，重复前先查回执/状态。启动失败按其恢复指导处理，不盲目重建。获准重试保留同一 Task，并通过 `--retry-of` 关联 dispatch。重试不继承放置位置，必须重新校验。遵循 `failedStage`/`next`；同链三次启动失败后，重试同一 Task 必须获得用户明确授权。静默/超时不证明终止，不据此清理或重复工作。
 
@@ -189,3 +189,9 @@ Orca 语义核对自上述官方 orchestration 指南及其 coordinator-loop、m
 Sprint acceptance records under `independentAcceptance: true` also require exactly one `supervibe-acceptance-execution` block `{task, result}`. `verify` and `verify-clean` bind the actual Sprint ID/shared epic/document and enforce the same policy, candidate, wake and preflight checks; another Sprint receipt cannot substitute.
 
 Sprint 验收在 `independentAcceptance: true` 时也必须包含恰好一个 `supervibe-acceptance-execution` 块 `{task, result}`。`verify` / `verify-clean` 绑定实际 Sprint ID、共享 epic/文档，并强制相同的策略、候选版本、唤醒、自检；不能借用其他 Sprint 回执。
+
+## Execution settlement and workspace cleanup / 执行结算与工作区清理
+
+[Worker lifecycle](worker-lifecycle.md) defines coordinator-driven CAS commands for explicit migration, worker reservation, start binding, unknown-state reconciliation, outcome/quiescence settlement and safe child-worktree cleanup. A development child is registered under its parent Sprint, not a new Sprint WIP reservation. `pending|running|unknown` occupy the epic worker cap; `settled` does not, even when storage remains dirty or provider-owned. Native completion/error and Orca `worker_done` must lead the current main agent to collect evidence and invoke settlement/cleanup; no backend hook is installed and completion alone proves neither quiescence nor acceptance. Independent Roadmap acceptance registers against the same epic cap on borrowed canonical main, without Sprint WIP.
+
+[Worker 生命周期](worker-lifecycle.md) 给出协调者调用的 CAS 脚本：显式迁移、Sprint worker 预留、启动绑定、未知状态核对、结果/停止结算及安全子 worktree 清理。开发子工作区属于父 Sprint，不增加 Sprint WIP。pending/running/unknown 占用 epic worker 配额；settled 即释放，dirty 或 provider 工作区保留不重新占槽。原生完成/错误、Orca worker_done 由当前主 Agent 取证并调用结算/清理；没有安装后端事件钩子，完成本身不证明停止或验收通过。独立 Roadmap 整体验收借用规范 main 并登记，占用同一 epic worker 配额，不增加 Sprint WIP。

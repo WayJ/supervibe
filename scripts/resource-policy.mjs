@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import { readLedger, changeLedger } from './ledger-store.mjs';
 import { validateIterationConfig, iterationConfigFingerprint } from './iteration-policy.mjs';
 import { acceptancePlan, jsonBlock } from './acceptance-contract.mjs';
+import { activeWorkers } from './worker-lifecycle.mjs';
 const dimensions = ['cpu', 'memoryBytes', 'diskBytes'];
 const fail = message => { throw new Error(`Resource policy: ${message}`); };
 const obj = (x, name) => { if (!x || typeof x !== 'object' || Array.isArray(x)) fail(`${name} must be an object`); return x; };
@@ -138,8 +139,21 @@ export function mutateResources(root, command, input) {
       if (hosts[g.host].status === 'unknown') fail('Host liveness unknown; retain existing claims and do not restart');
       const previous = claims[p.id]; if (previous?.status === 'held') fail('Claim already held');
       for (const c of held(claims)) if (groups[c.group].targets.some(target => g.targets.includes(target))) fail('Physical resource already held (possibly via another group alias)');
-      const workers = new Set(held(claims).filter(c => c.epic === p.epic && c.owner.role === 'worker').map(c => ownerKey(c.owner))); if (p.owner.role === 'worker') workers.add(ownerKey(p.owner));
-      if (workers.size > config.maxWorkers) fail('Confirmed worker cap exceeded; environment capacity is separate');
+      if (state.workerExecutions) {
+        // Execution slots and retained environments have independent lifetimes.
+        const workers = activeWorkers(state, p.epic);
+        if (workers.length > config.maxWorkers) fail('Confirmed worker cap exceeded; environment capacity is separate');
+        if (p.owner.role === 'worker' && !workers.some(e => {
+          if (e.task.mode !== p.owner.mode || e.task.workerHarness !== p.owner.workerHarness || (p.scope === 'sprint' && e.sprint !== p.sprint)) return false;
+          const actual = e.task.mode === 'native' ? e.execution?.workerId : e.execution?.executorIdentity?.id;
+          // Dispatch identity cannot authorize an arbitrary resource owner.
+          return !!actual && actual === p.owner.workerId;
+        })) fail('Resource owner must match a registered active worker execution; actual executor identity unavailable or mismatched');
+      } else {
+        // Legacy ledgers retain conservative held-claim accounting until explicit migration.
+        const workers = new Set(held(claims).filter(c => c.epic === p.epic && c.owner.role === 'worker').map(c => ownerKey(c.owner))); if (p.owner.role === 'worker') workers.add(ownerKey(p.owner));
+        if (workers.size > config.maxWorkers) fail('Confirmed worker cap exceeded; environment capacity is separate');
+      }
       const generation = (previous?.generation ?? 0) + 1;
       claims[p.id] = { ...p, generation, token: digest([p.id, generation, input.operation, state.revision + 1]), status: 'held', ledgerRevision: state.revision + 1, operation: input.operation, frozenCandidate: null };
       budgetCheck(hosts[g.host], groups, claims); // failure aborts the complete transaction

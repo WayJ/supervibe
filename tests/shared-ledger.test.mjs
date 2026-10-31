@@ -145,3 +145,24 @@ test('activation requires valid upfront scenario plan before granting execution 
   mutate(f.root, 'activate', f.options('S1', before.revision, 'activate-valid-plan'));
   assert.equal(readLedger(f.root).sprints.S1.state, 'active');
 });
+
+test('land blocks pending/running/unknown children, not settled cleanup-pending workspaces', t => {
+  const f = setup(t); f.reserve(); const target = f.activate(); f.accept(target);
+  f.git(f.root, 'merge', '--no-ff', '--no-edit', 'sprint/S1');
+  const landing = f.git(f.root, 'rev-parse', 'HEAD');
+  const statePath = join(commonDir(f.root), 'supervibe', 'state.json');
+  const entry = { id: 'child', token: 'fixture-token', epic: 'E1', sprint: 'S1', branch: 'sprint/S1', ownership: 'borrowed', commonDir: commonDir(f.root), task: { workerExecutionId: 'child', worktree: target }, cleanup: 'cleanup_pending' };
+  for (const status of ['pending', 'running', 'unknown']) {
+    const state = readLedger(f.root);
+    state.workerExecutions = { schema: 1, entries: { child: { ...entry, state: status } } };
+    writeFileSync(statePath, JSON.stringify(state));
+    assert.throws(() => mutate(f.root, 'land', f.options('S1', state.revision, `land-${status}`, { '--landing': landing, '--main': 'main' })), /active child/);
+    assert.equal(readLedger(f.root).sprints.S1.state, 'acceptance');
+  }
+  const state = readLedger(f.root);
+  state.workerExecutions.entries.child = { ...entry, state: 'settled', outcome: { status: 'pass' }, quiescence: { stopped: true } };
+  writeFileSync(statePath, JSON.stringify(state));
+  mutate(f.root, 'land', f.options('S1', state.revision, 'land-settled', { '--landing': landing, '--main': 'main' }));
+  assert.equal(readLedger(f.root).sprints.S1.state, 'merged');
+  assert.equal(readLedger(f.root).workerExecutions.entries.child.cleanup, 'cleanup_pending');
+});

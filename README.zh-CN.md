@@ -247,3 +247,7 @@ node --test tests/*.test.mjs
 ## 许可证
 
 MIT
+
+## Worker 配额与 worktree 释放
+
+同一 Sprint 可在同一 Git common-dir 下登记多个开发子 worktree，不额外消耗 Sprint WIP。`worker-lifecycle.mjs` 将执行结算与物理清理分开：成功/失败/阻塞结果加核实的停止证据释放 worker 槽；dirty 或借用工作区可安全保留。当前主 Agent 处理原生/Orca 完成事件并调用脚本；未安装后端监听器，不靠 TTL 自动释放。旧账本需显式迁移。独立 Roadmap 验收借用 main，共享 epic worker 配额，不占 Sprint WIP；规范 Sprint 载体拆除仍为独立操作流程。见 [生命周期与 CLI](docs/worker-lifecycle.md)。

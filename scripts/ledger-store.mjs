@@ -12,6 +12,14 @@ export function validateState(state) {
   if (!state || state.schema !== 1 || !Number.isSafeInteger(state.revision) || state.revision < 0 || !Number.isSafeInteger(state.wipLimit) || state.wipLimit < 1 || typeof state.mainRef !== 'string' || !state.mainRef || typeof state.sprintsDir !== 'string' || !state.sprintsDir || !state.sprints || Array.isArray(state.sprints) || typeof state.sprints !== 'object' || !Array.isArray(state.events) || !Array.isArray(state.operations)) throw new Error('Corrupt shared ledger schema; stop and repair explicitly');
   if (state.acceptanceWakes !== undefined && (!state.acceptanceWakes || typeof state.acceptanceWakes !== 'object' || Array.isArray(state.acceptanceWakes))) throw new Error('Corrupt shared acceptanceWakes; expected an object');
   if (state.iterationConfigs !== undefined && (!state.iterationConfigs || typeof state.iterationConfigs !== 'object' || Array.isArray(state.iterationConfigs))) throw new Error('Corrupt shared iterationConfigs; expected an object');
+  if (state.workerExecutions !== undefined) {
+    const registry = state.workerExecutions;
+    if (!registry || registry.schema !== 1 || !registry.entries || typeof registry.entries !== 'object' || Array.isArray(registry.entries)) throw new Error('Corrupt worker execution registry');
+    for (const [id,e] of Object.entries(registry.entries)) {
+      if (!e || e.id !== id || !e.token || !e.task || e.task.workerExecutionId !== id || !['pending','running','unknown','settled'].includes(e.state) || !['managed','borrowed','provider'].includes(e.ownership) || !e.epic || (e.scope === 'roadmap' ? (e.task.scope !== 'roadmap' || e.task.role !== 'acceptance' || e.ownership !== 'borrowed' || e.sprint !== undefined) : !e.sprint) || !e.branch || !isAbsolute(e.task.worktree) || !e.commonDir) throw new Error('Corrupt worker execution entry');
+      if (e.state === 'settled' && (!e.outcome || !e.quiescence || e.quiescence.stopped !== true)) throw new Error('Settled worker missing terminal quiescence receipt');
+    }
+  }
   const safeRelative = value => typeof value === 'string' && value && !isAbsolute(value) && !value.split(/[\\/]/).includes('..');
   if (!safeRelative(state.sprintsDir)) throw new Error('Corrupt shared ledger directory');
   for (const [id, e] of Object.entries(state.sprints)) {

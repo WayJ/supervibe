@@ -124,7 +124,7 @@ notes 是跨 sprint 的知识资产，不是流水账——写一行 plan 之前
 创建前重跑上述 inventory 命令；重复文档、ready 已实体化或 started 丢文档均阻塞，不覆盖或隐式重新实体化。
 
 1. 共享预留成功后，创建命名载体，并以 `templates/sprint.md` 创建 `<sprints_dir>/YYYY-MM-DD-<sprint>-plan.md`。文件日期是实体化日期（今天），不是桩行的规划日期。frontmatter `{sprint, epic, state: active, worktree, early-start, deferred-dependency, clauses, acceptance-record: null, accepted-at: null, merged-commit: null}`：
-   - `worktree`——承载本 sprint 的 worktree/分支（一个 sprint = 一个 worktree/分支）。
+   - `worktree`——承载本 sprint 的 worktree/分支（每个 sprint 一个规范集成 worktree/分支；允许登记开发子 worktree）。
    - `early-start`——上文的裁决结果；未适用时为 `false`。
    - `deferred-dependency`——裁决 4 登记的 HC# 引用；无则留空。
    - `clauses`——以迁移进来的 HC# 引用作种子：扫全部 sprint 文档的 Handover Clauses 节，找出记录了匹配本桩行的 `target: <此 epic> breakdown S#` 的条款，把其 id 收进来——条款正文留在签发方，引用落到 sync 将要扫描的位置。没有条款瞄准本桩行则为空。
@@ -141,9 +141,9 @@ notes 是跨 sprint 的知识资产，不是流水账——写一行 plan 之前
 Agent 协作只有两条路，按 epic 确认选择（宿主 `## supervibe` 提供提议值）：`collaboration_mode: native` + `collaboration_provider: harness`，或 `external` + `orca`。缺失、不支持、不匹配或能力不可用时阻止委派；询问选择或报告缺失能力，绝不静默切换模式。SuperVibe 管契约，不自建调度器。见[协作模式](../../docs/collaboration-modes.md)。
 
 1. 委派前检查真实能力。**原生：**使用当前 harness 已提供且有文档的 worker 创建与结果工具（需要交互时还需通信）（如 Claude Code subagent）；不发明工具名，不假设跨会话能力。**外部：**定位 Orca CLI，读取 `orca skills get orchestration` 及相关当前参考；缺 CLI/skill 就阻止此路由，不自动安装。
-2. 以 stdin 向 `node <plugin-root>/scripts/collaboration-contract.mjs task` 提交任务 JSON 校验：显式模式/provider、sprint/task 身份、目标、worktree、允许路径与验收要求。将同一边界交给 worker。不隐式扩大权限、安装依赖、配置凭证或授权提交/推送。
-3. 原生通过已检查工具委派，保留真实 worker/session 回执。Orca 遵循官方 `worker-start` / `send` / `check` / `inbox` 生命周期：从已校验 sprint 载体启动，通常 `--worktree current`，要求 worker 首次写入前核实 common-dir/载体；保留 `runId`、`taskId`、`dispatchId`、实际工作区及存在时的 terminal 回执。Run 是工作分组，不是 harness 会话。派发后结束回合等待事件唤醒，绝不循环调用消费式 `check`。`inbox` 是历史，不是成功证明。启动结果不确定/失败时先检查再重试；获准重试仍关联同一 task 与原 dispatch。
-4. 核实实际返回工作区解析到 sprint 载体且属于同一 Git common-dir；不假设 Orca 新工作区天然属于此台账。除非用户要求隔离或存在已证实冲突，不新建 worktree；工作区不兼容则阻止委派/结果，不扩大共享范围。WIP 每 sprint 预留一次，不为每个 worker 子任务预留。
+2. 显式安全迁移 worker 登记表后，派发前先用 `worker-lifecycle.mjs reserve` 登记确切 worker/任务/工作区绑定（见下文生命周期）。再以 stdin 向 `node <plugin-root>/scripts/collaboration-contract.mjs task` 提交任务 JSON 校验：显式模式/provider、sprint/task 身份、目标、worktree、允许路径与验收要求。将同一边界交给 worker。不隐式扩大权限、安装依赖、配置凭证或授权提交/推送。
+3. 原生通过已检查工具委派，保留真实 worker/session 回执。Orca 遵循官方 `worker-start` / `send` / `check` / `inbox` 生命周期：从已校验并登记的工作区启动，通常 `--worktree current`，要求 worker 首次写入前核实 common-dir/载体；保留 `runId`、`taskId`、`dispatchId`、实际工作区及存在时的 terminal 回执。Run 是工作分组，不是 harness 会话。派发后结束回合等待事件唤醒，绝不循环调用消费式 `check`。`inbox` 是历史，不是成功证明。启动结果不确定/失败时先检查再重试；获准重试仍关联同一 task 与原 dispatch。
+4. 核实实际返回工作区是规范 sprint 载体，或登记在该 Sprint 下的开发子 worktree，且属于同一 Git common-dir；不假设 Orca 新工作区天然属于此台账。除非用户要求隔离或存在已证实冲突，不新建 worktree；工作区不兼容则阻止委派/结果，不扩大共享范围。WIP 每 sprint 预留一次，不为每个 worker 子任务预留。
 5. 收集明确的 `succeeded|failed|blocked` 结果、执行身份、证据和阻塞项。以 stdin 向 helper 的 `result` 提交 `{task, result}` 校验；验收指纹生成前，将请求/结果及回执持久化到关联 sprint 的任务交接笔记。成功必须有证据；完成事件、进程退出或 worker 自述不等于 sprint 验收通过。失败/阻塞交回负责人；验收仍由 `supervibe:accept` 拥有。运行状态仍留在已有本地 common-dir 台账。
 
 ### 执行方法（不是协作 provider）
@@ -162,3 +162,7 @@ Agent 协作只有两条路，按 epic 确认选择（宿主 `## supervibe` 提�
 - 条款正文只活在签发方 sprint 文档；其他一切工件只存引用。
 - sprint 文档与其开线条目在同一动作里写出——没有开线条目的实体化 sprint 是不完整的。
 - 每次变更——桩行翻转、文档创建、条款登记、迁移引用——都携带日期 + 证据链接。
+
+## Worker 准入与释放
+
+遵循 [worker 生命周期](../../docs/worker-lifecycle.md)：旧 worker 全部核实停止后才显式迁移；派发前预留执行，启动后绑定真实回执；完成、失败、阻塞均凭结果和停止证据结算。pending/running/unknown 占用 epic worker 配额，settled 不占。开发子 worktree 登记在父 Sprint 下，不因隔离 worker 而另开 Sprint WIP。完成/错误唤醒由当前主 Agent 调用确定性结算和安全清理，不等用户再次催办。物理清理、执行配额、资源组释放分开；安全保留 dirty/借用/provider 所有的工作区。不宣称已安装后端钩子，不靠 TTL 或强制释放。独立 Roadmap 整体验收也登记并占用同一 epic worker 配额，借用规范 main，不新增 Sprint 预留。

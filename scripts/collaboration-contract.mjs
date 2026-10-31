@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { validateConfig, validateIterationConfig, iterationConfigFingerprint, readIterationConfig } from './iteration-policy.mjs';
 export { validateConfig, validateIterationConfig, iterationConfigFingerprint, readIterationConfig } from './iteration-policy.mjs';
 import { snapshot, roadmapSnapshot, frontmatter } from './validate-workflow.mjs';
+import { workerEntry, activeWorkers } from './worker-lifecycle.mjs';
 import { readHostConfig } from './host-config.mjs';
 import { fileURLToPath } from 'node:url';
 import { commonDir, readLedger, changeLedger } from './ledger-store.mjs';
@@ -27,6 +28,7 @@ export function confirmIterationConfig(root, input) {
   const config = validateIterationConfig(input.config);
   return changeLedger(root, input.ledgerRevision, input.operation, 'confirm-iteration-config', config, state => {
     if (state.iterationConfigs !== undefined) object(state.iterationConfigs, 'iterationConfigs');
+    if (activeWorkers(state, config.epic).length) fail('Settle active worker executions before changing iteration configuration');
     const previous = state.iterationConfigs && Object.hasOwn(state.iterationConfigs, config.epic) ? validateIterationConfig({ ...state.iterationConfigs[config.epic], independentAcceptance: state.iterationConfigs[config.epic].independentAcceptance === undefined ? false : state.iterationConfigs[config.epic].independentAcceptance }) : undefined;
     if (config.revision !== (previous?.revision ?? 0) + 1) fail('Stale config revision; reuse confirmed config on resume, reconfirm only changes');
     if (previous && config.confirmation.source.trim() === previous.confirmation.source.trim()) fail('Changed config requires fresh user confirmation provenance');
@@ -34,20 +36,24 @@ export function confirmIterationConfig(root, input) {
     state.iterationConfigs[config.epic] = config;
   });
 }
-function validateWorktree(root, task, allowAccepted) {
+function validateWorktree(root, task, allowAccepted, registration = false) {
   const state = readLedger(root), entry = state.sprints[task.sprint];
   if (!entry || !['active', ...(allowAccepted ? ['acceptance'] : [])].includes(entry.state)) fail('Task requires a shared active sprint (result may also be acceptance); no new WIP reservation per subtask');
   if (!isAbsolute(task.worktree)) fail('worktree must be absolute');
   const target = realpathSync(task.worktree);
   if (commonDir(target) !== commonDir(root)) fail('Worker must stay within the same local Git common-dir');
-  if (target !== realpathSync(entry.worktree)) fail('Worker placement must match the sprint carrier; a separate carrier needs its own sprint reservation');
+  const canonical = target === realpathSync(entry.worktree);
+  if (!canonical && task.role === 'acceptance') fail('Acceptance must target canonical integrated Sprint carrier');
+  const worker = !registration && (state.workerExecutions || !canonical) ? workerEntry(state, task) : undefined;
+  if (!canonical && !worker) fail('Child worktree requires registered worker placement under the sprint carrier');
+  if (worker && !allowAccepted && worker.state === 'settled') fail('Settled worker cannot receive more work; reserve a new execution');
   let branch;
   try { branch = execFileSync('git', ['-C', target, 'symbolic-ref', '--quiet', '--short', 'HEAD'], { encoding: 'utf8', stdio: 'pipe' }).trim(); }
   catch { fail('Sprint carrier must be on its registered branch, not detached HEAD'); }
-  if (branch !== entry.branch) fail('Sprint carrier branch differs from shared ledger');
+  if (branch !== (canonical ? entry.branch : worker.branch)) fail('Sprint carrier branch differs from shared ledger');
   return target;
 }
-export function validateTask(root, input, allowAccepted = false) {
+export function validateTask(root, input, allowAccepted = false, registration = false) {
   const task = object(input, 'task');
   if (task.schema !== 1) fail('Unsupported task schema');
   for (const key of ['taskId', 'objective', 'worktree']) text(task[key], key);
@@ -66,8 +72,12 @@ export function validateTask(root, input, allowAccepted = false) {
   for (const path of task.allowedPaths) {
     if (isAbsolute(path) || path.includes('\\') || path.split('/').includes('..') || path.split('/').includes('.git')) fail('allowedPaths must be repository-relative and outside Git metadata');
   }
-  if (!roadmap) validateWorktree(root, task, allowAccepted);
+  if (!roadmap) validateWorktree(root, task, allowAccepted, registration);
   else {
+    if (!registration && state.workerExecutions) {
+      const worker = workerEntry(state, task);
+      if (!allowAccepted && worker.state === 'settled') fail('Settled worker cannot receive more work; reserve a new execution');
+    }
     if (!isAbsolute(task.worktree) || commonDir(task.worktree) !== commonDir(root)) fail('Roadmap worktree must share local Git common-dir');
     if (execFileSync('git', ['-C', task.worktree, 'symbolic-ref', '--short', 'HEAD'], { encoding: 'utf8' }).trim() !== state.mainRef) fail('Roadmap acceptance requires stored main branch');
     if (frontmatter(readFileSync(resolve(task.worktree, entry.document), 'utf8')).epic !== task.epic) fail('Roadmap epic identity mismatch');
@@ -81,7 +91,7 @@ export function validateResult(root, input) {
   object(input, 'result envelope');
   const task = validateTask(root, input.task, true), result = object(input.result, 'result');
   if (result.schema !== 1) fail('Unsupported result schema');
-  for (const key of ['scope', 'epic', 'epicDocument', 'sprint', 'taskId', 'mode', 'provider', 'workerHarness', 'iterationConfigRevision', 'iterationConfigFingerprint']) if (result[key] !== task[key]) fail(`Result ${key} does not match task`);
+  for (const key of ['scope', 'epic', 'epicDocument', 'sprint', 'taskId', 'mode', 'provider', 'workerHarness', 'iterationConfigRevision', 'iterationConfigFingerprint', 'workerExecutionId']) if (result[key] !== task[key]) fail(`Result ${key} does not match task`);
   if (!['succeeded', 'failed', 'blocked'].includes(result.status)) fail('Result status must be succeeded, failed or blocked');
   if (!isAbsolute(text(result.worktree, 'result.worktree'))) fail('result.worktree must be absolute');
   if (realpathSync(result.worktree) !== realpathSync(task.worktree)) fail('Result worktree differs from assigned carrier');
