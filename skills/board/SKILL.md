@@ -1,6 +1,7 @@
 ---
 name: board
 description: Use when the user wants to view roadmaps and sprint breakdowns as a visual board in a browser.
+disable-model-invocation: true
 ---
 
 # supervibe:board — read-only roadmap viewer

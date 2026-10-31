@@ -1,6 +1,7 @@
 ---
 name: board
 description: 当用户想把 roadmap 与 sprint 拆解作为可视化看板在浏览器中查看时使用。
+disable-model-invocation: true
 ---
 
 # supervibe:board — 只读 roadmap 看板
