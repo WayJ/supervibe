@@ -1,6 +1,8 @@
 ---
 epic: E1            <!-- placeholder: next epic id, scan roadmaps/ for max+1 -->
 status: open        <!-- placeholder: open|closed -->
+final-acceptance-record: null  <!-- placeholder: latest final integration attempt -->
+final-accepted-at: null        <!-- placeholder: ISO date/time -->
 date: 2026-10-01    <!-- placeholder: creation date -->
 ---
 
@@ -8,9 +10,10 @@ date: 2026-10-01    <!-- placeholder: creation date -->
 
 <!-- Template note: epic doc = strategic truth source for one epic. Pre-start
 sprint states (planned / ready) live ONLY in the Sprint Breakdown stub rows;
-from started on, state lives in the sprint doc's frontmatter. Every mutation
+from reservation on, runtime state lives in the shared common-dir ledger;
+sprint frontmatter is only its readable projection. Every mutation
 appends date + evidence link. Fill every placeholder fill-in, replace the
-example-marked rows with real content, keep the seven section headings
+example-marked rows with real content, keep the section headings
 verbatim, then delete template notes. -->
 
 ## Deliverables
@@ -29,8 +32,34 @@ epic level only — sprint docs copy it VERBATIM into their own Definition of
 Done section, and any later change is an amendment in THIS doc, never an
 in-place edit inside a sprint doc. -->
 
-- [ ] Export totals reconcile with invoiced totals to the cent <!-- example -->
+- [ ] Applicable quality gates pass on the reviewed build <!-- example: universal quality bar, not the entire roadmap outcome -->
 - [ ] <!-- placeholder: DoD item, checkable with evidence -->
+
+## Overall Acceptance Scenarios
+
+<!-- Define BEFORE implementation: independent integrated end-user outcomes,
+not a copy of universal DoD or a checklist of sprint passes. Browser UI paths
+require modality browser and environment real. Each required scenario needs
+actual actions and observed results; CI/API/static screenshots alone cannot
+substitute. Keep this machine plan aligned with the human scenario wording. -->
+
+```supervibe-acceptance-plan
+{"schema":1,"scope":"roadmap","scenarios":[{"id":"R1","goal":"Export invoices through the complete report UI","required":true,"modality":"browser","environment":"real","steps":["Open the integrated report URL as an authorized user","Select a quarter and click Export","Open the downloaded CSV and compare totals with the displayed invoices"],"expected":"The browser flow succeeds and downloaded totals reconcile to the cent"}]}
+```
+
+<!-- Replace the example above with the actual overall plan. Every Sprint stub
+must also name its own goal and acceptance requirements before it is ready;
+materialize these into the sprint plan, not retrospectively at acceptance. -->
+
+## Final Acceptance
+
+<!-- All Sprint Breakdown IDs must be merged/closed in the shared ledger,
+including formerly unstarted stubs. That is necessary, NOT sufficient.
+Run overall scenarios freshly against the current integrated main build.
+Use templates/roadmap-acceptance-record.md and validate-workflow.mjs
+roadmap-snapshot / roadmap-verify. Fill final-acceptance-record and
+final-accepted-at; missing, blocked or stale evidence prevents closure.
+A prior pass remains history, never a substitute for current integration. -->
 
 ## Sprint Breakdown
 

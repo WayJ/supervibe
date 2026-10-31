@@ -6,15 +6,18 @@ worktree:                  <!-- placeholder: branch/worktree path -->
 early-start: false         <!-- placeholder: true|false -->
 deferred-dependency: []    <!-- placeholder: list of sprint ids, e.g. [S3, S4] -->
 clauses: []                <!-- placeholder: list of HC# references, e.g. [HC2, HC5] -->
+acceptance-record: null    <!-- placeholder: latest acceptance attempt path, pass or blocked -->
+accepted-at: null          <!-- placeholder: ISO date/time of the latest attempt -->
 merged-commit: null        <!-- placeholder: main-side landing commit recorded at close-out -->
 ---
 
 # <!-- placeholder: sprint title, one line -->
 
-<!-- Template note: this doc IS the sprint ledger — from materialization on,
-the frontmatter state is authoritative (starts active). One sprint = one
+<!-- Template note: this document is the versioned sprint contract and a
+projection of the shared common-dir runtime ledger. Frontmatter is NOT
+authoritative for admission or runtime transitions; use shared-ledger.mjs. One sprint = one
 worktree/branch. State transitions have single owners: start (active), accept
-(acceptance), merge (merged), roadmap (closed); never flip a state here by
+(active before re-review, acceptance after pass), complete (merged), roadmap (closed); never flip a state here by
 hand. Fill every placeholder fill-in, replace the example-marked rows with
 real content, keep the five section headings verbatim, then delete template
 notes. -->
@@ -46,7 +49,7 @@ checked only with evidence (command run, scenario passed) — never pre-check. -
 edited in place. A DoD change goes back to the epic doc as an amendment and is
 re-copied from there; it is never changed inside this doc. -->
 
-- [ ] Export totals reconcile with invoiced totals to the cent <!-- example, verbatim from the epic DoD -->
+- [ ] Applicable quality gates pass on the reviewed build <!-- example, verbatim from the epic DoD -->
 - [ ] <!-- placeholder: DoD item, verbatim from the epic doc -->
 
 ## Acceptance Scenarios (S1–Sn)
@@ -59,6 +62,14 @@ pass. -->
 |---|---|---|---|
 | S1 | Export a bounded quarter | `curl -sf -u tester -o /tmp/q3.csv https://api.local/export/billing.csv?quarter=2026Q3 && wc -l /tmp/q3.csv` | 200; line count matches the invoiced-lines count for Q3 <!-- example --> |
 | <!-- placeholder: S# --> | <!-- placeholder: scenario --> | <!-- placeholder: how to verify --> | <!-- placeholder: expected --> |
+
+<!-- Define this plan at Sprint planning, before implementation. It is the
+machine-readable counterpart of the scenario table, not a replacement for it.
+For UI scenarios use browser + real and specify actual user actions. -->
+
+```supervibe-acceptance-plan
+{"schema":1,"scope":"sprint","scenarios":[{"id":"S1","goal":"Export a bounded quarter","required":true,"modality":"api","environment":"real","steps":["Run the configured export command for Q3 and compare invoice line count"],"expected":"200; line count matches the invoiced-lines count for Q3"}]}
+```
 
 ## Handover Clauses
 

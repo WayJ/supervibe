@@ -12,6 +12,17 @@ argument-hint: [sprint-id|all]
 
 一次运行的产出就是报告：逐 sprint——集成了什么、冲突了什么及如何解决、哪些义务被触发、其中哪些凭证据收口。默默合并而什么都不报告的 sync 只做了一半工作——报告正是下一次 accept、complete 或 sync 要读的东西。报告是持久的：每次运行写 `<notes>/YYYY-MM-DD-sync.md`（同日重跑带后缀），按四节协议——背景（本轮由什么触发）、决策（冲突解法）、教训（可复用的集成与冲突模式）、交接（条款表）。只活在会话里的报告，是下一个会话读不到的报告。
 
+## 共享运行权威（Shared runtime authority）
+
+读取 `<plugin base dir>/docs/shared-ledger.md`。在宿主仓库根目录运行
+`node "<plugin base dir>/scripts/shared-ledger.mjs" status`，将目标 sprint 与
+共享条目核对。common-dir 存储而非 Markdown 拥有运行状态和 WIP；下文的
+frontmatter 检查均是投影检查。无存储就停止，显式 init/import。用 doctor
+诊断载体或投影漂移，不从分支副本静默恢复权威。下文每个变更均传入
+`--id <sprint-id> --revision <当前版本> --operation <唯一操作 ID>`；新动作
+先重读 status，不确定结果的同请求重试沿用同 ID。绝不手改存储。
+
+
 ## 读取宿主配置（Read host config）
 
 任何动作之前，先在宿主 AGENTS.md 中 grep `## supervibe` 节：
@@ -23,7 +34,7 @@ argument-hint: [sprint-id|all]
 - 本技能不消费任何模板——条款记录本就存放在它读取的各签发方 sprint 文档里。
 - `### gates` 的 gate 命令不是本技能的事——门禁约束在 accept 与 complete；集成一条都不跑。
 
-然后解析目标：
+先从共享条目解析目标，再打开 Markdown 投影。不能仅凭当前分支目录推断运行目标集合：
 
 - 参数是 sprint id 或 `all`，绝非路径——参数给了路径 → 询问它所承载 sprint 的 id。
 - 参数缺失 → 询问，列出 `sprints_dir` 中 frontmatter `state` 为 `active` 或 `acceptance` 的文档备选；绝不猜测。
@@ -44,6 +55,16 @@ argument-hint: [sprint-id|all]
 - 交集预警：逐在途目标，把其分支的变更路径（对其 merge-base 的 diff）与每个其他在途 sprint 的变更路径求交——交集非空即在报告中标记：开工时的 early-start 估算已过期，重叠此刻是活的。
 - 验证集成结果是 sprint 自己的 accept/complete 领域：本技能集成并报告，绝不跑 gate 或场景。
 - 它不写 sprint 文档台账的任何东西——不碰 `state`、不碰字段、不翻转——也绝不 rebase 或改写 sprint 分支历史：受认可的改写面（收口前欠账修复）是 complete 的阶段 1，不在这里。
+
+## 集成后的验收新鲜度（Acceptance freshness after integration）
+
+目标共享状态为 `acceptance` 时（Markdown 状态须投影一致），集成后（包括 up-to-date 无操作）在其仓库根目录运行：
+
+```sh
+node "<plugin base dir>/scripts/validate-workflow.mjs" verify --sprint "<sprint-doc>" --record "<acceptance-record>"
+```
+
+记录路径取自 sprint 的 `acceptance-record` frontmatter。非零表示**验收过期或无效**，不能默认通过：在持久报告中展示错误，要求 complete 前完整 `supervibe:accept`。另运行 shared-ledger `check --id "<sprint-id>"`，检测受验 commit 不匹配。sync 不翻共享台账、不改旧证据；accept 在重验开始时撤销状态。complete 还会独立复核，所以漏看 sync 报告不能授权旧 pass。无操作集成不自动证明新鲜度。报告写入可能改变指纹；全部报告/笔记写完后再检查一次，报告最终状态，绝不沿用先前的绿结果。
 
 ## 冲突复核清单（Conflict re-verify checklist）
 

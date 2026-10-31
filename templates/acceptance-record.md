@@ -4,19 +4,54 @@
 <acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md — the date is the
 acceptance-run date. Records are append-only: a same-day re-run never
 overwrites an earlier record, it takes a distinguishing suffix (-2, -3, …);
-the sprint doc's frontmatter evidence link points at the passing record.
+the sprint doc's acceptance-record pointer names the latest completed attempt;
+only acceptance state with pass can authorize close-out.
 Fill every placeholder fill-in, replace the example-marked rows/lines with real
-content, keep the five section headings verbatim, then delete template
+content, keep the section headings verbatim, then delete template
 notes. -->
 
 ## Verdict
 
 <!-- One word first — pass or blocked — then the basis. pass requires ALL of:
-every scenario passed with fresh evidence or a labeled substitution; every
+every required scenario passed with fresh evidence in its prescribed modality/environment; substitutions or not-run do not pass; every
 DoD item checked with evidence; no unpaid doc-sync drift on triggered rows.
 Anything less is blocked, naming the blocking items. -->
 
 pass — all scenarios green on fresh runs; no unpaid drift on triggered rows <!-- example -->
+
+## Acceptance Evidence
+
+<!-- Insert exactly one fenced supervibe-evidence block containing the JSON
+emitted by scripts/validate-workflow.mjs snapshot BEFORE verification.
+Run snapshot again after verification and require identical JSON for pass.
+Keys: schema (1), sprint (repo-relative doc path), record (this exact
+repo-relative record path), fingerprint (SHA-256). Never hand-author a hash.
+Legacy records without this block cannot authorize complete: reaccept.
+The block binds inputs, not external environment state or proof of execution. -->
+
+```supervibe-evidence
+{"schema":1,"sprint":"<sprint-doc>","record":"<this-record>","fingerprint":"<snapshot fingerprint>"}
+```
+
+## Execution Evidence
+
+<!-- Exactly one results block. candidate equals the BEFORE snapshot fingerprint;
+environment names the actual URL/service/device, deployed build or revision,
+data/role and run time. artifacts reference inspectable action logs, output,
+recording/screenshots plus observed results, not a bare screenshot as UI proof.
+Required browser/real scenarios cannot be replaced by CI, API or fixtures.
+blocked/not-run results retain blockers; never fabricate observed evidence. -->
+
+```supervibe-acceptance-results
+{"schema":1,"scope":"sprint","candidate":"<before snapshot fingerprint>","environment":"<actual environment, deployed build/revision, role/data and run time>","results":[{"id":"S1","status":"not-run","modality":"api","environment":"real","steps":["<actual steps or planned steps if not-run>"],"expected":"<exact plan expectation>","observed":"Not run yet","artifacts":[],"blockers":["<reason not run>"]}]}
+```
+
+## Gate Evidence
+
+<!-- Optional cache: record branch tip hash at gate-run time, exact ordered
+configured commands that ran, and full green outputs/evidence links. Reuse
+requires unchanged tip and byte-identical gate list; otherwise rerun gates.
+This cache NEVER substitutes for Acceptance Evidence verification. -->
 
 ## Scenario Results
 
@@ -34,7 +69,7 @@ claim. Substituted evidence must be labeled as such. -->
 <!-- Every item checked with evidence. Items come from the sprint doc's DoD,
 itself verbatim from the epic doc. -->
 
-- [x] Export totals reconcile with invoiced totals to the cent — export-vs-ledger diff: 0.00 <!-- example -->
+- [x] Applicable quality gates pass on the reviewed build — configured gate command and full output linked here <!-- example -->
 - [ ] <!-- placeholder: DoD item --> — <!-- placeholder: evidence -->
 
 ## Obstacles (verbatim)

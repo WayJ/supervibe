@@ -6,6 +6,9 @@ disable-model-invocation: true
 
 # supervibe:board — 只读 roadmap 看板
 
+看板是 Markdown 投影快照，不是共享运行台账权威。实时状态/漂移用 shared-ledger status/doctor 检查；绝不根据卡片授权 WIP 或合并。
+
+
 生成零选择看板：用户打开页面内容已在——永远不需要选文件夹。
 
 1. 定位插件 `web/` 目录：`<本技能基目录>/../../web`（随包分发

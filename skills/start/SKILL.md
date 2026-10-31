@@ -8,13 +8,32 @@ argument-hint: <epic-id> <sprint-id>
 
 Materialize a `ready` stub from an epic doc's Sprint Breakdown into a sprint doc — the single door from planning into execution. Inputs are an epic id and a sprint id, both mandatory: one epic may hold several `ready` stubs (parallel waves), so the sprint id is never inferable from the epic alone. If either argument is missing, ask; never guess a wave.
 
-Pre-start state lives in the stub row; from materialization on, the sprint doc's frontmatter is the ledger, created with `state: active`. A sprint is value-boxed — closed by DoD, never time-boxed; parallelism is bounded by `wip_limit`, not by the calendar.
+Pre-start planning lives in the stub row; admission and runtime state live in the shared ledger. The sprint doc projects `active` after reservation and activation. A sprint is value-boxed — closed by DoD, never time-boxed; parallelism is bounded by `wip_limit`, not by the calendar.
 
 Around that act: adjudicate readiness, read history, then hand a scaffolded doc to the execution layer. superpowers is the recommended pair — present, dispatch to it; absent, produce the same artifact contract manually. The coupling is artifact-contract only: this skill never forks or rewrites execution-layer skills. Zero stack assumptions: every path comes from host config, never hardcoded.
 
+## Entry routing — before iteration side effects
+
+First resolve the user's execution intent, before reading/initializing the shared ledger, asking for epic/sprint IDs, confirming iteration configuration, scaffolding, reserving WIP, or creating any iteration artifact. The default is **coordinator-led multi-agent iteration**. Explicit single-agent work with no subagents routes directly to available **superpowers** execution skills; do not activate SuperVibe iteration mode or create/change its state. Preserve the no-subagents constraint in that handoff. If superpowers is unavailable, report the missing capability; do not initialize an iteration as a fallback.
+
+The pure helper `node "<plugin base dir>/scripts/iteration-route.mjs"` reads `{ "execution": "solo" }` or `{ "execution": "iteration" }` on stdin (omitted execution defaults to iteration). It only reports routing intent; it neither invokes skills nor probes harness capabilities. In iteration mode, use exactly native/harness or external/orca, inspect actual capabilities, and stop when the selected route is unavailable — never silently execute solo. `maxWorkers: 1` means **one worker plus the coordinating main agent**, not solo. The remaining instructions apply only after the iteration route is selected.
+
+## Shared runtime authority
+
+Read `<plugin base dir>/docs/shared-ledger.md`. From the host repository root run
+`node "<plugin base dir>/scripts/shared-ledger.mjs" status` and reconcile the
+requested sprint with its shared entry. The common-dir store, not Markdown,
+owns runtime state and WIP; frontmatter checks below are projection checks.
+No store → stop for explicit init/import. Use `doctor` to diagnose carrier or
+projection drift; never silently recover authority from a branch copy. Every
+mutation below requires `--id <sprint-id> --revision <current-revision>
+--operation <unique-operation-id>`; reread status for each new action and keep
+the same operation ID for an exact uncertain retry. Do not hand-edit the store.
+
+
 ## Read host config
 
-Before anything, grep the host AGENTS.md for the `## supervibe` section:
+After entry routing selects iteration, grep the host AGENTS.md for the `## supervibe` section:
 
 - Config keys this skill reads: `roadmaps_dir`, `sprints_dir`, `notes`, `wip_limit`; subsection `### doc_sync_map`.
 - Defaults when a key is absent: `roadmaps_dir: docs/superpowers/roadmaps/`, `sprints_dir: docs/superpowers/sprints/`, `notes: .agents/notes/`, `wip_limit: 3`.
@@ -23,6 +42,12 @@ Before anything, grep the host AGENTS.md for the `## supervibe` section:
 - Resolve templates as `<plugin base dir>/templates/<file>` (here `sprint.md` and `handover-clause.md`); never assume they live in the host repo.
 - Consult `### doc_sync_map` before writing the sprint doc: if the map covers an artifact path this skill writes, the map takes precedence — the "artifacts this skill writes owe no further doc-sync" exemption holds only for uncovered paths.
 - Gate commands from `### gates` are not this skill's concern — gates bind at accept and complete; starting runs none.
+
+## Overall iteration collaboration confirmation
+
+Before the first sprint of an epic starts, ask the user once for mode, concurrent worker cap, and (Orca only) worker harness IDs and explicit mixed-harness permission. Native workers inherit the current harness. No default worker count; sprint WIP is separate. Read [kickoff/config rules](../../docs/collaboration-modes.md) and `templates/iteration-collaboration.json`. Persist only the actual confirmed choice via `collaboration-contract.mjs confirm-config`, including user-message provenance, current ledgerRevision and per-epic config revision. Never fabricate consent. The common-dir ledger's `iterationConfigs[epic]` is execution authority; AGENTS supplies proposals only. On resume/later sprints, reuse it without asking again. Missing/draft config blocks delegation; changed choices need fresh confirmation, a new revision, and old workers/results drained first.
+
+Before every dispatch/retry, reconcile real backend occupied slots across the epic (starting/running/uncertain, including nested workers; excluding coordinator). Unknown occupancy or insufficient capacity blocks dispatch. One coordinator serializes admission; this is not an implemented backend semaphore. Bind every task to config revision/fingerprint and allowed workerHarness; verify actual chosen harness availability without installing/falling back. See the linked rules for read/save commands and Orca terminal-reuse constraints.
 
 ## Locate the stub
 
@@ -38,12 +63,12 @@ Before anything, grep the host AGENTS.md for the `## supervibe` section:
 Four rulings before any file is written — each either blocks the start or shapes the doc being created. Every ruling outcome lands in the new doc's frontmatter flags and the opening note's decisions section:
 
 1. **Dependencies** — read the stub note and the epic doc (Deliverables, Cross-cutting) for dependencies naming other sprints.
-   - Dependency already merged → satisfied: verify the target sprint doc's frontmatter reads `state: merged` with `merged-commit` set, then move on.
+   - Dependency already merged → satisfied: verify the target sprint doc's shared entry reads `state: merged` or `state: closed`, with its landing commit recorded; confirm the Markdown projection agrees, then move on.
    - Dependency on an unmerged sprint → not a stopper; route to ruling 4.
-2. **WIP limit** — count active sprints by scanning every doc in `sprints_dir` for frontmatter `state: active`.
-   - Count at or above `wip_limit` → stop, naming the active sprints; one of them must complete or close before this start can proceed.
+2. **WIP limit** — read shared `reserved`, `active`, and `acceptance` entries. All consume WIP; only `merged` and `closed` are landed. Markdown copies do not decide admission. The atomic `reserve` call below enforces the stored limit.
+   - Count at or above `wip_limit` → stop, naming the in-flight sprints; one of them must complete or close before this start can proceed.
    - An early-started sprint is `active` and counts toward the limit like any other.
-3. **Early start** — applies whenever any sprint is still in flight (frontmatter `state` not `merged`) — not only ones this sprint depends on.
+3. **Early start** — applies whenever any sprint is still in flight (shared state is `reserved`, `active`, or `acceptance`) — not only ones this sprint depends on.
    - Estimate the file intersection: the number of files both this sprint (epic Deliverables + stub note) and each in-flight sprint (its sprint doc) are expected to touch.
    - That number ≈ zero → safe: set `early-start: true` in the new doc's frontmatter and record the estimate in the opening note.
    - Material overlap → not safe as an early start: wait, or route the overlap through ruling 4.
@@ -52,6 +77,25 @@ Four rulings before any file is written — each either blocks the start or shap
    - **Clause id HC#: scan every sprint doc's Handover Clauses sections for max+1 (an empty scan starts at 1).**
    - Target reference per the migration rule: target sprint doc exists → append the HC# to its frontmatter `clauses` list; future sprint with no doc yet → record `target: <epic> breakdown S#` inside the clause itself.
    - Two write moments: the clause body goes into the doc being created now; the target-side frontmatter append happens immediately when the target doc exists — a future target's reference migrates at its own materialization.
+
+## Atomic WIP reservation
+
+Read shared status and perform all readiness judgments before reserving. Then,
+before creating a worktree or document, run from the host repository root:
+
+```sh
+node "<plugin base dir>/scripts/shared-ledger.mjs" reserve --id "<sprint-id>" --epic "<epic-id>" --document "<repo-relative-sprint-doc>" --branch "<branch>" --worktree "<absolute-planned-worktree>" --revision "<current-revision>" --operation "<unique-id>"
+```
+
+Nonzero means stop. Reservation counts reserved+active+acceptance and writes
+under one lock/CAS operation; never substitute the read-only `wip` diagnostic.
+An uncertain result requires status reconciliation and the same operation ID,
+not a second reservation. Failed starts retain their slot; no expiry or lock
+stealing is allowed. An unused reservation may be explicitly cancelled with
+`cancel-reservation` plus ID/revision/operation only when planned path, local
+branch and registered worktree are all absent. Otherwise resume or report the
+blocker; never cancel active work. Cancelled IDs remain reserved against reuse. State is shared across linked worktrees, not independent
+clones. A missing store requires explicit init/import, never a directory scan.
 
 ## Read history first
 
@@ -66,7 +110,7 @@ Notes are a cross-sprint knowledge asset, not a diary — read them before writi
 
 Pre-flight, before creating anything — duplicate-materialization guard: scan `sprints_dir` for any doc whose frontmatter `sprint` equals this id. A doc exists while the stub says `ready` → STOP and name the collision — fork risk (a git rollback lost the stub flip, or the doc was materialized out of band); never overwrite, never create a second doc. The mirrored anomaly — stub already `started` while no doc matches → STOP and surface it (the doc was lost); never silently re-materialize.
 
-1. Create `<sprints_dir>/YYYY-MM-DD-<sprint>-plan.md` from `templates/sprint.md`. The file date is the materialization date (today), not the stub's planning date. Frontmatter `{sprint, epic, state: active, worktree, early-start, deferred-dependency, clauses, merged-commit: null}`:
+1. After successful shared reservation, create the named carrier and `<sprints_dir>/YYYY-MM-DD-<sprint>-plan.md` from `templates/sprint.md`. The file date is the materialization date (today), not the stub's planning date. Frontmatter `{sprint, epic, state: active, worktree, early-start, deferred-dependency, clauses, acceptance-record: null, accepted-at: null, merged-commit: null}`:
    - `worktree` — the worktree/branch that will carry this sprint (one sprint = one worktree/branch).
    - `early-start` — the ruling above; `false` when it did not apply.
    - `deferred-dependency` — the HC# refs registered in ruling 4; empty when none.
@@ -75,17 +119,30 @@ Pre-flight, before creating anything — duplicate-materialization guard: scan `
 3. Flip the stub row state → `started`, keeping the sprint id pointer; append date + evidence link (the new doc path) to the stub note.
 4. Write the opening note `<notes>/YYYY-MM-DD-<sprint>-open.md` per the four-section protocol: background (why this line opened, rulings made) / decisions (with rationale, including rejected options) / lessons (the history extracted above, with citations) / handover (clauses registered here, obligations owed).
 
+After the carrier, sprint doc and opening note exist, call `shared-ledger.mjs activate` with ID/revision/operation flags, then confirm its shared `active` state. A failed/interrupted activation retains `reserved` and its WIP slot; inspect/resume rather than creating another sprint.
+
+Before implementation or worker dispatch, fill the sprint's acceptance plan from its stub goals: stable scenario IDs, goal, required modality/environment, ordered user actions and expected observations in the `supervibe-acceptance-plan` block. Link its scope to the Roadmap's independent overall scenarios without copying the entire overall delivery requirement into this sprint. A missing or empty scenario plan blocks implementation. UI scenarios require browser interaction in the real running environment; CI/API/static screenshots alone cannot satisfy them. Scope changes require a recorded user-authorized amendment and a fresh run, never relabeling old failed/substituted results as passed.
+
 ## Dispatch execution
 
-Execution belongs to the superpowers layer; this skill only hands over the artifact contract:
+Agent collaboration has exactly two routes, confirmed per epic (host `## supervibe` supplies proposals): `collaboration_mode: native` + `collaboration_provider: harness`, or `external` + `orca`. Missing, unsupported, mismatched or unavailable selection blocks delegation; ask for a choice or report the missing capability, never silently switch modes. SuperVibe owns the contract, not a scheduler. See [collaboration modes](../../docs/collaboration-modes.md).
 
-- Detect first: check whether `superpowers:brainstorming` and `superpowers:writing-plans` are available as invocable skills.
-- Available → invoke `superpowers:brainstorming`, then `superpowers:writing-plans`, directing both to fill the materialized doc path. **The five-section structure and the verbatim DoD are immutable constraints** on what the execution layer produces — it extends the scaffolded doc, never replaces or rewrites it.
-- Absent → print manual instructions producing the same artifact contract by hand: decompose the epic Deliverables into the doc's Stories & Tasks, keep the DoD verbatim, specify Acceptance Scenarios (S1–Sn) before review. The tooling degrades; the contract does not.
+1. Before delegation, inspect actual capabilities. **Native:** use the current harness's documented available worker creation and result tools (plus messaging if interaction is required) (for example Claude Code subagents); do not invent tool names or assume cross-session support. **External:** locate the Orca CLI and read `orca skills get orchestration` plus relevant current references; missing CLI/skill blocks this route, not an installation request.
+2. Validate the task JSON with `node <plugin-root>/scripts/collaboration-contract.mjs task` on stdin: explicit mode/provider, sprint/task identity, objective, worktree, allowed paths and acceptance. Pass this same scope to the worker. Do not broaden permissions, install dependencies, provision credentials, or authorize commits/pushes implicitly.
+3. Native delegates using inspected tools and retains actual worker/session receipts. Orca follows the official `worker-start` / `send` / `check` / `inbox` lifecycle: launch from the validated sprint carrier, normally `--worktree current`, and require the worker to verify common-dir/carrier before its first write; retain `runId`, `taskId`, `dispatchId`, actual workspace and any terminal receipt. A Run is a work grouping, not a harness session. End the turn after dispatch and await event wakes; never loop on consuming `check`. `inbox` is history, not proof of success. Inspect an unknown/failed start before retrying; an authorized retry stays on the same task with its dispatch linkage.
+4. Verify the actual returned workspace resolves to the sprint carrier and the same Git common-dir. Do not assume Orca's new workspace belongs to this ledger. No new worktree without requested isolation or a demonstrated conflict; an incompatible workspace blocks delegation/results rather than expanding scope. Reserve WIP once per sprint, never per worker task.
+5. Collect an explicit `succeeded|failed|blocked` result with execution identities, evidence and blockers. Validate `{task, result}` on stdin with helper `result`; persist request/result and receipts in a sprint-linked task handoff note before acceptance fingerprinting. Evidence is required for success; completion events, process exits and worker claims alone do not accept a sprint. Failed/blocked results go to the owner; `supervibe:accept` still owns acceptance. Runtime state remains in the existing local common-dir ledger.
+
+### Execution methods (not collaboration providers)
+
+- Detect whether `superpowers:brainstorming` and `superpowers:writing-plans` are available as invocable skills. If available, invoke them in that order to fill the materialized doc path, within either selected collaboration route.
+- **The five-section structure and verbatim DoD remain immutable.** The execution-method layer extends the scaffold; it never replaces it.
+- Without superpowers, print manual instructions: decompose epic Deliverables into Stories & Tasks, preserve DoD verbatim, specify Acceptance Scenarios (S1–Sn) before review. This method fallback does not permit changing the configured collaboration mode.
+- Support status: contract and fixture coverage only; neither live native-harness nor Orca end-to-end integration is certified by these checks.
 
 ## Invariants
 
-- This skill owns exactly one state transition: a `ready` stub → `started`, plus a sprint doc created with `state: active`. Never planned→ready (roadmap), never acceptance/merged/closed (accept/complete/roadmap), never clause discharge (sync).
+- This skill owns shared `reserve` and `reserved → active` activation, plus a `ready` stub → `started` and active Markdown projection. Never planned→ready (roadmap), never acceptance/merged/closed (accept/complete/roadmap), never clause discharge (sync).
 - Never materialize a sprint doc by any other path — `sprints/` docs come only from `ready` stubs.
 - DoD verbatim, always — the epic doc is its only home.
 - HC# ids are never reused: max+1 across every sprint doc's Handover Clauses sections; an empty scan starts at 1.

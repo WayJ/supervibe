@@ -14,6 +14,14 @@ sprint 何时算完、何时可以合入」——战略层。与
 两层通过**工件契约**耦合，而非代码耦合：一份 sprint plan 文档 + 一份验收
 记录。SuperVibe 绝不 fork 或重写任何 superpowers 技能。
 
+## 默认多 Agent 迭代，显式单 Agent 退出
+
+SuperVibe 默认由协调主 Agent 加 workers 完成整体迭代；启动时确认原生 harness 编排（如 Claude Code subagent）或外部 Orca 编排、worker 数量，以及适用的 worker harness。`maxWorkers: 1` 是协调主 Agent **加**一个 worker，不是单 Agent。所选能力缺失即阻塞，不静默退化为单 Agent。
+
+用户明确只用单 Agent、不启用 subagent 时，直接走 **superpowers**，先于任何 SuperVibe scaffold、账本初始化、配置、预留或迭代工件创建，不激活迭代模式；solo 不是第三种协作模式。`scripts/iteration-route.mjs` 是纯意图分流器，不是运行时启动器。
+
+验收在规划时明确**两个独立层次**：每个 sprint 自己的场景，以及 Roadmap 的最终集成目标。通用 DoD 是共享质量基线，不要求每个 sprint 交付整个 Roadmap。CI/CD 成功不能替代真实用户验收：UI 场景须有真实浏览器操作、观察结果和工件证据。必需证据缺失、未运行或被替代均阻塞。所有计划内 sprint 落地主线后，还要对当前集成内容完成独立、全新的整体验收，才能关闭 Roadmap。结构/来源校验不证明浏览器证据真实。
+
 ## 术语（刻意对齐 Scrum）
 
 核心名词直接采用 Scrum 词汇——无需重复学习：**epic**、**sprint**、
@@ -27,8 +35,8 @@ sprint 何时算完、何时可以合入」——战略层。与
 
 四个 Scrum 没有对应物的名词——SuperVibe 的增量能力：
 
-- **sprint ledger**（sprint 台账）— 各 sprint 文档头部 frontmatter 的权威
-  状态字段（去中心化，目录扫描聚合，无中心索引）
+- **sprint ledger**（sprint 台账）— Git common directory 中的共享运行状态；
+  sprint frontmatter 只是可读、版本化投影
 - **handover clause**（交接条款）— 跨 sprint 复核义务（「我的变更落了，
   你要复核 X」）
 - **early start**（提前启动）— 前一 sprint 未收口时安全开新线
@@ -49,10 +57,11 @@ docs/superpowers/
 └── acceptances/    2026-10-01-S#-acceptance.md 验收记录：证据、裁决
 ```
 
-sprint 状态是一张**去中心化台账**：pre-start 状态（`planned`/`ready`）住在
-epic 文档的 Sprint Breakdown 桩行里；实体化时桩行翻为 `started`，此后状态
-住在 sprint 文档的 frontmatter 里（`active → acceptance → merged → closed`）。
-每次状态翻转都追加日期 + 证据链接。
+sprint 运行状态是一张**共享台账**，位于 `<git common-dir>/supervibe/state.json`。
+全部关联 worktree 对预留、WIP、转换共用唯一权威。Markdown 保留规划、DoD、
+场景、证据与可读状态投影；分支内标签不能授权开工或合并。pre-start 的
+planned/ready 仍属于 epic 规划桩行。显式 init/import、版本 CAS 与恢复协议
+见[共享状态说明](docs/shared-ledger.md)。
 
 ## 生命周期
 
@@ -69,7 +78,7 @@ flowchart TD
     G -->|执行毕| H{"accept<br/>证据先于断言"}
     H -->|blocked：回清单点名的阻断项| G
     H -->|pass：frontmatter→acceptance| I["验收记录落档<br/>场景表 + DoD + 障碍 + 漂移审计"]
-    I --> J{"merge 七阶段<br/>gate→裁决→合并→拆除→台账→发射条款→笔记"}
+    I --> J{"merge 七阶段<br/>gate→裁决→合并→台账→拆除→发射条款→笔记"}
     J -->|红：gate 红 / doc-sync 欠账 / 裁决缺| G
     J -->|绿| K["main + merged-commit<br/>worktree 拆除，条款 binding"]
     K -->|roadmap close| L["closed"]
@@ -91,14 +100,31 @@ flowchart LR
 
 要点：
 
-- **状态双命名空间**：桩行管 `planned → ready → started`；frontmatter 管 `active → acceptance → merged → closed`
+- **状态双命名空间**：桩行管 `planned → ready → started`；共享运行态管 `reserved → active → acceptance → merged → closed`，frontmatter 只投影
 - **条款三段**：start 登记 → merge 阶段 6 发射（binding）→ sync 兑现（discharged）
 - **回炉路**：accept blocked 回执行；merge 红回执行/accept，修完 merge 从阶段 1 重跑——半绿不算数
-- **并行**：start 受 `wip_limit` 约束（默认 3）；多线并行时 sync 是漂移围栏
+- **并行**：`reserved`、`active` 与 `acceptance` 都计入 `wip_limit`（默认 3）；多线并行时 sync 是漂移围栏
+
+## 共享状态与确定性校验
+
+shared-ledger.mjs 在 Git common-dir 管理本地运行状态，以 mkdir 锁、版本比较、
+操作 ID 与原子 JSON 替换保护写入。必须显式 init/import，没有分支状态回退。
+reserve 在载体创建前原子占用 WIP，activate 完成启动；评审、落地、收口命令
+分别拥有转换。启动失败保留预留以供恢复；独立克隆不共享运行状态。
+
+validate-workflow.mjs 将验收绑定受审文件指纹。review-pass 要求干净、已提交的
+候选，记录 commit/tree；合并前 check 阻断候选变化。指纹只排除新记录精确路径
+与三个评审元数据字段，不忽略整个目录。外部系统与忽略构建产物仍须真实验证。
+显式 import 时，旧 acceptance 须先撤销再做新评审。
+
+Markdown 与看板只是投影，不裁定 WIP。共享台账是 Git 元数据，不推送为源码，
+新克隆须显式初始化。本地锁不等于远端合并锁；宿主合并保护与真实场景证据仍
+必需。子模块、不支持的多行 frontmatter、未解决冲突失败关闭。scaffold 用
+已提交 `.gitkeep` 保留归属空目录，已落地合并的恢复绝不重复合并。
 
 ## 看板
 
-随包分发的静态查看器，一眼看全工件树。说一声「看板」，`supervibe:board`
+随包分发的 Markdown 投影静态查看器，不是实时运行台账。说一声「看板」，`supervibe:board`
 在宿主仓生成 `.agents/board/`（页面 + parser + 烘焙的 `board-data.js`）；
 打开即见每个 epic 的完整拆解——sprint 卡片按状态分列（含桩行），详情抽屉
 里有 DoD、验收场景、交接条款与波次 plan 链接。零文件夹选择；重跑技能即刷新
@@ -122,7 +148,7 @@ flowchart LR
 claude --plugin-dir /path/to/supervibe
 ```
 
-## 五个技能
+## 六个技能
 
 | 技能 | 一句话 |
 |---|---|
@@ -131,8 +157,15 @@ claude --plugin-dir /path/to/supervibe
 | `supervibe:accept` | 以新鲜证据真跑验收场景、审计文档漂移、出具裁决 |
 | `supervibe:complete` | 七阶段收口：门禁 → 裁决 → 合并 → 台账 → 拆除 → 发射条款 → 收口笔记 |
 | `supervibe:sync` | 事件驱动地把 `origin/main` merge 进在途 sprint；核查并兑现交接条款；报告持久落 notes |
+| `supervibe:board` | 生成 epic、sprint 与交接条款的本地只读快照看板 |
 
 每个技能双语交付：`SKILL.md`（英文真源）+ `SKILL.zh.md`（忠实中文镜像）。
+
+## Agent 协作模式
+
+明确支持两条路：**native / harness** 使用 harness 自带编排（如 Claude Code subagent）；**external / orca** 通过 Orca CLI 委派跨会话、跨 harness 协作。SuperVibe 定义统一任务/结果契约，不自建调度器。Superpowers 提供执行方法，不是第三种协作模式。
+
+在宿主配置中选择 `collaboration_mode` 与 `collaboration_provider`；未配置或能力不可用就阻止委派，不静默降级。共享状态仍局限于一个 Git common-dir。**当前为契约/fixture 验证，非真实 native/Orca 端到端验证。**详见[配置、边界与回执](docs/collaboration-modes.md)。
 
 ## 宿主配置
 
@@ -171,6 +204,7 @@ SuperVibe 检测到 superpowers 则调度它（brainstorming、spec 撰写、TDD
 ```
 claude plugin validate . --strict   # plugin/marketplace manifest 校验
 node tests/check-artifacts.mjs      # 双语配对、模板完整性、装配干跑
+node --test tests/*.test.mjs
 ```
 
 零 npm 依赖；Node ≥ 20。
@@ -178,3 +212,5 @@ node tests/check-artifacts.mjs      # 双语配对、模板完整性、装配干
 ## 许可证
 
 MIT
+
+整体迭代启动时统一询问 worker 并发上限；原生继承当前 harness，Orca 另询问 worker harness 及是否允许混用。真实用户确认后保存到本地共享台账，恢复直接复用。无默认数量，不自动启动。上限/harness 契约有校验，真实 backend 容量准入仍由 coordinator 负责。

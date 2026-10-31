@@ -7,15 +7,15 @@ const TPL = process.env.TEMPLATES_DIR ?? 'templates';
 const SKILLS = process.env.SKILLS_DIR ?? 'skills';
 
 const SKILL_DIRS = ['roadmap', 'start', 'accept', 'complete', 'sync', 'board'];
-const EPIC_H2 = ['## Deliverables', '## Definition of Done', '## Sprint Breakdown',
+const EPIC_H2 = ['## Deliverables', '## Definition of Done', '## Overall Acceptance Scenarios', '## Final Acceptance', '## Sprint Breakdown',
   '## Decisions (ADR)', '## Asset Disposition', '## Open Questions', '## Cross-cutting'];
 const SPRINT_H2 = ['## Decisions (D-x)', '## Stories & Tasks', '## Definition of Done',
   '## Acceptance Scenarios (S1–Sn)', '## Handover Clauses']; // (S1–Sn) = U+2013 en dash
-const LEDGER_KEYS = ['sprint', 'epic', 'state', 'worktree', 'early-start', 'deferred-dependency', 'clauses', 'merged-commit'];
-const ACC_H2 = ['## Verdict', '## Scenario Results', '## DoD Checklist', '## Obstacles (verbatim)', '## Doc-Drift Audit'];
+const LEDGER_KEYS = ['sprint', 'epic', 'state', 'worktree', 'early-start', 'deferred-dependency', 'clauses', 'merged-commit', 'acceptance-record', 'accepted-at'];
+const ACC_H2 = ['## Verdict', '## Scenario Results', '## DoD Checklist', '## Obstacles (verbatim)', '## Doc-Drift Audit', '## Acceptance Evidence', '## Execution Evidence'];
 const CLAUSE_LABELS = ['id HC#', 'issuer sprint', 'target sprint', 'trigger', 'obligation', 'status (open|discharged)', 'evidence'];
 const DEBT_LABELS = ['id', 'date', 'severity', 'owner', 'description', 'repayment criteria', 'status', 'evidence commit'];
-const CONFIG_KEYS = ['roadmaps_dir', 'sprints_dir', 'acceptances_dir', 'notes', 'debt_tracker', 'wip_limit'];
+const CONFIG_KEYS = ['roadmaps_dir', 'sprints_dir', 'acceptances_dir', 'notes', 'debt_tracker', 'wip_limit', 'collaboration_mode', 'collaboration_provider'];
 
 let checks = 0;
 const failures = [];
@@ -86,6 +86,26 @@ function checkTemplates() {
   if (ok(acc !== null, 'templates/acceptance-record.md: exists'))
     assertHeadings(acc, ACC_H2, 'acceptance-record.md');
 
+  if (acc !== null) {
+    ok(acc.includes('```supervibe-evidence'), 'acceptance template: machine evidence block');
+    for (const key of ['schema', 'sprint', 'record', 'fingerprint']) ok(acc.includes('\"' + key + '\"'), `acceptance template: ${key}`);
+  }
+
+  for (const [name, scope] of [['epic.md', 'roadmap'], ['sprint.md', 'sprint']]) {
+    const t = readIf(join(TPL, name)) ?? '';
+    ok(t.includes('```supervibe-acceptance-plan'), `${name}: upfront machine scenario plan`);
+    ok(t.includes('"scope":"' + scope + '"'), `${name}: layered acceptance scope`);
+  }
+  const finalRecord = readIf(join(TPL, 'roadmap-acceptance-record.md'));
+  ok(finalRecord !== null, 'roadmap acceptance template exists');
+  if (finalRecord !== null) {
+    assertHeadings(finalRecord, ACC_H2, 'roadmap-acceptance-record.md');
+    for (const marker of ['roadmap-snapshot', 'roadmap-verify', 'roadmap-verify-clean', 'supervibe-acceptance-results', 'mainRef', 'candidate', 'artifacts', 'blockers'])
+      ok(finalRecord.includes(marker), `roadmap template: ${marker}`);
+  }
+  for (const marker of ['supervibe-acceptance-results', 'candidate', 'environment', 'observed', 'artifacts', 'blockers'])
+    ok((acc ?? '').includes(marker), `sprint acceptance template: ${marker}`);
+
   const clause = readIf(join(TPL, 'handover-clause.md'));
   if (ok(clause !== null, 'templates/handover-clause.md: exists'))
     assertLabels(clause, CLAUSE_LABELS, 'handover-clause.md', (l) => `- ${l}:`);
@@ -145,7 +165,34 @@ function main() {
   try {
     checkSkills(listSkillDirs());
     checkTemplates();
+    const draft = JSON.parse(readFileSync('templates/iteration-collaboration.json', 'utf8'));
+    ok(draft.config.status === 'draft', 'iteration template never fabricates confirmation');
+    ok(draft.config.maxWorkers === null, 'iteration template has no default worker cap');
+    ok(draft.config.confirmation.source === '', 'iteration template requires real user provenance');
+    for (const file of ['SKILL.md', 'SKILL.zh.md']) ok(readFileSync(join(SKILLS, 'start', file), 'utf8').includes('iterationConfigs'), `start/${file}: confirmed iteration policy`);
+    for (const file of ['SKILL.md', 'SKILL.zh.md']) ok((readIf(join(SKILLS, 'start', file)) ?? '').includes('reserve'), `start/${file}: reserves shared capacity`);
+    for (const skill of ['roadmap', 'start']) for (const file of ['SKILL.md', 'SKILL.zh.md']) {
+      const t = readIf(join(SKILLS, skill, file)) ?? '';
+      ok(t.includes('iteration-route.mjs'), `${skill}/${file}: explicit solo routing`);
+    }
+    for (const file of ['SKILL.md', 'SKILL.zh.md']) {
+      const t = readIf(join(SKILLS, 'accept', file)) ?? '';
+      ok(t.includes('supervibe-acceptance-results'), `accept/${file}: required execution evidence`);
+      ok((readIf(join(SKILLS, 'roadmap', file)) ?? '').includes('roadmap-verify'), `roadmap/${file}: final integrated guard`);
+    }
     checkBoard();
+    ok(existsSync('scripts/validate-workflow.mjs'), 'workflow validator exists');
+    ok(existsSync('scripts/shared-ledger.mjs'), 'shared ledger CLI exists');
+    ok(existsSync('scripts/ledger-store.mjs'), 'shared ledger storage exists');
+    for (const skill of ['roadmap', 'start', 'accept', 'complete']) for (const file of ['SKILL.md', 'SKILL.zh.md']) {
+      ok((readIf(join(SKILLS, skill, file)) ?? '').includes('shared-ledger.mjs'), `${skill}/${file}: shared ledger integration`);
+    }
+    for (const skill of ['accept', 'complete', 'sync']) {
+      for (const file of ['SKILL.md', 'SKILL.zh.md']) {
+        const text = readIf(join(SKILLS, skill, file)) ?? '';
+        ok(text.includes('validate-workflow.mjs'), `${skill}/${file}: invokes workflow guard`);
+      }
+    }
     assemblyDryrun();
   } catch (e) {
     failures.push(`unexpected error: ${e.message}`);
