@@ -10,6 +10,17 @@ sprint 评审门禁：把每条验收场景真跑一遍，逐项以证据核对 
 
 这里是执行层的断言与战略层的标准碰面的检查点：本技能的 pass 正是解锁 `supervibe:complete` 的东西。零栈假设：证明命令来自场景正文与宿主 `### gates` 配置——绝不发明；一切路径取自宿主配置，绝不硬编码。
 
+## 共享运行权威（Shared runtime authority）
+
+读取 `<plugin base dir>/docs/shared-ledger.md`。在宿主仓库根目录运行
+`node "<plugin base dir>/scripts/shared-ledger.mjs" status`，将目标 sprint 与
+共享条目核对。common-dir 存储而非 Markdown 拥有运行状态和 WIP；下文的
+frontmatter 检查均是投影检查。无存储就停止，显式 init/import。用 doctor
+诊断载体或投影漂移，不从分支副本静默恢复权威。下文每个变更均传入
+`--id <sprint-id> --revision <当前版本> --operation <唯一操作 ID>`；新动作
+先重读 status，不确定结果的同请求重试沿用同 ID。绝不手改存储。
+
+
 ## 输入（Inputs）
 
 任何动作之前，先在宿主 AGENTS.md 中 grep `## supervibe` 节：
@@ -24,9 +35,22 @@ sprint 评审门禁：把每条验收场景真跑一遍，逐项以证据核对 
 
 然后解析受审的 sprint：
 
-- 参数：sprint id 或 sprint 文档直接路径。缺失 → 询问，并列出 `sprints_dir` 中 frontmatter `state` 为 `active` 的文档备选；绝不猜测。
+- 参数：sprint id 或 sprint 文档直接路径。缺失 → 询问，并列出 `sprints_dir` 中 frontmatter `state` 为 `active` 或 `acceptance` 的文档备选；绝不猜测。
 - sprint id → 扫 `sprints_dir` 内全部文档找 frontmatter `sprint` 匹配。没有匹配 → 拒绝，言明未知的 sprint id。直接路径 → 文件必须存在且带 `sprint` frontmatter 字段；否则拒绝，点名该路径。
-- sprint 文档 frontmatter 的状态前置：`active` → 继续。`acceptance` → 拒绝：已过门禁；点名既存的验收记录。`merged` / `closed` → 拒绝：门禁已过。
+- 状态前置：`active` 或 `acceptance` → 继续，但必须**完整重新验收**，绝不复用旧场景裁决。`merged` / `closed` → 拒绝：已过此门禁。状态未知或缺失 → 拒绝。
+- **每次**评审前，先用 ID/revision/operation 参数调用 `shared-ledger.mjs review-begin`，清空共享证据并置共享 active。再投影 `state: active`、追加带日期重验说明，保留旧记录作为历史。这样先撤销旧 pass，再运行任何命令；中断不能留下仍可用的旧裁决。绝不改写旧记录。
+
+## 将证据绑定到受审树（Bind evidence to the reviewed tree）
+
+在宿主仓库根目录，先选择尚不存在的新验收记录路径（重跑加后缀），再运行：
+
+```sh
+node "<plugin base dir>/scripts/validate-workflow.mjs" snapshot --sprint "<sprint-doc>" --record "<new-acceptance-record>"
+```
+
+两个路径都相对于仓库根目录。验证期间禁止并发写者；前后相等不是原子锁。无关仓库编辑也使这一刻意保守的指纹失效。frontmatter 只支持随包模板的单行键值，多行值失败关闭。输出 JSON 留在内存或宿主仓库外（如 `/tmp`），绝不写成宿主内新的未忽略文件，作为**验收前快照**。所有场景、DoD 与漂移检查完成后，用相同命令再取快照；只有 JSON 逐字节一致才可给 pass。指纹变化说明受审输入已变：停止，保留 blocked 记录，针对新树从头验收。绝不事后取一份新快照贴到旧结果上。
+
+快照包含 Git 跟踪文件与未被忽略的未跟踪文件的路径、模式和内容；只排除**这一个新记录的精确路径**，且只归一化该 sprint 的 `state`、`acceptance-record`、`accepted-at` frontmatter 字段。DoD、场景、源码、配置、其他记录与 notes 都仍被覆盖。笔记和绕行先写好再做最终验收，若验收中写入则须重验。精确记录排除避免自引用；仅提交证据/台账不会让指纹失效。忽略的构建产物、数据库、部署服务与外部环境状态不在指纹内，仍必须在真实环境新鲜验证。未解决的 Git 索引冲突或子模块不受支持，按失败关闭处理。此检查证明来源一致性，不证明测试实际运行。
 
 ## 执行验收场景（Execute scenarios）
 
@@ -79,18 +103,19 @@ sprint 评审门禁：把每条验收场景真跑一遍，逐项以证据核对 
 
 ## 裁决与记录（Verdict + record）
 
-以 `templates/acceptance-record.md` 写 `<acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md`；日期是今天，即验收运行日。记录至少携带：场景结果表、带证据的 DoD 清单、逐字障碍日志、漂移报告、裁决，以及**门禁证据块（gate-evidence block）**——运行时的分支 tip hash、按原样跑过的 gates 清单（逐条已运行的配置 gate 命令）、其绿的输出。该块正是 complete 阶段 1 短路所用的机械钥匙，条件恰好是 tip 与清单未变；没有它，complete 全量重跑。记录只增不改——同日重跑绝不覆盖既有记录，改用区分性后缀（`-2`、`-3`、……）；frontmatter 证据链接指向裁决 pass 的那份记录。
+以 `templates/acceptance-record.md` 写 `<acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md`；日期是今天，即验收运行日。记录至少携带：场景结果表、带证据的 DoD 清单、逐字障碍日志、漂移报告、裁决，以及**门禁证据块（gate-evidence block）**——运行时的分支 tip hash、按原样跑过的 gates 清单（逐条已运行的配置 gate 命令）、其绿的输出。该块正是 complete 阶段 1 短路所用的机械钥匙，条件恰好是 tip 与清单未变；没有它，complete 全量重跑。记录只增不改——同日重跑绝不覆盖既有记录，改用区分性后缀（`-2`、`-3`、……）；`acceptance-record` 指针指向最新完成的尝试；只有 acceptance 状态下的 pass 才可授权收口。
 
 - **pass** 需要全部满足：每条场景以新鲜证据或已标注的替代通过；每项 DoD 有证据核对；被触发行上无未偿漂移。任一不满足 → **blocked**，点名阻断项。
-- pass → 更新 sprint 文档 frontmatter `state: acceptance`，追加日期 + 记录路径作为证据链接。记录与翻转在同一动作里写出——翻了状态却没有记录是不完整的。
-- blocked → 记录照写照留——证据要保全。状态保持 `active`：sprint 回到执行层清理点名的问题，之后再验收；每次运行写自己的记录。
+- 每份完成的记录必须包含恰好一个 `supervibe-evidence` 围栏块，内放验收前 JSON（schema、sprint、record、fingerprint）。只有验收后快照未变，才可支撑 pass。
+- pass → 先写记录，再临时置 sprint frontmatter `state: acceptance`、`acceptance-record: <record-path>`、`accepted-at: <ISO 日期时间>`，以这两个字段作为带日期的证据链接（快照后不再追加正文）。记录必须先于状态翻转存在。报告可用 pass 前，用同一校验器运行 `verify --sprint "<sprint-doc>" --record "<record-path>"`；失败即阻断收口。先提交全部受审内容、临时投影与新记录，再用 ID/revision/operation 参数调用 `shared-ledger.mjs review-pass`；它要求载体 verify-clean，通过后存受验 commit/tree，才授予共享 acceptance。成功前，Markdown acceptance 只是临时投影，不授权合并。
+- blocked → 保留新记录，置 `state: active`、`acceptance-record: <new-blocked-record>`、`accepted-at: <ISO 日期时间>`，记下本次尝试。指针指向最新尝试，不保证是 pass。用 ID/revision/operation 参数调用 `shared-ledger.mjs review-blocked` 记录尝试，共享状态仍 active。绝不恢复旧 pass。回执行层清理问题后再验收，每次写独立记录。
 
-记录是后续环节的证据锚点：complete 的收口条目回引它——记录与收口条目互相引用。而最便宜的收口就是同一会话：pass 之后立即跑 `supervibe:complete`——漂移窗口为零，门禁证据最新鲜。
+记录是后续环节的证据锚点：complete 的收口条目回引它——记录与收口条目互相引用。而最便宜的收口就是同一会话：pass 之后立即跑 `supervibe:complete`——漂移窗口更小、门禁证据更新鲜，但仍必须校验指纹。
 
 ## Invariants（不变量）
 
-- 本技能只拥有一个状态转换：sprint 文档 frontmatter `active → acceptance`，且仅在裁决 pass 时发生。绝不 `merged`/`closed`（complete/roadmap），绝不做条款兑现（sync），绝不碰桩行状态（roadmap/start）。
-- frontmatter 状态翻转是本技能对 sprint 文档的唯一改动——场景、DoD、story、条款都是受审的输入，绝不是为凑 pass 而改写的目标。
+- 本技能拥有共享评审转换（Markdown 字段只是投影）：重验前 `acceptance → active`，以及新鲜、绑定受审树的 pass 之后 `active → acceptance`。绝不 `merged`/`closed`（complete/roadmap），绝不做条款兑现（sync），绝不碰桩行状态（roadmap/start）。
+- 本技能只改 sprint 的评审状态、`acceptance-record`、`accepted-at` 与带日期审计说明——场景、DoD、story、条款都是受审的输入，绝不是为凑 pass 而改写的目标。
 - 证据先于断言，每条场景、每项 DoD、每次运行——没有新鲜运行的 pass 不是 pass。
 - 验收记录只增不改；历史绝不重写、绝不美化。
 - 任何对未知 sprint id 的引用 → 拒绝并点名。

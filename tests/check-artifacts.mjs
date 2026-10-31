@@ -11,8 +11,8 @@ const EPIC_H2 = ['## Deliverables', '## Definition of Done', '## Sprint Breakdow
   '## Decisions (ADR)', '## Asset Disposition', '## Open Questions', '## Cross-cutting'];
 const SPRINT_H2 = ['## Decisions (D-x)', '## Stories & Tasks', '## Definition of Done',
   '## Acceptance Scenarios (S1–Sn)', '## Handover Clauses']; // (S1–Sn) = U+2013 en dash
-const LEDGER_KEYS = ['sprint', 'epic', 'state', 'worktree', 'early-start', 'deferred-dependency', 'clauses', 'merged-commit'];
-const ACC_H2 = ['## Verdict', '## Scenario Results', '## DoD Checklist', '## Obstacles (verbatim)', '## Doc-Drift Audit'];
+const LEDGER_KEYS = ['sprint', 'epic', 'state', 'worktree', 'early-start', 'deferred-dependency', 'clauses', 'merged-commit', 'acceptance-record', 'accepted-at'];
+const ACC_H2 = ['## Verdict', '## Scenario Results', '## DoD Checklist', '## Obstacles (verbatim)', '## Doc-Drift Audit', '## Acceptance Evidence'];
 const CLAUSE_LABELS = ['id HC#', 'issuer sprint', 'target sprint', 'trigger', 'obligation', 'status (open|discharged)', 'evidence'];
 const DEBT_LABELS = ['id', 'date', 'severity', 'owner', 'description', 'repayment criteria', 'status', 'evidence commit'];
 const CONFIG_KEYS = ['roadmaps_dir', 'sprints_dir', 'acceptances_dir', 'notes', 'debt_tracker', 'wip_limit'];
@@ -86,6 +86,11 @@ function checkTemplates() {
   if (ok(acc !== null, 'templates/acceptance-record.md: exists'))
     assertHeadings(acc, ACC_H2, 'acceptance-record.md');
 
+  if (acc !== null) {
+    ok(acc.includes('```supervibe-evidence'), 'acceptance template: machine evidence block');
+    for (const key of ['schema', 'sprint', 'record', 'fingerprint']) ok(acc.includes('\"' + key + '\"'), `acceptance template: ${key}`);
+  }
+
   const clause = readIf(join(TPL, 'handover-clause.md'));
   if (ok(clause !== null, 'templates/handover-clause.md: exists'))
     assertLabels(clause, CLAUSE_LABELS, 'handover-clause.md', (l) => `- ${l}:`);
@@ -145,7 +150,20 @@ function main() {
   try {
     checkSkills(listSkillDirs());
     checkTemplates();
+    for (const file of ['SKILL.md', 'SKILL.zh.md']) ok((readIf(join(SKILLS, 'start', file)) ?? '').includes('reserve'), `start/${file}: reserves shared capacity`);
     checkBoard();
+    ok(existsSync('scripts/validate-workflow.mjs'), 'workflow validator exists');
+    ok(existsSync('scripts/shared-ledger.mjs'), 'shared ledger CLI exists');
+    ok(existsSync('scripts/ledger-store.mjs'), 'shared ledger storage exists');
+    for (const skill of ['roadmap', 'start', 'accept', 'complete']) for (const file of ['SKILL.md', 'SKILL.zh.md']) {
+      ok((readIf(join(SKILLS, skill, file)) ?? '').includes('shared-ledger.mjs'), `${skill}/${file}: shared ledger integration`);
+    }
+    for (const skill of ['accept', 'complete', 'sync']) {
+      for (const file of ['SKILL.md', 'SKILL.zh.md']) {
+        const text = readIf(join(SKILLS, skill, file)) ?? '';
+        ok(text.includes('validate-workflow.mjs'), `${skill}/${file}: invokes workflow guard`);
+      }
+    }
     assemblyDryrun();
   } catch (e) {
     failures.push(`unexpected error: ${e.message}`);

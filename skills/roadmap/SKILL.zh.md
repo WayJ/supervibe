@@ -6,9 +6,20 @@ argument-hint: [scaffold|epic|breakdown|adr|question|asset|debt|ready|close]
 
 # supervibe:roadmap — 战略真源
 
-掌管日期化工件树的 supervibe 侧——`roadmaps/`（每 epic 一档 `YYYY-MM-DD-<epic>.md`）、`sprints/`（每 sprint 一档 `YYYY-MM-DD-<sprint>-plan.md`）、`acceptances/`（默认根 `docs/superpowers/`，与 superpowers 执行域的 `specs/`、`plans/` 同根为邻），外加宿主 AGENTS.md 的 `## supervibe` 节。**没有中心索引文件**：状态存于各文档 frontmatter，id 由目录扫描产生，聚合即对树扫描——零静默分叉面。术语刻意对齐 Scrum：epic / sprint / DoD（Definition of Done）/ story；sprint 是价值盒——由 DoD 收口，绝非时间盒。sprint 状态分两段存放：pre-start（`planned` / `ready`）只活在 epic 文档的 Sprint Breakdown 桩行里；`active` 起存于 sprint 文档 frontmatter。零栈假设：路径、gate 命令与 doc-sync 映射都在宿主 AGENTS.md——绝不硬编码任何一条。
+掌管日期化工件树的 supervibe 侧——`roadmaps/`（每 epic 一档 `YYYY-MM-DD-<epic>.md`）、`sprints/`（每 sprint 一档 `YYYY-MM-DD-<sprint>-plan.md`）、`acceptances/`（默认根 `docs/superpowers/`，与 superpowers 执行域的 `specs/`、`plans/` 同根为邻），外加宿主 AGENTS.md 的 `## supervibe` 节。共享 common-dir 台账拥有运行状态、预留与 WIP。Markdown 保留版本化规划契约与状态投影职责，不是竞争的运行权威。术语刻意对齐 Scrum：epic / sprint / DoD（Definition of Done）/ story；sprint 是价值盒——由 DoD 收口，绝非时间盒。sprint 状态分两段存放：pre-start（`planned` / `ready`）只活在 epic 文档的 Sprint Breakdown 桩行里；预留起存于共享状态，再投影到 sprint frontmatter。零栈假设：路径、gate 命令与 doc-sync 映射都在宿主 AGENTS.md——绝不硬编码任何一条。
 
 按子命令参数（`scaffold|epic|breakdown|adr|question|asset|debt|ready|close`）分派。参数缺失或无法识别时，列出子命令并询问。下文所有路径均取自宿主配置，而非对宿主仓库布局的臆测。
+
+## 共享运行权威（Shared runtime authority）
+
+读取 `<plugin base dir>/docs/shared-ledger.md`。在宿主仓库根目录运行
+`node "<plugin base dir>/scripts/shared-ledger.mjs" status`，将目标 sprint 与
+共享条目核对。common-dir 存储而非 Markdown 拥有运行状态和 WIP；下文的
+frontmatter 检查均是投影检查。无存储就停止并显式 init/import，**scaffold 例外**：可先准备目录/配置及已授权的主线初始提交，再初始化。用 doctor
+诊断载体或投影漂移，不从分支副本静默恢复权威。下文每个变更均传入
+`--id <sprint-id> --revision <当前版本> --operation <唯一操作 ID>`；新动作
+先重读 status，不确定结果的同请求重试沿用同 ID。绝不手改存储。
+
 
 ## 先读宿主配置（Read host config first）
 
@@ -29,10 +40,13 @@ argument-hint: [scaffold|epic|breakdown|adr|question|asset|debt|ready|close]
 1. 按配置路径创建三个工件目录：`roadmaps_dir`、`sprints_dir`、`acceptances_dir`。
 2. 把 `templates/agents-sections.md` 拼接进 AGENTS.md，作为 `## supervibe` 节。若 AGENTS.md 尚不存在，则创建它，内容仅为拼接进来的这一节。
 3. 创建 notes 目录（默认 `.agents/notes/`）。
+4. Git 不保留空目录：对必须在新 worktree 中存在的、**空的且归 supervibe 所有**的工件/notes 目录，仅在尚无内容或占位文件保留它时创建 `.gitkeep`。不触碰非空目录、无关路径、现有文件或 `specs/`/`plans/`。启动 worktree 前，将占位文件与 AGENTS.md 及其他脚手架变更放在同一笔**已授权的 scaffold commit** 中；绝不隐式扩大提交范围或推送。若尚未获准提交，展示待提交 diff，说明新 worktree 还不会继承这些变化。
+
+5. **已授权的 scaffold commit 完成之后**，核实所选主线分支已存在且有提交，再显式执行 shared-ledger `init --sprints-dir "<dir>" --limit "<n>"`，已有文档使用 import 迁移。可选 --main 指定主线（默认 main），存为权威 mainRef。若初始提交/主线尚不存在或未获准，初始化前停止并报告，不自造分支或扩大提交范围。common-dir 状态不入 Git 提交。
 
 **绝不写 `plans/`——那是 superpowers 执行域。** `specs/` 与 `plans/` 归执行层所有，scaffold 一概不碰。
 
-**幂等，按工件分别判定：已存在的目录/节保持不动并产出 diff 提案；缺失的正常创建。** 已存在的 AGENTS.md `## supervibe` 节，打印 scaffold 将要新增内容的 diff 请用户手动应用；已存在的目录保持原样。债务追踪器不在此创建——`debt` 子命令在首笔条目时创建。
+**幂等，按工件分别判定：已存在的配置节与非空目录保持不动并产出 diff 提案；缺失目录正常创建，空的归属目录按上文保留。** 已存在的 AGENTS.md `## supervibe` 节，打印 scaffold 将要新增内容的 diff 请用户手动应用；已存在目录除上述严格限定的空目录保留外维持原样。债务追踪器不在此创建——`debt` 子命令在首笔条目时创建。
 
 ## epic
 
@@ -84,7 +98,7 @@ argument-hint: [scaffold|epic|breakdown|adr|question|asset|debt|ready|close]
 本技能只拥有两个状态转换；其余一律拒绝（`ready→active` 桩行实体化归 supervibe:start，`→acceptance` 归 supervibe:accept，`→merged` 归 supervibe:complete，条款兑现归 supervibe:sync）。
 
 - **ready —— planned → ready**：在 epic 文档 Sprint Breakdown 节翻转桩行状态。go 决策是战略性的：核实该 epic 的 DoD 覆盖此 sprint 将交付的内容，再把决策记入桩行备注。细粒度就绪裁决（依赖、WIP 计数、early start、deferred dependency）发生在实体化时，归 supervibe:start。没有匹配给定 sprint id 的桩行 → 拒绝，并言明哪个 id 未知。
-- **close —— → closed**：向 sprint 文档 frontmatter 写 `state: closed`。**前置：当前状态为 `merged`，且仅为 merged——closed 不卡交接条款。** 条款生命周期独立于 closed：open 条款由目标方 sync 在其时机兑现，签发方可先收口（实证：R3.6 已收口而其条款等待目标合入）。没有匹配给定 id 的 sprint 文档 → 拒绝，言明未知 id。
+- **close —— → closed**：先用 ID/revision/operation 参数调用 shared-ledger `close`，再在已存 mainRef 上向 sprint 文档投影 `state: closed`，并在 doctor 或下一次 reserve 前提交该投影。close 前置读取主线已提交投影，不读调用方旧分支。**前置：当前共享状态为 `merged`，且仅为 merged——closed 不卡交接条款。** 条款生命周期独立于 closed：open 条款由目标方 sync 在其时机兑现，签发方可先收口（实证：R3.6 已收口而其条款等待目标合入）。没有匹配给定 id 的 sprint 文档 → 拒绝，言明未知 id。
 - **epic 收口**：当该 epic 的全部 sprint 已 closed 且文档内无开放问题阻塞时，把 epic 文档 frontmatter `status: open → closed`；言明核实了什么。
 
 ## Invariants（不变量）

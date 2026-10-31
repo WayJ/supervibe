@@ -8,9 +8,22 @@ argument-hint: <epic-id> <sprint-id>
 
 Materialize a `ready` stub from an epic doc's Sprint Breakdown into a sprint doc — the single door from planning into execution. Inputs are an epic id and a sprint id, both mandatory: one epic may hold several `ready` stubs (parallel waves), so the sprint id is never inferable from the epic alone. If either argument is missing, ask; never guess a wave.
 
-Pre-start state lives in the stub row; from materialization on, the sprint doc's frontmatter is the ledger, created with `state: active`. A sprint is value-boxed — closed by DoD, never time-boxed; parallelism is bounded by `wip_limit`, not by the calendar.
+Pre-start planning lives in the stub row; admission and runtime state live in the shared ledger. The sprint doc projects `active` after reservation and activation. A sprint is value-boxed — closed by DoD, never time-boxed; parallelism is bounded by `wip_limit`, not by the calendar.
 
 Around that act: adjudicate readiness, read history, then hand a scaffolded doc to the execution layer. superpowers is the recommended pair — present, dispatch to it; absent, produce the same artifact contract manually. The coupling is artifact-contract only: this skill never forks or rewrites execution-layer skills. Zero stack assumptions: every path comes from host config, never hardcoded.
+
+## Shared runtime authority
+
+Read `<plugin base dir>/docs/shared-ledger.md`. From the host repository root run
+`node "<plugin base dir>/scripts/shared-ledger.mjs" status` and reconcile the
+requested sprint with its shared entry. The common-dir store, not Markdown,
+owns runtime state and WIP; frontmatter checks below are projection checks.
+No store → stop for explicit init/import. Use `doctor` to diagnose carrier or
+projection drift; never silently recover authority from a branch copy. Every
+mutation below requires `--id <sprint-id> --revision <current-revision>
+--operation <unique-operation-id>`; reread status for each new action and keep
+the same operation ID for an exact uncertain retry. Do not hand-edit the store.
+
 
 ## Read host config
 
@@ -38,12 +51,12 @@ Before anything, grep the host AGENTS.md for the `## supervibe` section:
 Four rulings before any file is written — each either blocks the start or shapes the doc being created. Every ruling outcome lands in the new doc's frontmatter flags and the opening note's decisions section:
 
 1. **Dependencies** — read the stub note and the epic doc (Deliverables, Cross-cutting) for dependencies naming other sprints.
-   - Dependency already merged → satisfied: verify the target sprint doc's frontmatter reads `state: merged` with `merged-commit` set, then move on.
+   - Dependency already merged → satisfied: verify the target sprint doc's shared entry reads `state: merged` or `state: closed`, with its landing commit recorded; confirm the Markdown projection agrees, then move on.
    - Dependency on an unmerged sprint → not a stopper; route to ruling 4.
-2. **WIP limit** — count active sprints by scanning every doc in `sprints_dir` for frontmatter `state: active`.
-   - Count at or above `wip_limit` → stop, naming the active sprints; one of them must complete or close before this start can proceed.
+2. **WIP limit** — read shared `reserved`, `active`, and `acceptance` entries. All consume WIP; only `merged` and `closed` are landed. Markdown copies do not decide admission. The atomic `reserve` call below enforces the stored limit.
+   - Count at or above `wip_limit` → stop, naming the in-flight sprints; one of them must complete or close before this start can proceed.
    - An early-started sprint is `active` and counts toward the limit like any other.
-3. **Early start** — applies whenever any sprint is still in flight (frontmatter `state` not `merged`) — not only ones this sprint depends on.
+3. **Early start** — applies whenever any sprint is still in flight (shared state is `reserved`, `active`, or `acceptance`) — not only ones this sprint depends on.
    - Estimate the file intersection: the number of files both this sprint (epic Deliverables + stub note) and each in-flight sprint (its sprint doc) are expected to touch.
    - That number ≈ zero → safe: set `early-start: true` in the new doc's frontmatter and record the estimate in the opening note.
    - Material overlap → not safe as an early start: wait, or route the overlap through ruling 4.
@@ -52,6 +65,25 @@ Four rulings before any file is written — each either blocks the start or shap
    - **Clause id HC#: scan every sprint doc's Handover Clauses sections for max+1 (an empty scan starts at 1).**
    - Target reference per the migration rule: target sprint doc exists → append the HC# to its frontmatter `clauses` list; future sprint with no doc yet → record `target: <epic> breakdown S#` inside the clause itself.
    - Two write moments: the clause body goes into the doc being created now; the target-side frontmatter append happens immediately when the target doc exists — a future target's reference migrates at its own materialization.
+
+## Atomic WIP reservation
+
+Read shared status and perform all readiness judgments before reserving. Then,
+before creating a worktree or document, run from the host repository root:
+
+```sh
+node "<plugin base dir>/scripts/shared-ledger.mjs" reserve --id "<sprint-id>" --epic "<epic-id>" --document "<repo-relative-sprint-doc>" --branch "<branch>" --worktree "<absolute-planned-worktree>" --revision "<current-revision>" --operation "<unique-id>"
+```
+
+Nonzero means stop. Reservation counts reserved+active+acceptance and writes
+under one lock/CAS operation; never substitute the read-only `wip` diagnostic.
+An uncertain result requires status reconciliation and the same operation ID,
+not a second reservation. Failed starts retain their slot; no expiry or lock
+stealing is allowed. An unused reservation may be explicitly cancelled with
+`cancel-reservation` plus ID/revision/operation only when planned path, local
+branch and registered worktree are all absent. Otherwise resume or report the
+blocker; never cancel active work. Cancelled IDs remain reserved against reuse. State is shared across linked worktrees, not independent
+clones. A missing store requires explicit init/import, never a directory scan.
 
 ## Read history first
 
@@ -66,7 +98,7 @@ Notes are a cross-sprint knowledge asset, not a diary — read them before writi
 
 Pre-flight, before creating anything — duplicate-materialization guard: scan `sprints_dir` for any doc whose frontmatter `sprint` equals this id. A doc exists while the stub says `ready` → STOP and name the collision — fork risk (a git rollback lost the stub flip, or the doc was materialized out of band); never overwrite, never create a second doc. The mirrored anomaly — stub already `started` while no doc matches → STOP and surface it (the doc was lost); never silently re-materialize.
 
-1. Create `<sprints_dir>/YYYY-MM-DD-<sprint>-plan.md` from `templates/sprint.md`. The file date is the materialization date (today), not the stub's planning date. Frontmatter `{sprint, epic, state: active, worktree, early-start, deferred-dependency, clauses, merged-commit: null}`:
+1. After successful shared reservation, create the named carrier and `<sprints_dir>/YYYY-MM-DD-<sprint>-plan.md` from `templates/sprint.md`. The file date is the materialization date (today), not the stub's planning date. Frontmatter `{sprint, epic, state: active, worktree, early-start, deferred-dependency, clauses, acceptance-record: null, accepted-at: null, merged-commit: null}`:
    - `worktree` — the worktree/branch that will carry this sprint (one sprint = one worktree/branch).
    - `early-start` — the ruling above; `false` when it did not apply.
    - `deferred-dependency` — the HC# refs registered in ruling 4; empty when none.
@@ -74,6 +106,8 @@ Pre-flight, before creating anything — duplicate-materialization guard: scan `
 2. Fill the five body sections per the template — Decisions (D-x) / Stories & Tasks / Definition of Done / Acceptance Scenarios (S1–Sn) / Handover Clauses. **DoD is copied verbatim from the epic doc's Definition of Done — never edited in place; a DoD change goes back to the epic doc by amendment and is re-copied from there.**
 3. Flip the stub row state → `started`, keeping the sprint id pointer; append date + evidence link (the new doc path) to the stub note.
 4. Write the opening note `<notes>/YYYY-MM-DD-<sprint>-open.md` per the four-section protocol: background (why this line opened, rulings made) / decisions (with rationale, including rejected options) / lessons (the history extracted above, with citations) / handover (clauses registered here, obligations owed).
+
+After the carrier, sprint doc and opening note exist, call `shared-ledger.mjs activate` with ID/revision/operation flags, then confirm its shared `active` state. A failed/interrupted activation retains `reserved` and its WIP slot; inspect/resume rather than creating another sprint.
 
 ## Dispatch execution
 
@@ -85,7 +119,7 @@ Execution belongs to the superpowers layer; this skill only hands over the artif
 
 ## Invariants
 
-- This skill owns exactly one state transition: a `ready` stub → `started`, plus a sprint doc created with `state: active`. Never planned→ready (roadmap), never acceptance/merged/closed (accept/complete/roadmap), never clause discharge (sync).
+- This skill owns shared `reserve` and `reserved → active` activation, plus a `ready` stub → `started` and active Markdown projection. Never planned→ready (roadmap), never acceptance/merged/closed (accept/complete/roadmap), never clause discharge (sync).
 - Never materialize a sprint doc by any other path — `sprints/` docs come only from `ready` stubs.
 - DoD verbatim, always — the epic doc is its only home.
 - HC# ids are never reused: max+1 across every sprint doc's Handover Clauses sections; an empty scan starts at 1.

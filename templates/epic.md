@@ -8,7 +8,8 @@ date: 2026-10-01    <!-- placeholder: creation date -->
 
 <!-- Template note: epic doc = strategic truth source for one epic. Pre-start
 sprint states (planned / ready) live ONLY in the Sprint Breakdown stub rows;
-from started on, state lives in the sprint doc's frontmatter. Every mutation
+from reservation on, runtime state lives in the shared common-dir ledger;
+sprint frontmatter is only its readable projection. Every mutation
 appends date + evidence link. Fill every placeholder fill-in, replace the
 example-marked rows with real content, keep the seven section headings
 verbatim, then delete template notes. -->

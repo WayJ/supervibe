@@ -6,15 +6,18 @@ worktree:                  <!-- placeholder: branch/worktree path -->
 early-start: false         <!-- placeholder: true|false -->
 deferred-dependency: []    <!-- placeholder: list of sprint ids, e.g. [S3, S4] -->
 clauses: []                <!-- placeholder: list of HC# references, e.g. [HC2, HC5] -->
+acceptance-record: null    <!-- placeholder: latest acceptance attempt path, pass or blocked -->
+accepted-at: null          <!-- placeholder: ISO date/time of the latest attempt -->
 merged-commit: null        <!-- placeholder: main-side landing commit recorded at close-out -->
 ---
 
 # <!-- placeholder: sprint title, one line -->
 
-<!-- Template note: this doc IS the sprint ledger — from materialization on,
-the frontmatter state is authoritative (starts active). One sprint = one
+<!-- Template note: this document is the versioned sprint contract and a
+projection of the shared common-dir runtime ledger. Frontmatter is NOT
+authoritative for admission or runtime transitions; use shared-ledger.mjs. One sprint = one
 worktree/branch. State transitions have single owners: start (active), accept
-(acceptance), merge (merged), roadmap (closed); never flip a state here by
+(active before re-review, acceptance after pass), complete (merged), roadmap (closed); never flip a state here by
 hand. Fill every placeholder fill-in, replace the example-marked rows with
 real content, keep the five section headings verbatim, then delete template
 notes. -->

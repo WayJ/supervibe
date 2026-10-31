@@ -6,6 +6,9 @@ disable-model-invocation: true
 
 # supervibe:board — read-only roadmap viewer
 
+The board is a Markdown projection snapshot, not the authoritative shared runtime ledger. Use shared-ledger `status`/`doctor` for live state and drift; never authorize WIP or merges from board cards.
+
+
 Generate a zero-pick board: the user opens the page and the content is
 already there — no folder selection, ever.
 

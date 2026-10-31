@@ -12,6 +12,19 @@ This skill owns exactly one mutation besides its merges: setting a clause `statu
 
 The run's product is the report: per sprint, what integrated, what conflicted and how it was resolved, which obligations fired and which of them closed with evidence. A sync that merges silently and reports nothing has done half its job — the report is what the next accept, complete, or sync reads. The report is durable: every run writes `<notes>/YYYY-MM-DD-sync.md` (same-day re-runs take a suffix) per the four-section protocol — background (what triggered the round), decisions (conflict resolutions), lessons (reusable integration and conflict patterns), handover (the clause table). A report that lives only in the conversation is a report the next session cannot read.
 
+## Shared runtime authority
+
+Read `<plugin base dir>/docs/shared-ledger.md`. From the host repository root run
+`node "<plugin base dir>/scripts/shared-ledger.mjs" status` and reconcile the
+requested sprint with its shared entry. The common-dir store, not Markdown,
+owns runtime state and WIP; frontmatter checks below are projection checks.
+No store → stop for explicit init/import. Use `doctor` to diagnose carrier or
+projection drift; never silently recover authority from a branch copy. Every
+mutation below requires `--id <sprint-id> --revision <current-revision>
+--operation <unique-operation-id>`; reread status for each new action and keep
+the same operation ID for an exact uncertain retry. Do not hand-edit the store.
+
+
 ## Read host config
 
 Before anything, grep the host AGENTS.md for the `## supervibe` section:
@@ -23,7 +36,7 @@ Before anything, grep the host AGENTS.md for the `## supervibe` section:
 - This skill consumes no templates — clause records already live in the issuing sprint docs it reads.
 - Gate commands from `### gates` are not this skill's concern — gates bind at accept and complete; integration runs none.
 
-Then resolve the targets:
+Then resolve targets from the shared entries first; open their Markdown documents as projections. Do not infer the runtime target set from the current branch directory alone:
 
 - Argument: a sprint id or `all`, never a path — a path argument → ask for the id of the sprint it carries.
 - Absent → ask, listing the docs in `sprints_dir` whose frontmatter `state` is `active` or `acceptance`; never guess.
@@ -44,6 +57,16 @@ Per in-flight target sprint, in that sprint's own carrier:
 - Early-warning intersection: for each in-flight target, intersect its branch's changed paths (vs its merge-base) with every other in-flight sprint's changed paths — a non-empty intersection is flagged in the report: the start-time early-start estimate has gone stale and the overlap is now live.
 - Verifying the integrated result is the sprint's own accept/complete domain: this skill integrates and reports, never runs gates or scenarios.
 - It writes nothing to the sprint doc's ledger — no `state`, no fields, no flips — and never rebases or rewrites the sprint branch's history: the sanctioned rewrite surface (arrears repair before close-out) is complete's stage 1, not here.
+
+## Acceptance freshness after integration
+
+For a target whose shared state is `acceptance` (the Markdown state must project it), after integration (including an up-to-date no-op) run from its repository root:
+
+```sh
+node "<plugin base dir>/scripts/validate-workflow.mjs" verify --sprint "<sprint-doc>" --record "<acceptance-record>"
+```
+
+Read the record path from the sprint's `acceptance-record` frontmatter. Nonzero means **acceptance stale or invalid**, not accepted-by-default: show the error in the durable report and require full `supervibe:accept` before complete. Also run shared-ledger `check --id "<sprint-id>"` to detect an accepted-commit mismatch. Sync does not flip the shared ledger or rewrite evidence; accept revokes the state at the beginning of re-review. Complete independently verifies freshness again, so a missed sync report cannot authorize a stale pass. A no-op integration does not establish freshness by itself. Writing a report may change the fingerprint; after all report/note writes, repeat this check and report the final status, never an earlier green result.
 
 ## Conflict re-verify checklist
 

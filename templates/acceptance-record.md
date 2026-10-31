@@ -4,9 +4,10 @@
 <acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md — the date is the
 acceptance-run date. Records are append-only: a same-day re-run never
 overwrites an earlier record, it takes a distinguishing suffix (-2, -3, …);
-the sprint doc's frontmatter evidence link points at the passing record.
+the sprint doc's acceptance-record pointer names the latest completed attempt;
+only acceptance state with pass can authorize close-out.
 Fill every placeholder fill-in, replace the example-marked rows/lines with real
-content, keep the five section headings verbatim, then delete template
+content, keep the section headings verbatim, then delete template
 notes. -->
 
 ## Verdict
@@ -17,6 +18,27 @@ DoD item checked with evidence; no unpaid doc-sync drift on triggered rows.
 Anything less is blocked, naming the blocking items. -->
 
 pass — all scenarios green on fresh runs; no unpaid drift on triggered rows <!-- example -->
+
+## Acceptance Evidence
+
+<!-- Insert exactly one fenced supervibe-evidence block containing the JSON
+emitted by scripts/validate-workflow.mjs snapshot BEFORE verification.
+Run snapshot again after verification and require identical JSON for pass.
+Keys: schema (1), sprint (repo-relative doc path), record (this exact
+repo-relative record path), fingerprint (SHA-256). Never hand-author a hash.
+Legacy records without this block cannot authorize complete: reaccept.
+The block binds inputs, not external environment state or proof of execution. -->
+
+```supervibe-evidence
+{"schema":1,"sprint":"<sprint-doc>","record":"<this-record>","fingerprint":"<snapshot fingerprint>"}
+```
+
+## Gate Evidence
+
+<!-- Optional cache: record branch tip hash at gate-run time, exact ordered
+configured commands that ran, and full green outputs/evidence links. Reuse
+requires unchanged tip and byte-identical gate list; otherwise rerun gates.
+This cache NEVER substitutes for Acceptance Evidence verification. -->
 
 ## Scenario Results
 

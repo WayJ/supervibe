@@ -6,9 +6,22 @@ argument-hint: [scaffold|epic|breakdown|adr|question|asset|debt|ready|close]
 
 # supervibe:roadmap — strategic truth source
 
-Own the supervibe side of the dated artifact tree — `roadmaps/` (one `YYYY-MM-DD-<epic>.md` doc per epic), `sprints/` (one `YYYY-MM-DD-<sprint>-plan.md` doc per sprint), and `acceptances/` (default root `docs/superpowers/`, siblings of the superpowers execution dirs `specs/` and `plans/`) — plus the `## supervibe` section of the host's AGENTS.md. There is **no central index file**: state lives in each doc's frontmatter, ids come from directory scans, aggregation is a scan of the tree — zero silent fork surface. Terminology is Scrum-aligned: epic / sprint / DoD (Definition of Done) / story; a sprint is value-boxed — closed by DoD, never time-boxed. Sprint state is stored in two stages: pre-start (`planned` / `ready`) lives only in the epic doc's Sprint Breakdown stub rows; `active` onward lives in the sprint doc's frontmatter. Zero stack assumptions: paths, gate commands, and doc-sync mappings live in the host AGENTS.md — never hardcode any.
+Own the supervibe side of the dated artifact tree — `roadmaps/` (one `YYYY-MM-DD-<epic>.md` doc per epic), `sprints/` (one `YYYY-MM-DD-<sprint>-plan.md` doc per sprint), and `acceptances/` (default root `docs/superpowers/`, siblings of the superpowers execution dirs `specs/` and `plans/`) — plus the `## supervibe` section of the host's AGENTS.md. The shared common-dir ledger owns runtime state, reservations and WIP. Markdown remains the versioned planning contract and state projection; it is not a competing runtime authority. Terminology is Scrum-aligned: epic / sprint / DoD (Definition of Done) / story; a sprint is value-boxed — closed by DoD, never time-boxed. Sprint state is stored in two stages: pre-start (`planned` / `ready`) lives only in the epic doc's Sprint Breakdown stub rows; reservation onward lives in shared state and is projected into sprint frontmatter. Zero stack assumptions: paths, gate commands, and doc-sync mappings live in the host AGENTS.md — never hardcode any.
 
 Dispatch on the subcommand argument (`scaffold|epic|breakdown|adr|question|asset|debt|ready|close`). If it is absent or unrecognized, list the subcommands and ask. Every path below comes from host config, not from assumptions about the host repo layout.
+
+## Shared runtime authority
+
+Read `<plugin base dir>/docs/shared-ledger.md`. From the host repository root run
+`node "<plugin base dir>/scripts/shared-ledger.mjs" status` and reconcile the
+requested sprint with its shared entry. The common-dir store, not Markdown,
+owns runtime state and WIP; frontmatter checks below are projection checks.
+No store → stop for explicit init/import, **except scaffold**, which may prepare directories/config and the authorized initial main commit before initialization. Use `doctor` to diagnose carrier or
+projection drift; never silently recover authority from a branch copy. Every
+mutation below requires `--id <sprint-id> --revision <current-revision>
+--operation <unique-operation-id>`; reread status for each new action and keep
+the same operation ID for an exact uncertain retry. Do not hand-edit the store.
+
 
 ## Read host config first
 
@@ -29,10 +42,13 @@ Wire a repo to supervibe:
 1. Create the three artifact dirs at their configured paths: `roadmaps_dir`, `sprints_dir`, `acceptances_dir`.
 2. Splice `templates/agents-sections.md` into AGENTS.md as the `## supervibe` section. If AGENTS.md does not exist yet, create it containing just the spliced section.
 3. Create the notes dir (default `.agents/notes/`).
+4. Git does not preserve empty directories: in each **empty, supervibe-owned** artifact/notes directory that must survive a new worktree, create a `.gitkeep` placeholder only if no content/placeholder already preserves it. Do not touch nonempty directories, unrelated paths, existing files, or `specs/`/`plans/`. Include the placeholders with AGENTS.md and the other scaffold changes in the same **authorized scaffold commit** before starting a worktree; never create a broader commit or push implicitly. If committing is not authorized, show the pending scaffold diff and explain that new worktrees will not inherit it yet.
+
+5. **After the authorized scaffold commit**, verify the selected main branch exists and has a commit, then explicitly run shared-ledger `init --sprints-dir "<dir>" --limit "<n>"` for a new runtime or `import` to migrate existing docs. Optional `--main <branch>` defaults to main and fixes authoritative mainRef. If the initial commit/main is not available or authorized, stop and report before initialization; do not invent a branch or broader commit. Keep common-dir state out of Git commits.
 
 **Never write `plans/` — that is the superpowers execution domain.** `specs/` and `plans/` stay owned by the execution layer; scaffold touches neither.
 
-**Idempotent, per artifact: existing dirs/sections stay untouched and produce a diff proposal; missing ones are created normally.** An existing AGENTS.md `## supervibe` section gets a printed diff of what scaffold would add, for the user to apply manually; existing dirs are left as is. The debt tracker is not created here — the `debt` subcommand creates it on first entry.
+**Idempotent, per artifact: existing sections and nonempty dirs stay untouched and produce a diff proposal; missing dirs are created, and empty owned dirs are preserved as above.** An existing AGENTS.md `## supervibe` section gets a printed diff of what scaffold would add, for the user to apply manually; existing directories are left as is except the narrowly scoped empty-directory preservation above. The debt tracker is not created here — the `debt` subcommand creates it on first entry.
 
 ## epic
 
@@ -84,7 +100,7 @@ Update the epic doc's Asset Disposition for inherited assets. Dispositions: reus
 This skill owns exactly two state transitions; refuse all others (stub materialization `ready→active` belongs to supervibe:start, `→acceptance` to supervibe:accept, `→merged` to supervibe:complete, clause discharge to supervibe:sync).
 
 - **ready — planned → ready**: flip the stub row's state in the epic doc's Sprint Breakdown section. The go decision is strategic: verify the epic's DoD covers what this sprint will deliver, then record the decision in the stub note. Detailed readiness adjudication (dependencies, WIP count, early start, deferred dependencies) happens at materialization under supervibe:start. No stub row matches the given sprint id → reject and state which id is unknown.
-- **close — → closed**: write `state: closed` into the sprint doc's frontmatter. **Precondition: current state is `merged`, and merged only — closed does not block on handover clauses.** Clause lifecycle is independent of closed: open clauses are discharged by the target side's sync at its own time, and the issuing side may close first (field-proven: R3.6 closed while its clause awaited the target's merge). No sprint doc matches the given id → reject naming the unknown id.
+- **close — → closed**: call shared-ledger `close` with ID/revision/operation flags, then project `state: closed` into the sprint doc on stored mainRef and commit that projection before doctor or the next reserve. The close precondition reads its committed main-branch projection, not the caller's stale branch. **Precondition: current shared state is `merged`, and merged only — closed does not block on handover clauses.** Clause lifecycle is independent of closed: open clauses are discharged by the target side's sync at its own time, and the issuing side may close first (field-proven: R3.6 closed while its clause awaited the target's merge). No sprint doc matches the given id → reject naming the unknown id.
 - **Epic closure**: flip the epic doc frontmatter `status: open → closed` when every sprint of that epic is closed and no open question in the doc blocks; state what was verified.
 
 ## Invariants

@@ -18,6 +18,8 @@ for the code, supervibe artifacts for the iteration.
 
 - validate: claude plugin validate . --strict
 - artifacts: node tests/check-artifacts.mjs
+- workflow: node --test tests/workflow-guard.test.mjs tests/shared-ledger.test.mjs
+- board: node --test tests/board-parser.test.mjs
 
 ### doc_sync_map
 

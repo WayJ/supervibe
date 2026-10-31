@@ -10,6 +10,19 @@ The sprint review gate: run every acceptance scenario for real, check every DoD 
 
 This is the checkpoint where the execution layer's claims meet the strategic layer's standards: a pass here is what unblocks `supervibe:complete`. Zero stack assumptions: proving commands come from the scenario text and the host's `### gates` config — never invented; every path comes from host config, never hardcoded.
 
+## Shared runtime authority
+
+Read `<plugin base dir>/docs/shared-ledger.md`. From the host repository root run
+`node "<plugin base dir>/scripts/shared-ledger.mjs" status` and reconcile the
+requested sprint with its shared entry. The common-dir store, not Markdown,
+owns runtime state and WIP; frontmatter checks below are projection checks.
+No store → stop for explicit init/import. Use `doctor` to diagnose carrier or
+projection drift; never silently recover authority from a branch copy. Every
+mutation below requires `--id <sprint-id> --revision <current-revision>
+--operation <unique-operation-id>`; reread status for each new action and keep
+the same operation ID for an exact uncertain retry. Do not hand-edit the store.
+
+
 ## Inputs
 
 Before anything, grep the host AGENTS.md for the `## supervibe` section:
@@ -24,9 +37,22 @@ Before anything, grep the host AGENTS.md for the `## supervibe` section:
 
 Then resolve the sprint under review:
 
-- Argument: a sprint id or a direct sprint-doc path. Absent → ask, listing the docs in `sprints_dir` whose frontmatter `state` is `active`; never guess.
+- Argument: a sprint id or a direct sprint-doc path. Absent → ask, listing the docs in `sprints_dir` whose frontmatter `state` is `active` or `acceptance`; never guess.
 - Sprint id → scan every doc in `sprints_dir` for a frontmatter `sprint` match. No match → reject, naming the unknown sprint id. Direct path → the file must exist and carry a `sprint` frontmatter field; otherwise reject, naming the path.
-- State precondition on the sprint doc's frontmatter: `active` → proceed. `acceptance` → reject: already passed its gate; name the existing acceptance record. `merged` / `closed` → reject: past the gate.
+- State precondition: `active` or `acceptance` → proceed with a **full fresh review**, never reuse the old scenario verdict. `merged` / `closed` → reject: past the gate. Unknown or missing state → reject.
+- Before **every** review, call `shared-ledger.mjs review-begin` with ID/revision/operation flags, clearing shared evidence and setting shared active. Then project `state: active` and append a dated re-review note; preserve the previous record as history. This revokes the old pass before any command runs, so an interrupted review cannot leave it usable. Never rewrite the previous record.
+
+## Bind evidence to the reviewed tree
+
+From the host repository root, choose the new, not-yet-existing acceptance record path (including a suffix on re-runs), then run:
+
+```sh
+node "<plugin base dir>/scripts/validate-workflow.mjs" snapshot --sprint "<sprint-doc>" --record "<new-acceptance-record>"
+```
+
+Both paths are repository-relative. Keep concurrent writers out of the verification window; before/after equality is not an atomic lock. Unrelated repository edits also invalidate this deliberately conservative fingerprint. Only the shipped single-line frontmatter key/value form is supported; multiline values fail closed. Keep the emitted JSON in memory or outside the host repository (for example `/tmp`), never in a new nonignored host file; this is the **before-review snapshot**. After all scenarios, DoD checks and drift checks, run the same command again and require byte-identical JSON before issuing pass. A changed fingerprint means the reviewed inputs moved: stop, keep a blocked record, and review the new tree from the beginning. Do not capture a new snapshot after the fact and attach it to old results.
+
+The snapshot includes tracked and nonignored untracked files, paths, modes and contents. It excludes **only this exact new record path** and normalizes only this sprint's `state`, `acceptance-record`, and `accepted-at` frontmatter fields. DoD, scenarios, source, configuration, other records and notes remain covered. Write notes/workarounds before the final review or restart the review after writing them. The exact record exclusion prevents self-reference; committing the evidence/ledger alone does not stale the fingerprint. Ignored build output, databases, deployed services and external environment state are not covered: fresh real-environment verification remains mandatory. An unresolved Git index or submodule is unsupported and fails closed. This is a provenance check, not proof that tests ran.
 
 ## Execute scenarios
 
@@ -79,18 +105,19 @@ The periodic doc-sync checkpoint of this skill — the counterpart to complete's
 
 ## Verdict + record
 
-Write `<acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md` from `templates/acceptance-record.md`; the date is today, the acceptance-run date. The record carries at minimum: the scenario result table, the DoD checklist with evidence, the verbatim obstacles log, the drift report, the verdict, and the **gate-evidence block** — the branch tip hash at run time, the gates list as run (each configured gate command that ran, verbatim), and its green outputs. That block is the mechanical key complete's stage 1 short-circuits on, exactly when tip and list are unchanged; without it, complete re-runs everything. Records are append-only — a same-day re-run never overwrites an earlier record; it takes a distinguishing suffix (`-2`, `-3`, …); the frontmatter evidence link points at the passing record.
+Write `<acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md` from `templates/acceptance-record.md`; the date is today, the acceptance-run date. The record carries at minimum: the scenario result table, the DoD checklist with evidence, the verbatim obstacles log, the drift report, the verdict, and the **gate-evidence block** — the branch tip hash at run time, the gates list as run (each configured gate command that ran, verbatim), and its green outputs. That block is the mechanical key complete's stage 1 short-circuits on, exactly when tip and list are unchanged; without it, complete re-runs everything. Records are append-only — a same-day re-run never overwrites an earlier record; it takes a distinguishing suffix (`-2`, `-3`, …); the `acceptance-record` pointer names the latest completed attempt; only a pass in acceptance state can authorize close-out.
 
 - **pass** requires all of: every scenario passed with fresh evidence or a labeled substitution; every DoD item checked with evidence; no unpaid drift on triggered rows. Anything less → **blocked**, naming the blocking items.
-- pass → update the sprint doc frontmatter `state: acceptance`, appending date + the record path as the evidence link. The record and the flip are written in the same act — a flipped state without its record is incomplete.
-- blocked → the record is still written and kept — evidence preserves. State stays `active`: the sprint returns to execution to clear the named blockers and is accepted again afterwards; each run writes its own record.
+- Every completed record contains exactly one fenced `supervibe-evidence` block holding the before-review JSON (schema, sprint, record, fingerprint). Only an unchanged after-review snapshot may support pass.
+- pass → write the record, then provisionally set sprint frontmatter `state: acceptance`, `acceptance-record: <record-path>`, and `accepted-at: <ISO date/time>`, using these fields as the dated evidence link (do not append body text after the snapshot). The record must exist before the state flip. Run `verify --sprint "<sprint-doc>" --record "<record-path>"` through the same validator before reporting a usable pass; failure blocks close-out. Commit all reviewed payload plus the provisional projection and new record, then call `shared-ledger.mjs review-pass` with ID/revision/operation flags; it requires verify-clean in the carrier and stores the accepted commit/tree before granting shared acceptance. Until this succeeds, Markdown acceptance is only a provisional projection and does not authorize merge.
+- blocked → keep the new record and set `state: active`, `acceptance-record: <new-blocked-record>`, and `accepted-at: <ISO date/time>` for the dated attempt. The pointer identifies the latest attempt, not necessarily a pass. Call `shared-ledger.mjs review-blocked` with ID/revision/operation flags to record the attempt; shared state stays active. The old pass is never restored. Return to execution and then re-review; each run writes its own record.
 
-The record is the evidence anchor for what follows: complete's closing note cites it back — records and closing notes reference each other. And the cheapest close-out is the same session: run `supervibe:complete` immediately after a pass — the drift window is zero and the gate evidence is freshest.
+The record is the evidence anchor for what follows: complete's closing note cites it back — records and closing notes reference each other. And the cheapest close-out is the same session: run `supervibe:complete` immediately after a pass — the drift window is smaller and the gate evidence is freshest, but fingerprint verification remains mandatory.
 
 ## Invariants
 
-- This skill owns exactly one state transition: sprint-doc frontmatter `active → acceptance`, on verdict pass only. Never `merged`/`closed` (complete/roadmap), never clause discharge (sync), never stub states (roadmap/start).
-- The frontmatter state flip is the only mutation this skill makes to the sprint doc — scenarios, DoD, stories, and clauses are inputs to review, never targets to edit toward a pass.
+- This skill owns shared review transitions (Markdown fields project them): `acceptance → active` before re-review, then `active → acceptance` on a fresh, tree-bound pass only. Never `merged`/`closed` (complete/roadmap), never clause discharge (sync), never stub states (roadmap/start).
+- Only review state, `acceptance-record`, `accepted-at`, and the dated audit note are mutated in the sprint doc — scenarios, DoD, stories, and clauses are inputs to review, never targets to edit toward a pass.
 - Evidence before claims, every scenario, every DoD item, every run — a pass without a fresh run is not a pass.
 - Acceptance records are append-only; history is never rewritten or greenwashed.
 - Any reference to an unknown sprint id → reject, naming it.

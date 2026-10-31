@@ -30,8 +30,8 @@ Two explicit differences from standard Scrum:
 
 Four nouns with no Scrum equivalent — SuperVibe's own capabilities:
 
-- **sprint ledger** — the authoritative frontmatter state fields in each sprint
-  doc's header (decentralized; aggregated by directory scan, no central index)
+- **sprint ledger** — the shared runtime state in the Git common directory; sprint
+  frontmatter is a readable, versioned projection
 - **handover clause** — a cross-sprint re-verification obligation ("when my
   change lands, you must re-check X")
 - **early start** — safely opening a new sprint line before the previous one
@@ -53,11 +53,12 @@ docs/superpowers/
 └── acceptances/    2026-10-01-S#-acceptance.md acceptance records: evidence, verdict
 ```
 
-Sprint state is a **decentralized ledger**: pre-start states (`planned`/`ready`)
-live in the epic doc's Sprint Breakdown stub rows; at materialization the stub
-flips to `started` and from then on state lives in the sprint doc's frontmatter
-(`active → acceptance → merged → closed`). Every state flip appends a date +
-evidence link.
+Sprint runtime state is a **shared ledger** at `<git common-dir>/supervibe/state.json`.
+All linked worktrees use one authority for reservations, WIP and transitions.
+Markdown keeps planning, DoD, scenarios, evidence and readable state projections;
+branch-local state labels cannot authorize a start or merge. Pre-start
+`planned`/`ready` remains in epic planning stubs. See [the shared-state protocol](docs/shared-ledger.md)
+for explicit init/import, revision-CAS mutations and crash recovery.
 
 ## Lifecycle
 
@@ -74,7 +75,7 @@ flowchart TD
     G -->|execution done| H{"accept<br/>evidence before assertion"}
     H -->|blocked: fix named blockers| G
     H -->|pass: frontmatter → acceptance| I["acceptance record filed<br/>scenarios + DoD + obstacles + drift audit"]
-    I --> J{"merge, seven stages<br/>gates → verdict → merge → teardown → ledger → fire clauses → note"}
+    I --> J{"merge, seven stages<br/>gates → verdict → merge → ledger → teardown → fire clauses → note"}
     J -->|red: gate / doc-sync arrears / verdict missing| G
     J -->|green| K["main + merged-commit<br/>worktree torn down, clauses binding"]
     K -->|roadmap close| L["closed"]
@@ -96,14 +97,37 @@ flowchart LR
 
 Key points:
 
-- **Two state namespaces**: stub rows own `planned → ready → started`; frontmatter owns `active → acceptance → merged → closed`
+- **Two state namespaces**: stub rows own `planned → ready → started`; shared runtime owns `reserved → active → acceptance → merged → closed`; frontmatter projects it
 - **Clause lifecycle in three acts**: registered at `start`, fired binding at `merge` stage 6, discharged at `sync`
 - **Rework loops**: an accept `blocked` returns to execution; a merge red returns to execution/accept, and merge re-runs from stage 1 after the fix — a half-green run proves nothing
-- **Parallelism**: `start` is bounded by `wip_limit` (default 3); with several lines in flight, `sync` is the drift fence
+- **Parallelism**: `reserved`, `active`, and `acceptance` count toward `wip_limit` (default 3); with several lines in flight, `sync` is the drift fence
+
+## Shared state and deterministic guards
+
+`shared-ledger.mjs` owns the local runtime state under Git common-dir with a
+mkdir lock, revision checks, operation IDs and atomic JSON replacement. Explicit
+init/import is required; no branch-local fallback exists. `reserve` atomically
+claims WIP before carrier creation, `activate` completes startup, and review,
+landing and close commands own their transitions. A failed start retains its
+reservation for recovery. Independent clones do not share runtime state.
+
+`validate-workflow.mjs` binds acceptance to a reviewed-file fingerprint.
+`review-pass` requires a clean committed candidate and stores its commit/tree;
+`check` blocks a changed candidate before merge. The fingerprint excludes only
+the exact new acceptance record and three review metadata fields, not whole
+folders. External systems and ignored build output still need real verification.
+Legacy acceptance requires revocation and fresh review during explicit import.
+
+Markdown and the board are projections, never WIP authority. The shared ledger
+is Git metadata, not pushed source; a fresh clone needs explicit initialization.
+A local lock is not a remote merge lock. Host merge protection and actual scenario
+evidence remain required. Submodules, unsupported multiline frontmatter and
+unresolved conflicts fail closed. Scaffold preserves empty owned directories
+with committed `.gitkeep`; already-landed merge recovery never merges twice.
 
 ## Board
 
-A bundled static viewer for the whole artifact tree. Say "board" and
+A bundled static viewer of the Markdown projection, not the live runtime ledger. Say "board" and
 `supervibe:board` generates `.agents/board/` in the host repo (page +
 parser + baked `board-data.js`); opening that page shows every epic with its
 full breakdown immediately — sprint cards grouped by state (stub rows
@@ -131,7 +155,7 @@ Local development:
 claude --plugin-dir /path/to/supervibe
 ```
 
-## The five skills
+## The six skills
 
 | skill | one line |
 |---|---|
@@ -140,6 +164,7 @@ claude --plugin-dir /path/to/supervibe
 | `supervibe:accept` | run acceptance scenarios with fresh evidence, audit doc drift, issue the verdict |
 | `supervibe:complete` | seven-stage close-out: gates → verdict → merge → ledger → teardown → fire clauses → note |
 | `supervibe:sync` | event-driven merge of `origin/main` into in-flight sprints; check and discharge handover clauses; durable report note |
+| `supervibe:board` | generate a local read-only snapshot of epics, sprints, and handover clauses |
 
 Every skill ships bilingual: `SKILL.md` (English truth source) + `SKILL.zh.md`
 (faithful Chinese mirror).
@@ -183,6 +208,7 @@ dependency is declared.
 ```
 claude plugin validate . --strict   # plugin/marketplace manifest check
 node tests/check-artifacts.mjs      # bilingual pairing, template completeness, assembly dry-run
+node --test tests/workflow-guard.test.mjs tests/shared-ledger.test.mjs tests/board-parser.test.mjs
 ```
 
 Zero npm dependencies; Node ≥ 20.
