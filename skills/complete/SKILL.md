@@ -8,7 +8,7 @@ argument-hint: <sprint-id>
 
 The sprint close-out — the last act of a sprint: run the gates, confirm the acceptance verdict is in place, merge to main, tear down the worktree, finalize the sprint ledger, fire the handover clauses, write the closing note. "Ship", "finish", "wrap up" all route here and all meet the same bar — none of them is a reason to lower it.
 
-This skill owns exactly one state transition — sprint-doc frontmatter `acceptance → merged`, with the merge commit hash written in the same act — and nothing else. Upstream, a pass at `supervibe:accept` is what unblocks this gate. Downstream, only `supervibe:roadmap close` remains (→closed, roadmap's act) and clause discharge (`supervibe:sync`'s). A stop along the way is a report, never a repair.
+This skill owns exactly one state transition — sprint-doc frontmatter `acceptance → merged`, with the merge commit hash written in the same act — and nothing else. Upstream, a pass at `supervibe:accept` is what unblocks this gate — and the cheapest window is the same session: run complete right after a passing accept, and the drift window is zero. Downstream, only `supervibe:roadmap close` remains (→closed, roadmap's act) and clause discharge (`supervibe:sync`'s). A stop along the way is a report, never a repair.
 
 The discipline is **stop on red**: seven stages in a fixed order, hard stops between them. A sprint is value-boxed — it closes because its DoD was proven at accept and its gates run green now, never because it is time to ship. This skill never re-proves acceptance: the verdict is `supervibe:accept`'s, on record; here it is checked, not re-run. Zero stack assumptions — gate commands come from the host's `### gates` list, every path from host config, merge mechanics belong to the host. One sprint = one worktree/branch, from materialization to teardown.
 
@@ -32,17 +32,18 @@ Then resolve the sprint being closed out:
 - Absent → ask, listing the docs in `sprints_dir` whose frontmatter `state` is `acceptance`; never guess.
 - Scan every doc in `sprints_dir` for a frontmatter `sprint` match. No match → reject, naming the unknown sprint id.
 - State precondition: `merged` → reject: already closed out — name the `merged-commit` the frontmatter carries. `closed` → reject: retired; `supervibe:roadmap close` has already been there. `active` / `acceptance` → proceed; stage 2 rules the verdict. `state` missing or unrecognized → reject as a malformed sprint doc, naming it — the closed enumeration never continues on an unknown value.
-- The doc's `worktree` frontmatter names the worktree/branch carrying this sprint — stages 1, 3 and 4 operate there. A `worktree` that names nothing → the doc is malformed; reject naming it: there is nothing to gate, merge, or tear down.
+- The doc's `worktree` frontmatter names the worktree/branch carrying this sprint — stages 1, 3 and 5 operate there. A `worktree` that names nothing → the doc is malformed; reject naming it: there is nothing to gate, merge, or tear down.
 - A `worktree` naming a branch that no longer exists → surface the staleness and confirm with the user before trusting the field — never proceed silently on it.
 - One sprint per run: parallel sprints close one at a time, each through its own full sequence.
 
 ## Ordered sequence, stop on red
 
-Seven stages, strictly ordered. Each numbered stage is a hard stop: green → the next stage; anything else → the run ends right there — the user sees the failing output, the sprint stays exactly where it was, nothing downstream runs. The order puts every check before every irreversible act: gates and verdict precede the merge, the merge precedes teardown, teardown precedes the writes that record it. Red means: a gate command exits non-zero or its output contradicts expectation; arrears exist; the verdict is not in place; a conflict lacks its review list. Clearing a red belongs to execution (gate output, doc-sync arrears) or to `supervibe:accept` (the verdict); then complete runs again from stage 1 — a half-green run proves nothing.
+Seven stages, strictly ordered. Each numbered stage is a hard stop: green → the next stage; anything else → the run ends right there — the user sees the failing output, the sprint stays exactly where it was, nothing downstream runs. The order puts every check before every irreversible act: gates and verdict precede the merge, the merge precedes the ledger that records it, and the ledger precedes teardown — the carrier is destroyed only after the record of the landing exists. Red means: a gate command exits non-zero or its output contradicts expectation; arrears exist; the verdict is not in place; a conflict lacks its review list. Clearing a red belongs to execution (gate output, doc-sync arrears) or to `supervibe:accept` (the verdict); then complete runs again from stage 1 — a half-green run proves nothing.
 
 1. **Gates + doc-sync arrears final check.**
    - Run **every** command in the host's `### gates` list, verbatim — the whole list, no selection.
    - Run it in the sprint's own environment: the worktree/branch the frontmatter names, its stack live — not a stale build elsewhere. A gate green against yesterday's artifact proves nothing at merge time.
+   - **Gate-evidence short-circuit**: the acceptance record's gate-evidence block — branch tip hash at run time, the gates list as run, the green outputs — satisfies this stage **iff** the branch tip now equals the recorded hash and the host's gates list is byte-identical to the recorded one: a tip that has not moved means the green was earned against exactly this tree. Any mismatch — new commits, a changed list, no block at all — is a full verbatim re-run. The short-circuit is mechanical equivalence, never judgment.
    - Any red → stop, showing the failing command's full output and naming the gate. A sprint does not merge while any gate is red — no partial credit, no substitution: the configured command runs, or the gate is not green.
    - Then the **arrears final check** — the second of the doc-sync discipline's two checkpoint verifications (accept audits drift periodically; complete runs the final arrears check).
    - Enumerate the sprint's changed paths: the worktree branch diffed against its merge-base with the main line, plus the paths named in the sprint doc's Stories & Tasks — the same enumeration accept's drift audit uses; the two checkpoints must see the same sprint.
@@ -60,18 +61,18 @@ Seven stages, strictly ordered. Each numbered stage is a hard stop: green → th
 3. **Merge to main.** Merge the sprint's branch into the main line the way this host merges — fast-forward, merge commit, or PR. On conflict, resolve per the §2.5 checklist, dual path:
    - **Generated artifacts** → never hand-merge: take the merged result, regenerate, and compare. A hand-edit inside a generated file is a smell to surface, not a resolution.
    - **Handwritten files** → emit the item-by-item review list **before resolving anything**: per conflicted file, per hunk — both sides' intent and the proposed resolution. Then resolve, and carry the list into the closing note's decisions section — it exists so the resolution stays auditable after the fact.
-   - Before the merge reshapes anything, capture the sprint branch tip — the pre-merge hash: that hash is the `merged-commit`, whatever the host's mechanics afterward do to main. It is the evidence anchor everything downstream reads (dependency checks at start, clause discharge at sync, epic closure at roadmap).
+   - After the merge lands, capture the **main-side landing commit** — the commit main actually received: the new main tip on fast-forward, the merge commit itself, or the squash/rebase commit on hosts that land one. That commit is the `merged-commit` and the evidence anchor everything downstream reads (dependency checks at start, clause discharge at sync, epic closure at roadmap). Reachability is what downstream checks — and a squash or rebase host never makes the branch tip an ancestor of main, so anchoring anywhere but the landing point silently breaks the clause trigger.
    - A conflict that cannot be resolved → abort the merge (`git merge --abort`), stop, and report — never leave a MERGE_HEAD or conflict markers behind: a half-merged main line is worse than an unmerged sprint.
 
-4. **Worktree/branch teardown.** Only after the merge has landed — never before: tearing down ahead of the merge orphans the sprint's carrier.
-   - Remove the worktree and its branch per the host's tooling. The sprint doc survives in `sprints_dir` — the ledger outlives the worktree.
-   - A teardown failure is reported and repaired but rolls nothing back: the merge has landed, and stages 5–7 record that fact regardless.
-
-5. **Sprint doc frontmatter finalized.**
-   - These writes happen on the main-line checkout — the worktree is gone by now, torn down in stage 4 — and land as a follow-up commit on merged main: `state: merged` plus `merged-commit: <the branch-tip hash captured in stage 3>`.
-   - `merged-commit` keeps pointing at the sprint branch tip, the pre-merge hash, even after teardown removes the branch. A PR-style host where the branch died with the PR is no different: capture the tip while it lives; the writes still go to the main checkout the same way.
+4. **Sprint doc frontmatter finalized.**
+   - These writes happen on the main-line checkout and land as a follow-up commit on merged main: `state: merged` plus `merged-commit: <the landing commit captured in stage 3>`.
+   - The ledger records the landing **before** the carrier is torn down (stage 5): an interruption between the merge and the teardown must never leave a landed sprint with neither record nor carrier — record first, destroy second.
    - Append date + evidence link — the link is the recorded `merged-commit` hash. The whole stage is the same close-out act as the merge itself.
    - A landed merge whose ledger still reads `acceptance` is an incomplete close-out; a flipped state without its hash is incomplete the other way.
+
+5. **Worktree/branch teardown.** Only after the ledger is finalized — never before: tearing down ahead of the record orphans the sprint's carrier and closes the resume path.
+   - Remove the worktree and its branch per the host's tooling. The sprint doc survives in `sprints_dir` — the ledger outlives the worktree.
+   - A teardown failure is reported and repaired but rolls nothing back: the merge has landed and the ledger (stage 4) already records that fact.
 
 6. **Handover clauses fired.**
    - Every clause recorded in this sprint doc's Handover Clauses section is now **binding** on its target sprint. Clause lifecycle semantics — registration, reference placement, migration, trigger, discharge — are normative in spec §2.2; this stage only fires them and nothing moves here.
@@ -84,6 +85,15 @@ Seven stages, strictly ordered. Each numbered stage is a hard stop: green → th
 
 All seven green: the sprint is merged, its ledger final, its clauses binding, its history written. Everything that remains acts on what this skill recorded — →closed and epic closure are roadmap's; clause discharge is sync's.
 
+## Interruption and resume
+
+A close-out that stops partway resumes by re-running, and the run routes on what already exists — never by redoing an irreversible act:
+
+- **Merge not landed** → nothing irreversible happened; the re-run starts over at stage 1.
+- **State still `acceptance`, worktree/branch already gone** → the merge may have landed with the ledger unwritten. Verify on main: fast-forward/merge-commit host → the branch tip is an ancestor of main; squash/rebase host → identify the landing commit from the PR record or the main log and confirm it with the user — never guess. Verified → record the `merged-commit` and resume from stage 4 (ledger). Unverifiable → stop and report: a merge that cannot be evidenced never becomes `merged` by assumption.
+- **PR-style host, stage 3 ends at "PR opened"** → report and stop; the re-run reads the PR's state: still open → report and wait; merged → capture the landing commit, resume from stage 4; closed unmerged → the close-out is off — back to stage 1.
+- **Ledger written, teardown or later stages not** → the state precondition rejects a re-run (`merged` = already closed out): surface that only teardown, clause firing, or the closing note may remain, and finish those directly — they are records, not re-decisions.
+
 ## Never
 
 - Never merge on a red gate, and never past doc-sync arrears — any red stops the run; there is no override and no exemption.
@@ -91,5 +101,5 @@ All seven green: the sprint is merged, its ledger final, its clauses binding, it
 - Never discharge handover clauses here — firing them binding is this skill's act; recording evidence and setting `discharged` in the issuing doc's clause record belongs to `supervibe:sync`.
 - Never touch the epic doc's Sprint Breakdown stub rows — roadmap's domain; the stub has read `started` since materialization and does not flip at merge.
 - Never renumber ids — sprint ids and HC#s stay unique forever.
-- Never tear down the worktree or branch before the merge has landed.
+- Never tear down the worktree or branch before the merge has landed and the ledger is finalized.
 - Never skip or reorder stages — the sequence itself is the gate.

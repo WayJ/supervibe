@@ -122,9 +122,9 @@ frontmatter；**前置仅为 state: merged——closed 不卡交接条款**：�
 `supervibe:start` 把 epic 分解节 ready 桩行**实体化**为
 `sprints/YYYY-MM-DD-<sprint>-plan.md`（frontmatter 初始 `state: active`，
 分解节桩行状态置 started 保留 id 指针）；`supervibe:accept` 写 sprint
-文档 frontmatter →acceptance（+ 裁决）；`supervibe:merge` 写 →merged
-（+ commit hash）。交接条款的**兑现（discharge）**归 `supervibe:sync`：
-目标 sprint 的 sync/merge 验证义务履行后，由 sync 在**签发方 sprint 文档**
+文档 frontmatter →acceptance（+ 裁决）；`supervibe:complete` 写 →merged
+（+ main 侧落点 commit hash）。交接条款的**兑现（discharge）**归 `supervibe:sync`：
+目标 sprint 的 sync/complete 验证义务履行后，由 sync 在**签发方 sprint 文档**
 的条款记录处记证据并置 discharged（单一权威，见下）。
 
 特殊流（全部在真实迭代中出现过）：
@@ -144,14 +144,17 @@ frontmatter；**前置仅为 state: merged——closed 不卡交接条款**：�
   sprint 文档已存在 → 其 frontmatter `clauses` 字段加 id；尚未存在（未来
   sprint）→ 签发方条款记录内写 `target: <epic> 分解节 S# 桩行`，start
   实体化该桩行时迁移引用。**生效（binding）**：条款自签发方 sprint 合并
-  起（merge 阶段 6 发射）对其目标生效；签发方未合入的条款是信息不是义务。
+  起（complete 阶段 6 发射）对其目标生效；签发方未合入的条款是信息不是义务。
   **触发 = 抵达（arrival）**：签发方 `merged-commit` 已可从目标载体到达
   （在途目标对其分支做祖先检查；已 merged 目标按 main 可达性判定）即触发
   ——无论抵达多久以前；入站区间只作报告层（fresh/standing 之分），绝不作
-  检测门。**只以记录在案的证据兑现**（discharge 写回签发方文档条款记录：
+  检测门。**`merged-commit` = main 侧落点 commit**：fast-forward 的新
+  main 顶端、merge commit 本身、或 squash/rebase 宿主落地的 squash
+  commit——squash/rebase 下分支顶端永不可达，锚定落点方使触发语义在
+  一切合入风格下成立。**只以记录在案的证据兑现**（discharge 写回签发方文档条款记录：
   目标方分支内 commit hash、merged 目标在 main 上的 hash、或验证
-  transcript；预期不是证据），时机在目标 sprint 的 sync；merge 发射但绝不
-  写条款状态。
+  transcript；预期不是证据），时机在目标 sprint 的 sync；complete
+  发射但绝不写条款状态。
 
 ### 2.3 Sprint 工件
 
@@ -172,7 +175,9 @@ frontmatter；**前置仅为 state: merged——closed 不卡交接条款**：�
   教训（可复用经验：环境坑、流程修正、回炉根因）/ 交接（条款引用与
   复核记录）
 - **写入时机**：`start` 产出开线条目；关键节点（任务回炉、障碍绕行、
-  裁决变更）即时补记；`merge` 产出收口条目（证据 commit hash）
+  裁决变更）即时补记；`complete` 产出收口条目（证据 commit hash）；
+  `sync` 产出同步条目（`YYYY-MM-DD-sync.md`，集成 + 条款报告——
+  报告的持久载体，跨会话可读）
 - **读取时机**：`start` 开工**先读史**——按 epic 域 + 技术栈 + 教训类型
   检索历史条目，相关教训摘入 plan 的 D-x 决策上下文；`accept` 遇障碍
   先查史上有无同类绕行，命中则复用并注明来源条目
@@ -181,20 +186,25 @@ frontmatter；**前置仅为 state: merged——closed 不卡交接条款**：�
 ### 2.5 并行纪律
 
 - 一个 sprint = 一 worktree/分支。WIP 上限来自项目配置（默认 3）。
-- 固定同步节拍：按节奏（而非仅事件驱动）把 `origin/main` merge 进在途
-  sprint。
+- 同步触发：**事件优先**——complete 落地后必跑、fetch 发现外部落地
+  （hotfix、并行写者）必跑；多 sprint 在途时叠加日历节拍作漂移围栏；
+  WIP=1 时事件即足够（main 唯一的计划内写者是 complete 自己）。
 - 冲突复核清单（**规范真源，TD-1 收敛**——merge/sync 以锚点引用本行，
   修订只发生在本行）：生成物 → 重新生成后比对；手写文件 → 技能逐项列出
   复核单。
-- 交接条款在目标 sprint 的 sync/merge 时触发。
+- 交接条款由签发方 complete 阶段 6 发射生效，在目标 sprint 的 sync
+  处核查与兑现。
 
 ### 2.6 门禁（gates）
 
 项目参数化的命令清单（见 §5）。典型：契约/生成物一致性、doc-sync
 欠账核验、验收场景、测试套件。门禁红或验收裁决缺失，sprint 不得合并。
-**doc-sync 纪律的两级落地**：逐变更纪律（执行层每任务收尾按映射表自查，
+**门禁证据块与短路**：验收记录携带门禁证据块（运行时分支 tip hash、
+按原样跑过的 gates 清单、绿输出）；complete 的门禁重跑当且仅当 tip 与
+清单与记录完全一致时机械短路——等价替代重跑，不容判断，任何不一致
+全量重跑。**doc-sync 纪律的两级落地**：逐变更纪律（执行层每任务收尾按映射表自查，
 属宿主 AGENTS.md 节内容，不设独立技能）+ 检查点核验（accept 做周期
-漂移审计、merge 做欠账终检）。
+漂移审计、complete 做欠账终检）。
 
 ## 3. Plugin 格式（已对照官方文档核实，2026-09-30 版）
 
@@ -226,15 +236,15 @@ frontmatter；**前置仅为 state: merged——closed 不卡交接条款**：�
 不被加载器注册——技能目录内非 SKILL.md 文件仅作随插件分发的辅助资产）。
 两版内容镜像；冲突时以英文版为准。正文祈使句、精炼；各自以相对路径
 引用模板并按 §5 读宿主配置。心智模型五个动词：**战略（roadmap）→
-开（start）→ 验（accept）→ 合（merge）→ 同步（sync）**。
+开（start）→ 验（accept）→ 收（complete）→ 同步（sync）**。
 
 | # | 技能 | description（触发条件式，SDO 铁律） | 契约（输入 → 输出与副作用） |
 |---|---|---|---|
 | 1 | `supervibe:roadmap` | Use when the user mentions the roadmap, an epic, ADR decisions, open questions, asset disposition, tech debt, or wiring a project to supervibe. | 战略真源全套。子命令：**scaffold**（按 §5 配置路径建 `roadmaps/`、`sprints/`、`acceptances/` 目录树 + AGENTS.md supervibe 节 + `.agents/notes/`，幂等——已存在的目录/节不动，输出 diff 提案；**不写 `plans/`——那是 superpowers 执行域**）/ 加 epic 文档（缺 DoD 即拒绝；可带 Sprint 分解桩行）/ 记决策（ADR 增量节 + 修订；强制 doc-before-code）/ 开闭问题 / 资产处置 / **debt**（加条目、清偿以证据 commit hash、观察项路由到归属 epic）/ planned→ready（改 epic 文档分解节桩行）与 →closed（改 sprint 文档 frontmatter，前置仅为 merged，不卡条款，§2.2）两转换。每次变更注记日期 + 证据链接。 |
 | 2 | `supervibe:start` | Use when the user says start, begin, kick off, or pull a sprint, epic, or iteration. | 输入：epic id + sprint id（定位 `roadmaps/` 内对应文档及其分解节 ready 桩行；一个 epic 多 ready 桩即并行波次，桩 id 必填）。就绪裁决：依赖检查、WIP 计数（扫 sprints/ frontmatter 聚合 active 数）对上限、early-start 裁决（与在途 sprint 文件交集估算）、deferred-dependency 裁决（→ 按条款机制在签发方 sprint 文档 Handover Clauses 节登记，目标引用按 §2.2 迁移规则）。**先读史**：按 §2.4 协议检索 notes 历史教训，摘入决策上下文。输出：把分解节 ready 桩行实体化为 `sprints/YYYY-MM-DD-<sprint>-plan.md`（frontmatter 台账字段齐全、初始 `state: active`，五节，DoD 逐字复制自 epic 文档）+ 开线条目入 notes。然后调度：superpowers 在 → `superpowers:brainstorming` 再 `superpowers:writing-plans`，**指示其填充脚手架路径——五节结构与逐字 DoD 是对产出 plan 的不可变约束**；不在 → 打印手动指令。 |
 | 3 | `supervibe:accept` | Use when the user asks to accept, review, or verify a sprint, or asks whether a sprint is done. | 输入：sprint/plan 文档。把 S1–Sn 作为真验证执行（浏览器、CLI、栈命令按各场景指定——**证据先于断言，绝不未运行就宣称通过**；遇障碍先查 notes 史上同类绕行，命中复用并注明来源）。填 DoD 清单。障碍逐字留痕。**doc-sync 周期审计**：按映射表出漂移报告。输出 `acceptances/YYYY-MM-DD-<sprint>-acceptance.md` + 裁决（pass/blocked）+ **sprint 文档 frontmatter** 状态 →acceptance。替代证据必须如此标注。 |
-| 4 | `supervibe:merge` | Use when the user says merge, close out, ship, finish, or wrap up a sprint. | 有序序列，遇红即停：门禁（含 **doc-sync 欠账终检**）→ 验收裁决在案 → 合 main（冲突按 §2.5 清单）→ 拆 worktree/分支 → sprint 文档 frontmatter 以 commit hash 定稿 + 状态 →merged → 交接条款发射（即刻生效）→ notes 收口条目（证据 commit hash，与验收记录互引）。 |
-| 5 | `supervibe:sync` | Use when the user says sync, pull main, update branches, or integrate upstream changes. | 节拍入口：把 `origin/main` merge 进指定（或全部在途）sprint；冲突分类（生成物 → 重生成；手写 → 复核单）；扫描 sprints/ frontmatter `clauses` 引用，按 HC# 解析到各签发方文档 Handover Clauses 节取义务正文，对照入站 diff（路径/特性命中 → 呈现义务）；条款义务验证后记录证据并在签发方文档置 discharged（§2.2）。报告。 |
+| 4 | `supervibe:complete` | Use when the user says complete, close out, ship, finish, or wrap up a sprint. | 有序序列，遇红即停：门禁（含 **doc-sync 欠账终检**；验收记录的门禁证据块在 tip 与清单未变时机械短路）→ 验收裁决在案 → 合 main（**落点 commit 即 `merged-commit`**，冲突按 §2.5 清单）→ sprint 文档 frontmatter 定稿 + 状态 →merged → 拆 worktree/分支 → 交接条款发射（即刻生效）→ notes 收口条目（证据 commit hash，与验收记录互引）。**先记台账后拆载体**；中断按已存在工件续跑（详见技能）。 |
+| 5 | `supervibe:sync` | Use when the user says sync, pull main, update branches, or integrate upstream changes. | 集成入口（事件优先：complete 落地后必跑、外部落地必跑；多 sprint 在途叠加日历围栏）：把 `origin/main` merge 进指定（或全部在途）sprint；交集预警（在途 sprint 变更路径求交，非空即标记 early-start 估算过期）；冲突分类（生成物 → 重生成；手写 → 复核单）；扫描 sprints/ frontmatter `clauses` 引用，按 HC# 解析到各签发方文档 Handover Clauses 节取义务正文，对照入站 diff（路径/特性命中 → 呈现义务）；条款义务验证后记录证据并在签发方文档置 discharged（§2.2）。报告落 `notes/YYYY-MM-DD-sync.md`（四节协议）。 |
 
 ## 5. 配置面（宿主 AGENTS.md）
 
@@ -298,8 +308,9 @@ scaffold 子命令。plugin 绝不
 ```
 .claude-plugin/plugin.json          # name supervibe, version 0.1.0, MIT
 .claude-plugin/marketplace.json     # 自兼 marketplace, source "./"
-skills/{roadmap,start,accept,merge,sync}/SKILL.md      # 英文（真源）
-skills/{roadmap,start,accept,merge,sync}/SKILL.zh.md   # 中文镜像
+skills/{roadmap,start,accept,complete,sync}/SKILL.md      # 英文（真源）
+skills/{roadmap,start,accept,complete,sync}/SKILL.zh.md   # 中文镜像
+skills/board/                                       # 只读看板（disable-model-invocation，仅手动）
 templates/{epic,sprint,acceptance-record,handover-clause,debt-entry,agents-sections}.md
 tests/check-artifacts.mjs
 docs/superpowers/roadmaps/2026-10-01-v0.md    # 自举 epic 文档

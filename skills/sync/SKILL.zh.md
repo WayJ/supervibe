@@ -6,18 +6,18 @@ argument-hint: [sprint-id|all]
 
 # supervibe:sync — 同步节拍 + 条款兑现（cadence + clause discharge）
 
-节拍入口：按节奏（而非仅事件驱动）把 `origin/main` merge 进在途 sprint（spec §2.5——并行 sprint 会静默漂移，固定同步节拍正是漂移的围栏）。「pull main」「update branches」都路由到这里，也全都面对同一道标准。集成之外，是其他技能都不拥有的两项跨 sprint 职责：把交接条款对照入站变更核查，以及兑现目标方此刻已验证的那些条款。
+集成入口：main 动了就把 `origin/main` merge 进在途 sprint——事件优先：每次 complete 落地之后必跑，fetch 发现外部落地（hotfix、并行写者）必跑；多 sprint 在途时保留日历节拍作漂移围栏（spec §2.5——并行 sprint 会静默漂移）。`wip_limit` 为 1 时事件即足够：main 唯一的计划内写者就是 complete 自己，漂移只可能自外部进入。「pull main」「update branches」都路由到这里，也全都面对同一道标准。集成之外，是其他技能都不拥有的两项跨 sprint 职责：把交接条款对照入站变更核查，以及兑现目标方此刻已验证的那些条款。
 
-除自身的 merge 外，本技能只拥有一个变更动作：在签发方文档的条款记录处置 `status: discharged`。没有 sprint 状态转换——每一次 `state` 翻转都归 roadmap/accept/complete——也不创建任何文档。这里执行的 merge 只是对 sprint 分支的普通集成，绝不是 `supervibe:complete` 的收口合并。具名一个 merged 或 closed 的 sprint 时，只跑条款这一侧——条款生命周期不在载体拆除处死路。零栈假设：一切路径取自宿主配置；merge 机制归宿主。
+除自身的 merge 外，本技能只拥有一个变更动作：在签发方文档的条款记录处置 `status: discharged`。没有 sprint 状态转换——每一次 `state` 翻转都归 roadmap/accept/complete——除自己的运行报告（见下）外不创建任何文档。这里执行的 merge 只是对 sprint 分支的普通集成，绝不是 `supervibe:complete` 的收口合并。具名一个 merged 或 closed 的 sprint 时，只跑条款这一侧——条款生命周期不在载体拆除处死路。零栈假设：一切路径取自宿主配置；merge 机制归宿主。
 
-一次运行的产出就是报告：逐 sprint——集成了什么、冲突了什么及如何解决、哪些义务被触发、其中哪些凭证据收口。默默合并而什么都不报告的 sync 只做了一半工作——报告正是下一次 accept、complete 或 sync 要读的东西。
+一次运行的产出就是报告：逐 sprint——集成了什么、冲突了什么及如何解决、哪些义务被触发、其中哪些凭证据收口。默默合并而什么都不报告的 sync 只做了一半工作——报告正是下一次 accept、complete 或 sync 要读的东西。报告是持久的：每次运行写 `<notes>/YYYY-MM-DD-sync.md`（同日重跑带后缀），按四节协议——背景（本轮由什么触发）、决策（冲突解法）、教训（可复用的集成与冲突模式）、交接（条款表）。只活在会话里的报告，是下一个会话读不到的报告。
 
 ## 读取宿主配置（Read host config）
 
 任何动作之前，先在宿主 AGENTS.md 中 grep `## supervibe` 节：
 
-- 本技能读取的配置键：`sprints_dir`。
-- 键缺失时的默认值：`sprints_dir: docs/superpowers/sprints/`。
+- 本技能读取的配置键：`sprints_dir`、`notes`。
+- 键缺失时的默认值：`sprints_dir: docs/superpowers/sprints/`、`notes: .agents/notes/`。
 - 该节整体缺失 → STOP：唯一合法的下一步是 `supervibe:roadmap scaffold`——指引过去，其余一律拒绝。
 - 该节确认存在后，解析本技能涉及的已配置目录（`sprints_dir`）并核实其存在。缺失 → STOP：指引用户运行 scaffold 或修正配置路径；绝不隐式创建工件——配置路径笔误绝不能静默分叉真源。
 - 本技能不消费任何模板——条款记录本就存放在它读取的各签发方 sprint 文档里。
@@ -41,6 +41,7 @@ argument-hint: [sprint-id|all]
 - worktree 里有未提交变更 → 揭穿它们，让用户先 commit 或 stash：集成绝不与在途编辑混载，而落在脏工作区里的冲突会把两者纠缠到无法复核。
 - 先刷新 `origin/main`，并在**合并之前**捕获入站区间：merge-base(sprint 分支, origin/main)..origin/main 顶端——并保留区间的**两份**产物：commit 清单（subject + body）与变更路径清单——路径型 trigger 读一份，特性型 trigger 读另一份。下文条款核查读的正是这个区间——合并之后 base 会移动，区间就读空了。
 - 按此宿主合并的方式把 `origin/main` merge 进 sprint 分支，并在报告中点名产生的 merge commit。main 上没有新东西 → merge 是无操作；记录 up-to-date，条款核查照跑——本轮没有新抵达，但在欠的义务仍在欠、仍要查。
+- 交集预警：逐在途目标，把其分支的变更路径（对其 merge-base 的 diff）与每个其他在途 sprint 的变更路径求交——交集非空即在报告中标记：开工时的 early-start 估算已过期，重叠此刻是活的。
 - 验证集成结果是 sprint 自己的 accept/complete 领域：本技能集成并报告，绝不跑 gate 或场景。
 - 它不写 sprint 文档台账的任何东西——不碰 `state`、不碰字段、不翻转——也绝不 rebase 或改写 sprint 分支历史：受认可的改写面（收口前欠账修复）是 complete 的阶段 1，不在这里。
 
@@ -75,7 +76,7 @@ argument-hint: [sprint-id|all]
 写入侧——本技能拥有的唯一变更动作：
 
 - 兑现需要两者兼备：条款已触发（抵达，见上），**且**义务已在目标方验证、证据在手——sprint 分支内的 commit hash（merged 目标则在 main 上），或一份验证 transcript（命令 + 观察到的输出）。预期不是证据；标准就是 accept 的标准。
-- 写入位置：签发方文档活在 **main** 上——它的 sprint 已 merged，条款正因此生效——所以兑现写入发生在 main 线检出上、以一笔独立的后续 commit 落地，与 complete 阶段 5 写台账定稿的位置完全一致。它绝不搭载目标的 sprint 分支，也绝不留下脏工作区。
+- 写入位置：签发方文档活在 **main** 上——它的 sprint 已 merged，条款正因此生效——所以兑现写入发生在 main 线检出上、以一笔独立的后续 commit 落地，与 complete 阶段 4 写台账定稿的位置完全一致。它绝不搭载目标的 sprint 分支，也绝不留下脏工作区。
 - 已验证 → 在**签发方文档的条款记录**处置 `status: discharged`——单一权威——并向同一记录追加日期 + 证据链接。写入落在签发方文档，无论它身在哪个 epic 或波次（跨 sprint 是它的构造本性）；目标的引用列表绝不被改写来伪造收口——规范真源在 spec §2.2。
 - 兑现写入只触碰 `status`、日期与证据链接——绝不触碰 trigger 或义务正文：义务要么按写下的样子收口，要么保持 open。
 - 尚不可验证 → 部分：条款保持 open，报告原因——查了什么、缺什么证据。它在之后的某次 sync 兑现；在目标方 merge 之时产出的验证（complete 负责发射；验证由目标方产出——而 complete 绝不写条款状态）由下一次 sync 凭那份证据记录。
@@ -83,7 +84,7 @@ argument-hint: [sprint-id|all]
 
 ## Invariants（不变量）
 
-- 本技能只拥有条款兑现——没有 sprint 状态转换、不创建文档、不跑 gate。
+- 本技能只拥有条款兑现与自己的报告条目——没有 sprint 状态转换、不创建其他文档、不跑 gate。
 - 签发方文档的条款记录是唯一的条款写入面；目标的引用列表任何人出于任何理由都不改。
 - 只凭证据兑现——已触发且已验证——绝不凭预期，绝不对尚未生效的条款。
 - 检测基于抵达；入站区间只报告新鲜度，绝不是核查的门。

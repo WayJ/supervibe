@@ -6,7 +6,7 @@ worktree:                  <!-- placeholder: branch/worktree path -->
 early-start: false         <!-- placeholder: true|false -->
 deferred-dependency: []    <!-- placeholder: list of sprint ids, e.g. [S3, S4] -->
 clauses: []                <!-- placeholder: list of HC# references, e.g. [HC2, HC5] -->
-merged-commit: null        <!-- placeholder: branch-tip hash recorded at merge -->
+merged-commit: null        <!-- placeholder: main-side landing commit recorded at close-out -->
 ---
 
 # <!-- placeholder: sprint title, one line -->

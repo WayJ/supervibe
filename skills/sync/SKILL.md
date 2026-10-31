@@ -6,18 +6,18 @@ argument-hint: [sprint-id|all]
 
 # supervibe:sync — cadence + clause discharge
 
-The cadence entry point: on a rhythm, not only on events, merge `origin/main` into in-flight sprints (spec §2.5 — parallel sprints drift apart silently, and the fixed sync beat is what bounds the drift). "Pull main" and "update branches" route here and meet the same bar. Around the integration sit the two cross-sprint duties no other skill owns: checking handover clauses against the incoming changes, and discharging the ones the target side has now verified.
+The integration entry point: merge `origin/main` into in-flight sprints when main moves — event-driven first: after every complete lands, and whenever a fetch shows an external landing (a hotfix, a parallel writer); a calendar beat remains as the drift fence when more than one sprint is in flight (spec §2.5 — parallel sprints drift apart silently). At `wip_limit` 1 the events alone suffice: main's only scheduled writer is complete itself, so drift can only enter from outside. "Pull main" and "update branches" route here and meet the same bar. Around the integration sit the two cross-sprint duties no other skill owns: checking handover clauses against the incoming changes, and discharging the ones the target side has now verified.
 
-This skill owns exactly one mutation besides its merges: setting a clause `status: discharged` in the issuing doc's clause record. No sprint state transitions — every `state` flip belongs to roadmap/accept/complete — and no doc creation. The merge performed here is plain integration into a sprint branch, never the close-out merge of `supervibe:complete`. Naming a merged or closed sprint runs the clause side alone — the clause lifecycle does not dead-end at the carrier's teardown. Zero stack assumptions: every path comes from host config; merge mechanics belong to the host.
+This skill owns exactly one mutation besides its merges: setting a clause `status: discharged` in the issuing doc's clause record. No sprint state transitions — every `state` flip belongs to roadmap/accept/complete — and no doc creation besides its own run report (below). The merge performed here is plain integration into a sprint branch, never the close-out merge of `supervibe:complete`. Naming a merged or closed sprint runs the clause side alone — the clause lifecycle does not dead-end at the carrier's teardown. Zero stack assumptions: every path comes from host config; merge mechanics belong to the host.
 
-The run's product is the report: per sprint, what integrated, what conflicted and how it was resolved, which obligations fired and which of them closed with evidence. A sync that merges silently and reports nothing has done half its job — the report is what the next accept, complete, or sync reads.
+The run's product is the report: per sprint, what integrated, what conflicted and how it was resolved, which obligations fired and which of them closed with evidence. A sync that merges silently and reports nothing has done half its job — the report is what the next accept, complete, or sync reads. The report is durable: every run writes `<notes>/YYYY-MM-DD-sync.md` (same-day re-runs take a suffix) per the four-section protocol — background (what triggered the round), decisions (conflict resolutions), lessons (reusable integration and conflict patterns), handover (the clause table). A report that lives only in the conversation is a report the next session cannot read.
 
 ## Read host config
 
 Before anything, grep the host AGENTS.md for the `## supervibe` section:
 
-- Config keys this skill reads: `sprints_dir`.
-- Defaults when the key is absent: `sprints_dir: docs/superpowers/sprints/`.
+- Config keys this skill reads: `sprints_dir`, `notes`.
+- Defaults when a key is absent: `sprints_dir: docs/superpowers/sprints/`, `notes: .agents/notes/`.
 - Section absent entirely → STOP: the only legal next action is `supervibe:roadmap scaffold` — direct the user there and refuse everything else.
 - Once the section exists, resolve the configured dir this skill touches (`sprints_dir`) and verify it exists. Missing → STOP: direct the user to run scaffold or fix the config path; never implicitly create artifacts — a config path typo must not silently fork the truth source.
 - This skill consumes no templates — clause records already live in the issuing sprint docs it reads.
@@ -41,6 +41,7 @@ Per in-flight target sprint, in that sprint's own carrier:
 - A worktree carrying uncommitted changes → surface them and have the user commit or stash first: integration must not ride mixed with in-flight edits, and a conflict landing in dirt entangles the two beyond review.
 - Refresh `origin/main` first, then capture the incoming range **before merging**: merge-base(sprint branch, origin/main)..origin/main tip — and keep **both** artifacts of the range, the commit list (subjects + bodies) and the changed-paths list: path triggers read one, feature triggers the other. The clause check below reads this range — after the merge the base moves and the range would read empty.
 - Merge `origin/main` into the sprint branch the way this host merges, and name the resulting merge commit in the report. Nothing new on main → the merge is a no-op; record up-to-date and still run the clause check — nothing is fresh this round, but standing obligations are still owed and still checked.
+- Early-warning intersection: for each in-flight target, intersect its branch's changed paths (vs its merge-base) with every other in-flight sprint's changed paths — a non-empty intersection is flagged in the report: the start-time early-start estimate has gone stale and the overlap is now live.
 - Verifying the integrated result is the sprint's own accept/complete domain: this skill integrates and reports, never runs gates or scenarios.
 - It writes nothing to the sprint doc's ledger — no `state`, no fields, no flips — and never rebases or rewrites the sprint branch's history: the sanctioned rewrite surface (arrears repair before close-out) is complete's stage 1, not here.
 
@@ -75,7 +76,7 @@ The read side of the clause mechanism — body text lives only in issuing docs, 
 The write side — the one mutation this skill owns:
 
 - Discharge requires both: the clause is triggered (arrival, above), **and** the obligation was verified on the target side with evidence in hand — a commit hash in the sprint branch or, for a merged target, on main, or a verification transcript (command + observed output). Expectation is not evidence; the bar is accept's.
-- Write location: the issuing doc lives on **main** — its sprint is merged, that is why the clause binds — so the discharge write happens on the main-line checkout as an independent follow-up commit, exactly where complete's stage 5 writes its ledger finals. It never rides the target's sprint branch and never leaves a dirty tree.
+- Write location: the issuing doc lives on **main** — its sprint is merged, that is why the clause binds — so the discharge write happens on the main-line checkout as an independent follow-up commit, exactly where complete's stage 4 writes its ledger finals. It never rides the target's sprint branch and never leaves a dirty tree.
 - Verified → set `status: discharged` in the **issuing doc's clause record** — the single authority — and append date + evidence link to that same record. The write goes to the issuing doc wherever it lives (cross-sprint by construction); the target's reference list is never edited to fake closure — normative in spec §2.2.
 - The discharge write touches `status`, date, and the evidence link only — never the trigger or obligation text: an obligation is closed as written or stays open.
 - Not yet verifiable → partial: leave the clause open and report why — what was checked, what evidence is missing. It discharges at a later sync; a verification produced at the target's merge time (complete fires them; verification is the target's to produce — and complete never writes clause status) is recorded by the next sync, on that evidence.
@@ -83,7 +84,7 @@ The write side — the one mutation this skill owns:
 
 ## Invariants
 
-- This skill owns exactly clause discharge — no sprint state transitions, no doc creation, no gate runs.
+- This skill owns exactly clause discharge and its own report note — no sprint state transitions, no other doc creation, no gate runs.
 - The issuing doc's clause record is the only clause write surface; the target's reference list is never edited, by anyone, for any reason.
 - Discharge only on evidence — triggered AND verified — never on expectation, never against a not-yet-binding clause.
 - Detection is arrival-based; the incoming range reports freshness only and never gates a check.

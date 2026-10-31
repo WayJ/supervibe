@@ -79,13 +79,13 @@ sprint 评审门禁：把每条验收场景真跑一遍，逐项以证据核对 
 
 ## 裁决与记录（Verdict + record）
 
-以 `templates/acceptance-record.md` 写 `<acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md`；日期是今天，即验收运行日。记录至少携带：场景结果表、带证据的 DoD 清单、逐字障碍日志、漂移报告、裁决。记录只增不改——同日重跑绝不覆盖既有记录，改用区分性后缀（`-2`、`-3`、……）；frontmatter 证据链接指向裁决 pass 的那份记录。
+以 `templates/acceptance-record.md` 写 `<acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md`；日期是今天，即验收运行日。记录至少携带：场景结果表、带证据的 DoD 清单、逐字障碍日志、漂移报告、裁决，以及**门禁证据块（gate-evidence block）**——运行时的分支 tip hash、按原样跑过的 gates 清单（逐条已运行的配置 gate 命令）、其绿的输出。该块正是 complete 阶段 1 短路所用的机械钥匙，条件恰好是 tip 与清单未变；没有它，complete 全量重跑。记录只增不改——同日重跑绝不覆盖既有记录，改用区分性后缀（`-2`、`-3`、……）；frontmatter 证据链接指向裁决 pass 的那份记录。
 
 - **pass** 需要全部满足：每条场景以新鲜证据或已标注的替代通过；每项 DoD 有证据核对；被触发行上无未偿漂移。任一不满足 → **blocked**，点名阻断项。
 - pass → 更新 sprint 文档 frontmatter `state: acceptance`，追加日期 + 记录路径作为证据链接。记录与翻转在同一动作里写出——翻了状态却没有记录是不完整的。
 - blocked → 记录照写照留——证据要保全。状态保持 `active`：sprint 回到执行层清理点名的问题，之后再验收；每次运行写自己的记录。
 
-记录是后续环节的证据锚点：complete 的收口条目回引它——记录与收口条目互相引用。
+记录是后续环节的证据锚点：complete 的收口条目回引它——记录与收口条目互相引用。而最便宜的收口就是同一会话：pass 之后立即跑 `supervibe:complete`——漂移窗口为零，门禁证据最新鲜。
 
 ## Invariants（不变量）
 

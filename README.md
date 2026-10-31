@@ -138,8 +138,8 @@ claude --plugin-dir /path/to/supervibe
 | `supervibe:roadmap` | create/close epics, scaffold the config section, manage debt, adjudicate stub rows |
 | `supervibe:start` | materialize a stub row into a sprint doc + worktree; register handover clauses |
 | `supervibe:accept` | run acceptance scenarios with fresh evidence, audit doc drift, issue the verdict |
-| `supervibe:complete` | seven-stage close-out: gates → verdict → merge → teardown → ledger → fire clauses → note |
-| `supervibe:sync` | cadence-merge `origin/main` into in-flight sprints; check and discharge handover clauses |
+| `supervibe:complete` | seven-stage close-out: gates → verdict → merge → ledger → teardown → fire clauses → note |
+| `supervibe:sync` | event-driven merge of `origin/main` into in-flight sprints; check and discharge handover clauses; durable report note |
 
 Every skill ships bilingual: `SKILL.md` (English truth source) + `SKILL.zh.md`
 (faithful Chinese mirror).

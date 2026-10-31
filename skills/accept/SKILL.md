@@ -79,13 +79,13 @@ The periodic doc-sync checkpoint of this skill — the counterpart to complete's
 
 ## Verdict + record
 
-Write `<acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md` from `templates/acceptance-record.md`; the date is today, the acceptance-run date. The record carries at minimum: the scenario result table, the DoD checklist with evidence, the verbatim obstacles log, the drift report, and the verdict. Records are append-only — a same-day re-run never overwrites an earlier record; it takes a distinguishing suffix (`-2`, `-3`, …); the frontmatter evidence link points at the passing record.
+Write `<acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md` from `templates/acceptance-record.md`; the date is today, the acceptance-run date. The record carries at minimum: the scenario result table, the DoD checklist with evidence, the verbatim obstacles log, the drift report, the verdict, and the **gate-evidence block** — the branch tip hash at run time, the gates list as run (each configured gate command that ran, verbatim), and its green outputs. That block is the mechanical key complete's stage 1 short-circuits on, exactly when tip and list are unchanged; without it, complete re-runs everything. Records are append-only — a same-day re-run never overwrites an earlier record; it takes a distinguishing suffix (`-2`, `-3`, …); the frontmatter evidence link points at the passing record.
 
 - **pass** requires all of: every scenario passed with fresh evidence or a labeled substitution; every DoD item checked with evidence; no unpaid drift on triggered rows. Anything less → **blocked**, naming the blocking items.
 - pass → update the sprint doc frontmatter `state: acceptance`, appending date + the record path as the evidence link. The record and the flip are written in the same act — a flipped state without its record is incomplete.
 - blocked → the record is still written and kept — evidence preserves. State stays `active`: the sprint returns to execution to clear the named blockers and is accepted again afterwards; each run writes its own record.
 
-The record is the evidence anchor for what follows: complete's closing note cites it back — records and closing notes reference each other.
+The record is the evidence anchor for what follows: complete's closing note cites it back — records and closing notes reference each other. And the cheapest close-out is the same session: run `supervibe:complete` immediately after a pass — the drift window is zero and the gate evidence is freshest.
 
 ## Invariants
 
