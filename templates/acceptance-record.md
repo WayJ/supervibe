@@ -19,6 +19,24 @@ Anything less is blocked, naming the blocking items. -->
 
 pass — all scenarios green on fresh runs; no unpaid drift on triggered rows <!-- example -->
 
+## Executor Readiness
+
+<!-- Record the confirmed iteration policy revision/fingerprint and acceptance owner
+(main agent or independent worker), actual identity provenance if a worker,
+all candidate developer identities for independent acceptance, current wake,
+candidate/build/context, and linked structured self-check evidence. Never invent IDs.
+Every wake/resume and every candidate/build/environment/context change requires
+fresh self-check: target environment ownership/availability/no conflicting mutation,
+scenario-required tools, account authorization, test data, evidence recording.
+Missing/unknown required conditions block; not-applicable needs a scenario reason.
+Main-agent acceptance follows the same checks without a fictional worker ID.
+Do not put credentials or sensitive raw logs in this versioned record. -->
+
+<!-- If independentAcceptance is true, embed exactly one fenced
+supervibe-acceptance-execution JSON block with the actual {task, result}.
+The Sprint gate requires its current registered wake/preflight and exact Sprint
+identity. Never fabricate a ready receipt. false requires no worker ID/block. -->
+
 ## Acceptance Evidence
 
 <!-- Insert exactly one fenced supervibe-evidence block containing the JSON
@@ -95,3 +113,9 @@ verdict carries it. -->
 |---|---|---|---|
 | src/api/** → docs/api.md | yes — src/api/export.py | drifted | endpoint missing from docs/api.md; fixed this run, re-audit current <!-- example --> |
 | <!-- placeholder: change pattern and owed doc --> | <!-- placeholder: matched paths, or none --> | <!-- placeholder: current, drifted, or n/a --> | <!-- placeholder: detail --> |
+
+<!-- If required scenarios declare resourceGroups, include exactly one fenced
+supervibe-resource-execution JSON block with actual held/frozen claim proofs.
+Acquire and check ownership before operations; freeze the current candidate
+before acceptance. Main-agent owners use role main, never a fake worker ID.
+Use resource-policy contract fields and real evidence; never fabricate claims. -->

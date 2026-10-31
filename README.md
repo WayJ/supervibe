@@ -17,6 +17,8 @@ skill.
 
 ## Default multi-agent iteration, explicit solo exit
 
+The coordinator is the **current main agent**, never an extra spawned coordinator. At Roadmap kickoff, explicitly confirm `independentAcceptance`: false assigns acceptance to the main agent; true uses a distinct acceptance worker (same harness allowed), with main-agent final review. Acceptance shares the existing worker cap; cap 1 supports sequential distinct workers. Every acceptance wake/resume rechecks candidate/build, scenario-required environment/tools/accounts/data and evidence capture; missing or unknown conditions block, not silently downgrade. See [acceptance ownership and self-check](docs/collaboration-modes.md#acceptance-ownership-and-wake-self-check--验收归属与唤醒自检).
+
 SuperVibe defaults to a coordinating main agent plus workers for an overall iteration. Choose native harness orchestration (such as Claude Code subagents) or external Orca orchestration, and confirm worker count and applicable worker harnesses at kickoff. `maxWorkers: 1` means one worker **plus** the coordinator. Missing selected capabilities block execution; they never silently turn multi-agent work into solo work.
 
 Explicit single-agent/no-subagent work goes directly to **superpowers**, before any SuperVibe scaffold, ledger initialization, configuration, reservation or iteration artifact. It does not activate iteration mode; solo is not a third collaboration mode. `scripts/iteration-route.mjs` is a pure intent router, not a runtime launcher.
@@ -132,6 +134,15 @@ A local lock is not a remote merge lock. Host merge protection and actual scenar
 evidence remain required. Submodules, unsupported multiline frontmatter and
 unresolved conflicts fail closed. Scaffold preserves empty owned directories
 with committed `.gitkeep`; already-landed merge recovery never merges twice.
+
+## Development resource coordination
+
+Before environment-heavy parallel work, assess local CPU/memory/disk and workload
+footprints, then confirm budgets separately from worker limits. Atomic exclusive
+resource groups coordinate containers, ports, databases, profiles and accounts;
+required acceptance groups are checked against the frozen candidate. Optional SSH
+hosts are resource-environment metadata, not an automatic connection/provisioning
+adapter. See [resource protocol and limits](docs/resources.md).
 
 ## Board
 

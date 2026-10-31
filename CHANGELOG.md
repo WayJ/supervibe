@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Require an explicit Roadmap independent-acceptance choice; keep coordination in
+  the current main agent. Add CAS-registered Sprint/Roadmap acceptance wakes, candidate-
+  bound scenario-derived preflight and durable executor independence checks;
+  final Sprint and Roadmap verification enforce the configured execution receipt.
+  Contracts only: no resource scheduler, backend attestation or live E2E coverage.
+
+- Add read-only local capacity snapshots and environment-budget estimates,
+  atomic exclusive resource groups, generation-bound ownership, explicit
+  quiescent release and candidate freezing for acceptance. SSH hosts are optional
+  resource-environment metadata, not an automatic remote worker/provisioning adapter.
+- Preserve eight combined Sprint/Roadmap, native/Orca and independent/main-agent
+  acceptance simulations as portable regressions with synthetic provider receipts.
+
 - Define exactly two collaboration routes: native harness and external Orca,
   with explicit configuration, read-only task/result contract validation,
   bounded worktree placement and bilingual routing guidance. Contract/static

@@ -16,6 +16,8 @@ First resolve the user's execution intent, before reading/initializing the share
 
 The pure helper `node "<plugin base dir>/scripts/iteration-route.mjs"` reads `{ "execution": "solo" }` or `{ "execution": "iteration" }` on stdin (omitted execution defaults to iteration). It only reports routing intent; it neither invokes skills nor probes harness capabilities. In iteration mode, use exactly native/harness or external/orca, inspect actual capabilities, and stop when the selected route is unavailable — never silently execute solo. `maxWorkers: 1` means **one worker plus the coordinating main agent**, not solo. The remaining instructions apply only after the iteration route is selected.
 
+The coordinator is **the current main agent**, never an extra spawned coordinator. At overall Roadmap kickoff, explicitly ask whether to use an independent acceptance worker and save the confirmed boolean `independentAcceptance` with the existing iteration policy (no silent default). `false` assigns acceptance to the main agent; `true` requires a distinct acceptance worker. Acceptance workers share `maxWorkers`; at cap 1, finish/release development before admitting a distinct acceptance worker. See the mandatory wake/preflight and identity rules in [collaboration modes](../../docs/collaboration-modes.md).
+
 ## Shared runtime authority
 
 Read `<plugin base dir>/docs/shared-ledger.md`. From the host repository root run
@@ -44,6 +46,30 @@ Before any subcommand, grep the host AGENTS.md for the `## supervibe` section:
 Collaboration configuration has no default: `collaboration_mode` / `collaboration_provider` must be selected as `native` / `harness` or `external` / `orca`. During scaffold, explain both routes and ask the user to choose; leave them explicitly unconfigured if no choice is supplied. Existing selections are not overwritten. Missing/invalid config blocks delegation, not roadmap editing; unavailable capabilities never silently change the selection. See [collaboration modes](../../docs/collaboration-modes.md).
 
 At overall iteration/epic kickoff, before its first sprint starts, ask once for the worker concurrency cap and Orca worker harness/mixing choices, then confirm/save the iteration policy with user provenance. Host mode/provider is only a proposal; resume reuses the confirmed shared snapshot. Do not confuse worker cap with sprint WIP or fabricate defaults. See the kickoff rules in [collaboration modes](../../docs/collaboration-modes.md).
+
+## Resource planning and admission
+
+At overall iteration kickoff, before recommending worker concurrency or starting a
+resource-consuming environment, follow `<plugin base dir>/docs/resources.md`.
+Run the read-only `node "<plugin base dir>/scripts/resource-policy.mjs" probe-local`
+on the actual local execution machine; assess workload footprints and system/Docker
+reserves, then obtain user confirmation of host budgets and intended resource groups.
+Agent slots and environment instances are separate limits. Unknown footprint or stale
+capacity evidence is a blocker to claiming safe environment concurrency, not a default.
+
+Before using a shared container, port, database, browser profile or test account,
+acquire the entire declared resource group atomically and check its current ownership.
+Declare required acceptance groups in the upfront scenario `resourceGroups`; freeze
+the tested candidate and pass current proofs to acceptance. Conflicts/unknown hosts
+block use; do not restart, reset, rotate credentials, steal or expire someone else's
+resources. Release only after explicit quiescence evidence. Groups that are not needed
+may be omitted with a documented reason; do not invent resource demand for pure analysis.
+
+An authorized SSH host may supply build/test environment capacity while the worker
+and shared ledger stay local. Register non-secret aliases and separately verified
+remote budgets; never treat local probe data as remote capacity or registration as a
+successful connection. This does not authorize installing, pairing, changing credentials
+or provisioning. The protocol coordinates cooperating workers, not OS-level isolation.
 
 ## scaffold
 

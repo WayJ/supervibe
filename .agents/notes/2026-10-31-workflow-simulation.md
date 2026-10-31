@@ -80,3 +80,22 @@ These tests do not exercise a native Claude Code session, real browser acceptanc
 OS power loss during fsync/rename, or remote/distributed coordination. The local
 ledger is not pushed with source; independent clones require explicit initialization
 or import. The existing broad fingerprint remains conservative as described above.
+
+## Combined acceptance and resource regression
+
+`tests/integration-simulation.test.mjs` exercises eight combinations in actual
+temporary Git repositories: Sprint/Roadmap, native/Orca contract, and independent
+acceptance enabled/disabled. The combined paths cover registered and frozen
+resource claims, committed candidate-bound evidence, wake freshness, explicit
+main-agent versus worker ownership, resource contention, unknown SSH host state,
+wrong candidate, developer-owned acceptance resources, missing readiness,
+same developer identity, stale resume, code changes, and quiescent handoff.
+All eight scenarios and 64 positive/negative checkpoints passed. The final
+aggregate was 91 Node tests plus 201 artifact checks; the board test also contains
+63 internal assertions. Resource and combined tests are included in host gates.
+
+Provider receipts, browser observations and SSH state in these tests are synthetic.
+No real worker was launched and no external container, account, credential or
+server was changed. These checks prove the cooperative metadata contracts and
+their integration, not physical resource isolation or live backend compatibility.
+Real environment probes and authorization remain mandatory before actual use.

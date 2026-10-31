@@ -12,7 +12,7 @@ const EPIC_H2 = ['## Deliverables', '## Definition of Done', '## Overall Accepta
 const SPRINT_H2 = ['## Decisions (D-x)', '## Stories & Tasks', '## Definition of Done',
   '## Acceptance Scenarios (S1–Sn)', '## Handover Clauses']; // (S1–Sn) = U+2013 en dash
 const LEDGER_KEYS = ['sprint', 'epic', 'state', 'worktree', 'early-start', 'deferred-dependency', 'clauses', 'merged-commit', 'acceptance-record', 'accepted-at'];
-const ACC_H2 = ['## Verdict', '## Scenario Results', '## DoD Checklist', '## Obstacles (verbatim)', '## Doc-Drift Audit', '## Acceptance Evidence', '## Execution Evidence'];
+const ACC_H2 = ['## Executor Readiness', '## Verdict', '## Scenario Results', '## DoD Checklist', '## Obstacles (verbatim)', '## Doc-Drift Audit', '## Acceptance Evidence', '## Execution Evidence'];
 const CLAUSE_LABELS = ['id HC#', 'issuer sprint', 'target sprint', 'trigger', 'obligation', 'status (open|discharged)', 'evidence'];
 const DEBT_LABELS = ['id', 'date', 'severity', 'owner', 'description', 'repayment criteria', 'status', 'evidence commit'];
 const CONFIG_KEYS = ['roadmaps_dir', 'sprints_dir', 'acceptances_dir', 'notes', 'debt_tracker', 'wip_limit', 'collaboration_mode', 'collaboration_provider'];
@@ -180,6 +180,15 @@ function main() {
       ok(t.includes('supervibe-acceptance-results'), `accept/${file}: required execution evidence`);
       ok((readIf(join(SKILLS, 'roadmap', file)) ?? '').includes('roadmap-verify'), `roadmap/${file}: final integrated guard`);
     }
+    ok(JSON.parse(readIf(join(TPL, 'iteration-collaboration.json'))).config.independentAcceptance === null, 'draft independent acceptance choice has no default');
+    ok((readIf(join(TPL, 'epic.md')) ?? '').includes('independentAcceptance'), 'epic requires explicit independent acceptance choice');
+    ok((readIf(join(TPL, 'roadmap-acceptance-record.md')) ?? '').includes('## Executor Readiness'), 'roadmap record contains executor readiness');
+    ok((readIf(join(TPL, 'roadmap-acceptance-record.md')) ?? '').includes('supervibe-acceptance-execution'), 'roadmap final record requires conditional execution receipt');
+    ok((readIf(join(TPL, 'acceptance-record.md')) ?? '').includes('supervibe-acceptance-execution'), 'sprint record requires conditional execution receipt');
+    for (const name of ['sprint.md', 'epic.md']) ok((readIf(join(TPL, name)) ?? '').includes('resourceGroups'), `${name}: upfront resource group declaration`);
+    for (const name of ['acceptance-record.md', 'roadmap-acceptance-record.md']) ok((readIf(join(TPL, name)) ?? '').includes('supervibe-resource-execution'), `${name}: conditional resource receipt`);
+    ok(existsSync('scripts/iteration-policy.mjs'), 'shared iteration policy validator exists');
+    ok(existsSync('scripts/acceptance-worker.mjs'), 'bounded acceptance worker validator exists');
     checkBoard();
     ok(existsSync('scripts/validate-workflow.mjs'), 'workflow validator exists');
     ok(existsSync('scripts/shared-ledger.mjs'), 'shared ledger CLI exists');

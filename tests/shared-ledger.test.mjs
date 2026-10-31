@@ -1,4 +1,4 @@
-import { planBlock, resultsBlock } from './acceptance-fixtures.mjs';
+import { planBlock, resultsBlock, mainAcceptancePolicy } from './acceptance-fixtures.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
@@ -18,6 +18,8 @@ function setup(t, limit = 1) {
   for (const dir of ['sprints', 'acceptances']) { mkdirSync(join(root, dir)); writeFileSync(join(root, dir, '.gitkeep'), ''); }
   writeFileSync(join(root, 'code.js'), 'baseline'); git(root, 'add', '.'); git(root, 'commit', '-m', 'baseline');
   initialize(root, 'sprints', limit);
+  // Fixture-only policy seed; keep lifecycle revision assertions independent.
+  writeFileSync(join(commonDir(root), 'supervibe', 'state.json'), JSON.stringify({ ...readLedger(root), iterationConfigs: { E1: mainAcceptancePolicy } }));
   const options = (id, revision, operation, extra = {}) => ({ '--id': id, '--revision': String(revision), '--operation': operation, ...extra });
   const reserve = (id = 'S1', revision = readLedger(root).revision, operation = `reserve-${id}`) => {
     const worktree = `${root}-${id}`; paths.push(worktree);

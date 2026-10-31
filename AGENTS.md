@@ -23,6 +23,8 @@ for the code, supervibe artifacts for the iteration.
 - workflow: node --test tests/workflow-guard.test.mjs tests/shared-ledger.test.mjs
 - collaboration: node --test tests/collaboration-contract.test.mjs tests/iteration-route.test.mjs
 - acceptance: node --test tests/acceptance-contract.test.mjs
+- resources: node --test tests/resource-policy.test.mjs
+- integration: node --test tests/integration-simulation.test.mjs
 - board: node --test tests/board-parser.test.mjs
 
 ### doc_sync_map

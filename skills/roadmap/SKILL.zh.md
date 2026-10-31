@@ -16,6 +16,8 @@ argument-hint: [scaffold|epic|breakdown|adr|question|asset|debt|ready|close]
 
 纯函数辅助命令 `node "<plugin base dir>/scripts/iteration-route.mjs"` 从 stdin 读取 `{ "execution": "solo" }` 或 `{ "execution": "iteration" }`（省略 execution 默认 iteration）。它只返回路由意图，不调用技能、不探测 harness。迭代内部仍只有 native/harness 与 external/orca 两种模式；检查真实能力，所选模式不可用即停止，不静默退回单 Agent。`maxWorkers: 1` 是 **协调主 Agent 加一个 worker**，不是 solo。以下指令仅在选择迭代路径后适用。
 
+协调者就是**当前主 Agent**，不额外启动 coordinator。整体 Roadmap 启动时明确询问是否设置独立验收 worker，将确认后的布尔值 `independentAcceptance` 与既有迭代策略一起保存，不静默取默认值。`false` 由主 Agent 验收；`true` 必须另派独立验收 worker。验收 worker 同样计入 `maxWorkers`；上限为 1 时，开发结束并释放名额后再顺序派发不同身份的验收 worker。唤醒自检与身份约束见[协作模式](../../docs/collaboration-modes.md)。
+
 ## 共享运行权威（Shared runtime authority）
 
 读取 `<plugin base dir>/docs/shared-ledger.md`。在宿主仓库根目录运行
@@ -42,6 +44,24 @@ frontmatter 检查均是投影检查。无存储就停止并显式 init/import�
 协作配置无默认值：`collaboration_mode` / `collaboration_provider` 必须选择 `native` / `harness` 或 `external` / `orca`。scaffold 时说明两条路并请用户选择；未选择则明确保持未配置。不覆盖已有选择。缺失/无效配置阻止委派，不阻止 roadmap 编辑；能力不可用绝不静默改变选择。见[协作模式](../../docs/collaboration-modes.md)。
 
 整体迭代/epic 启动、首个 sprint 开始前，统一询问一次 worker 并发上限及 Orca worker harness/混用选择，再按真实用户确认来源保存迭代策略。宿主 mode/provider 仅为提议，恢复复用已确认共享快照。worker 上限不等于 sprint WIP，不伪造默认值。见[协作模式](../../docs/collaboration-modes.md)启动规则。
+
+## 资源规划与准入
+
+整体迭代启动时，在建议 worker 并发或启动消耗资源的环境之前，读取
+`<plugin base dir>/docs/resources.md`。在实际本地执行机器运行只读
+`node "<plugin base dir>/scripts/resource-policy.mjs" probe-local`，评估工作负载开销及
+系统/Docker 预留，再由用户确认主机预算与资源组用途。Agent 槽位和环境实例数分别限制；
+开销未知或容量证据过期时，不能默认宣称某个环境并发数安全。
+
+使用共享容器、端口、数据库、浏览器 profile 或测试账号前，必须原子申请完整资源组并检查
+当前所有权。把验收必需组预先写入场景 `resourceGroups`，冻结受验候选，并向验收提供
+当前申领凭据。冲突或主机状态未知就停止使用，不能自行重启、清空、轮换凭据、抢占或
+过期释放别人的资源。只有明确静止证据才可释放。纯分析等确实不需要资源组时可说明原因
+后省略，不凭空增加资源需求。
+
+经授权的 SSH 主机可提供构建/测试环境容量，worker 和共享账本仍留在本地。登记非秘密
+别名并单独核实远端预算，不把本机探测当远端容量，也不把登记当作连接成功。这不授权
+安装、配对、修改凭据或开通服务器。该协议协调遵守规则的 worker，不提供操作系统级隔离。
 
 ## scaffold
 

@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { acceptancePlan, verifyResults } from '../scripts/acceptance-contract.mjs';
 import { roadmapSnapshot, roadmapVerify, roadmapVerifyClean } from '../scripts/validate-workflow.mjs';
 import { initializeLedger, readLedger, changeLedger } from '../scripts/ledger-store.mjs';
+import { acceptanceWake, iterationConfigFingerprint } from '../scripts/collaboration-contract.mjs';
 import { scenario, planBlock, resultsBlock } from './acceptance-fixtures.mjs';
 const browser = { ...scenario, modality: 'browser', steps: ['open browser', 'click export', 'inspect download'] };
 test('required browser acceptance rejects not-run, substitutions, missing observations and evidence', () => {
@@ -35,14 +36,15 @@ function fixture(t) {
   const epic = 'E1.md', record = 'acceptances/E1.md';
   write(epic, '---\nepic: E1\nstatus: open\nfinal-acceptance-record: null\nfinal-accepted-at: null\n---\n## Sprint Breakdown\n\n| sprint | state | note |\n|---|---|---|\n| S1 | started | implemented |\n\n## Overall Acceptance\n' + planBlock('roadmap', [browser]));
   write('code.js', 'integrated'); git('add', '.'); git('commit', '-m', 'integrated upfront plan');
-  initializeLedger(root, { schema: 1, revision: 0, wipLimit: 1, mainRef: 'main', sprintsDir: 'sprints', sprints: { S1: { id: 'S1', epic: 'E1', document: 'sprints/S1.md', branch: 'sprint/S1', worktree: root, state: 'merged', landing: git('rev-parse', 'HEAD') } }, events: [], operations: [] });
+  const config = { schema: 1, epic: 'E1', revision: 1, mode: 'native', provider: 'harness', maxWorkers: 1, independentAcceptance: false, workerHarness: 'inherit', allowMixed: false, status: 'confirmed', confirmation: { by: 'user', source: 'fixture:main-acceptance', at: '2026-10-31T00:00:00Z' } };
+  initializeLedger(root, { iterationConfigs: { E1: config }, schema: 1, revision: 0, wipLimit: 1, mainRef: 'main', sprintsDir: 'sprints', sprints: { S1: { id: 'S1', epic: 'E1', document: 'sprints/S1.md', branch: 'sprint/S1', worktree: root, state: 'merged', landing: git('rev-parse', 'HEAD') } }, events: [], operations: [] });
   const accept = () => {
     const evidence = roadmapSnapshot(root, epic, record, 'main');
     write(record, '## Verdict\npass\n\n```supervibe-evidence\n' + JSON.stringify(evidence) + '\n```\n' + resultsBlock(evidence.fingerprint, 'roadmap', [browser]));
     write(epic, readFileSync(join(root, epic), 'utf8').replace('final-acceptance-record: null', `final-acceptance-record: ${record}`).replace('final-accepted-at: null', 'final-accepted-at: 2026-10-31'));
     return evidence;
   };
-  return { root, git, write, epic, record, accept };
+  return { root, git, write, epic, record, accept, config };
 }
 test('roadmap requires separate integrated acceptance; committing evidence does not stale its fingerprint', t => {
   const f = fixture(t); assert.throws(() => roadmapVerify(f.root, f.epic, f.record, 'main'));
@@ -116,4 +118,43 @@ test('clearing the final pointer before a rerun revokes an old pass even with un
   assert.throws(() => roadmapVerify(f.root, f.epic, f.record, 'main'), /pointer mismatch/);
   f.git('add', '.'); f.git('commit', '-m', 'revoke before new review');
   assert.throws(() => roadmapVerifyClean(f.root, f.epic, f.record, 'main'), /pointer mismatch/);
+});
+
+test('Roadmap independent execution is epic scoped, needs no active sprint, and gates final evidence', t => {
+  const f = fixture(t);
+  const config = { ...f.config, independentAcceptance: true, confirmation: { ...f.config.confirmation, source: 'fixture:independent' } };
+  changeLedger(f.root, 0, 'independent', 'fixture', {}, state => { state.iterationConfigs.E1 = config; });
+  const evidence = f.accept();
+  assert.throws(() => roadmapVerify(f.root, f.epic, f.record, 'main'), /supervibe-acceptance-execution/);
+  const context = { wakeId: 'final-wake-1', wakeSequence: 1, candidate: evidence.fingerprint, build: 'integrated-build', environmentRevision: 'env-1', record: f.record, developers: [{ mode: 'native', execution: { workerId: 'developer' } }] };
+  const task = { schema: 1, scope: 'roadmap', epic: 'E1', epicDocument: f.epic, role: 'acceptance', taskId: 'final', objective: 'Integrated acceptance', worktree: f.root, allowedPaths: ['acceptances/'], acceptance: ['All required integrated scenarios'], mode: 'native', provider: 'harness', workerHarness: 'inherit', iterationConfigRevision: 1, iterationConfigFingerprint: iterationConfigFingerprint(config), acceptanceContext: context };
+  acceptanceWake(f.root, { ledgerRevision: 1, operation: 'final-wake', task });
+  const preflight = { schema: 1, status: 'ready', wakeId: context.wakeId, wakeSequence: 1, candidate: context.candidate, build: context.build, environmentRevision: context.environmentRevision, executor: 'native:reviewer', evidence: `${f.record}#readiness`, checks: Object.fromEntries(['targetBuild', 'environment', 'resourceSafety', 'authorization', 'testData', 'evidenceRecording', 'capability:browser'].map(k => [k, { status: 'ready', evidence: 'synthetic fixture observation' }])) };
+  const result = { ...task, execution: { workerId: 'reviewer' }, preflight, status: 'succeeded', evidence: [preflight.evidence], blockers: [] };
+  const base = readFileSync(join(f.root, f.record), 'utf8');
+  const save = (t = task, r = result) => f.write(f.record, base + '\n```supervibe-acceptance-execution\n' + JSON.stringify({ task: t, result: r }) + '\n```\n');
+  save(); assert.equal(roadmapVerify(f.root, f.epic, f.record, 'main').scope, 'roadmap');
+  assert.equal(readLedger(f.root).sprints.S1.state, 'merged');
+  for (const patch of [{ role: 'development' }, { execution: { workerId: 'developer' } }, { preflight: undefined }, { preflight: { ...preflight, checks: { ...preflight.checks, 'capability:browser': { status: 'unknown', evidence: 'no browser' } } } }]) {
+    save(task, { ...result, ...patch });
+    assert.throws(() => roadmapVerify(f.root, f.epic, f.record, 'main'));
+  }
+  save();
+  const next = { ...task, acceptanceContext: { ...context, wakeId: 'final-wake-2', wakeSequence: 2 } };
+  acceptanceWake(f.root, { ledgerRevision: 2, operation: 'final-resume', task: next });
+  assert.throws(() => roadmapVerify(f.root, f.epic, f.record, 'main'), /stale/);
+});
+test('Roadmap final gate requires explicit acceptance policy; main-agent path needs no worker identity', t => {
+  const f = fixture(t); f.accept();
+  assert.equal(roadmapVerify(f.root, f.epic, f.record, 'main').scope, 'roadmap');
+  changeLedger(f.root, 0, 'missing-policy', 'fixture', {}, state => { delete state.iterationConfigs; });
+  assert.throws(() => roadmapVerify(f.root, f.epic, f.record, 'main'), /Missing iteration config/);
+});
+
+test('integrated Roadmap gate blocks missing claims for declared required shared resources', t => {
+  const f = fixture(t);
+  f.write(f.epic, readFileSync(join(f.root, f.epic), 'utf8').replace('"required":true', '"required":true,"resourceGroups":["shared-db"]'));
+  f.git('add', '.'); f.git('commit', '-m', 'declare shared resource upfront');
+  f.accept();
+  assert.throws(() => roadmapVerify(f.root, f.epic, f.record, 'main'), /supervibe-resource-execution/);
 });

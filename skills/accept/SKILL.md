@@ -10,6 +10,24 @@ The sprint review gate: run every acceptance scenario for real, check every DoD 
 
 This is the checkpoint where the execution layer's claims meet the strategic layer's standards: a pass here is what unblocks `supervibe:complete`. Zero stack assumptions: proving commands come from the scenario text and the host's `### gates` config — never invented; every path comes from host config, never hardcoded.
 
+## Acceptance owner and every-wake readiness
+
+Before either Sprint or Roadmap acceptance, read the epic's confirmed `independentAcceptance` policy. Missing/unconfirmed policy blocks acceptance until the user confirms it through the existing config revision/CAS flow. The coordinator is the current main agent, not another spawned agent. `false`: main agent executes acceptance, without inventing a worker ID. `true`: admit a separate acceptance worker under the same `maxWorkers` cap; at cap 1, verify development has ended/released its slot before sequential acceptance. Main agent still owns final evidence review and the gate. Same harness is allowed; choose the worker harness with the user within the existing allowed set (native inherits).
+
+Independent acceptance must have an actual executor identity different from all developers of this candidate: native worker ID or durable Orca worker/session identity backed by real receipts. A new dispatch into the same terminal/session is not independence. Missing identity/developer provenance blocks and escalates rather than inventing IDs or reusing a developer success.
+
+On **every wake/resume**, before scenarios, require the acceptance executor to self-check and record current candidate/build/context, target environment running/ownership/availability/no conflicting mutation where stability is needed, scenario-required browser/CLI/API capabilities, authorized test accounts, test data, and evidence capture. Derive requirements from the upfront scenarios; CLI-only acceptance need not have a browser. Not-applicable requires a scenario-grounded reason. Missing/unknown required conditions produce blocked and exact blockers. Code/build/environment/context changes invalidate readiness and require rechecking; never carry a previous wake's assumptions forward. Main-agent acceptance follows the same self-check without a fabricated worker ID.
+
+For independent Sprint or Roadmap workers, register the fresh `acceptanceContext` using `collaboration-contract.mjs acceptance-wake` with ledger CAS before execution, then validate the role-bound result and its structured `preflight`; exact fields are in the linked contract. Both worker scopes have wake/preflight contract validation; main-agent readiness remains a skill obligation without a worker identity.
+
+Retain readiness and identity evidence with the acceptance result, bound to this wake and candidate; never promote development evidence into independent acceptance. No automatic installation/login/credential refresh/container or test-data mutation, and no claimed resource locks: these require actual capabilities and authorization. No resource manager is implemented. Required real operations cannot be replaced by static/CI/API substitutes. See [collaboration contract](../../docs/collaboration-modes.md); its validation is contract-only, not a live backend/environment proof.
+
+For Sprint acceptance with `independentAcceptance: true`, embed exactly one `supervibe-acceptance-execution` fenced JSON block `{task, result}` in the acceptance record. The `verify`/`verify-clean` gate binds the actual Sprint ID, shared epic/document, current candidate, policy, latest wake, independent identity and readiness. A successful developer result or another Sprint receipt cannot substitute. Missing policy blocks both main and independent paths.
+
+
+For required scenarios declaring `resourceGroups`, acquire and check the actual resource claims before any operation, verify host/environment readiness and exclusive ownership, then freeze the current candidate before acceptance. Follow `docs/resources.md` and the resource-policy helper contract; record real claim proofs in exactly one fenced `supervibe-resource-execution` block. Both Sprint and Roadmap gates enforce these declarations for main-agent and independent-worker paths. Main-agent ownership uses role main without a fake worker ID. Missing/unknown/conflicting claims block; never reset shared containers, ports, data or credentials to bypass admission. This cooperative helper is not an OS sandbox and does not prove process liveness.
+
+
 ## Roadmap final integration route
 
 For `accept roadmap <epic-id or path>`, review the epic's upfront Overall
@@ -34,6 +52,8 @@ required-evidence, no-substitution and obstacle rules below at scope `roadmap`.
 Store the before JSON in `supervibe-evidence`, and `supervibe-acceptance-results`
 with scope roadmap and candidate fingerprint. This is separate integrated testing,
 never a summary of sprint records. Missing capability/evidence means blocked.
+
+If `independentAcceptance` is true, use an acceptance task with `scope: "roadmap"`, `epic`, `epicDocument`, no `sprint`, and the actual configured main-branch worktree. Bind `acceptanceContext.candidate` to the integrated `roadmap-snapshot`; register each wake/resume through `acceptance-wake`. No active Sprint or new Sprint WIP reservation is needed. Embed exactly one fenced `supervibe-acceptance-execution` JSON block `{task, result}` in the final record. `roadmap-verify` enforces current policy, candidate, latest wake, distinct executor and readiness. If false, main-agent acceptance needs neither a worker ID nor this worker execution block. Contract checks cannot prove live execution.
 
 Write the append-only pass/blocked record and set only epic
 `final-acceptance-record` and `final-accepted-at` for the attempt (do not append

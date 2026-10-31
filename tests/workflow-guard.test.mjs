@@ -1,4 +1,4 @@
-import { planBlock, resultsBlock } from './acceptance-fixtures.mjs';
+import { planBlock, resultsBlock, mainAcceptancePolicy } from './acceptance-fixtures.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync, symlinkSync } from 'node:fs';
@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { snapshot, verify, verifyClean, inspectWorktreeSprints as checkWip, IN_FLIGHT, LANDED } from '../scripts/validate-workflow.mjs';
+import { initializeLedger, changeLedger } from '../scripts/ledger-store.mjs';
 const script = resolve('scripts/validate-workflow.mjs');
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'supervibe-guard-'));
@@ -18,6 +19,7 @@ function fixture(t) {
   write(sprint, '---\nsprint: S1\nstate: active\n---\n## DoD\nWorks\n' + planBlock());
   write('code.js', 'original'); write('AGENTS.md', 'gates: test');
   git('add', '.'); git('commit', '-m', 'baseline');
+  initializeLedger(root, { schema: 1, revision: 0, wipLimit: 1, mainRef: git('branch', '--show-current').toString().trim(), sprintsDir: 'sprints', sprints: { S1: { id: 'S1', epic: 'E1', document: sprint, branch: git('branch', '--show-current').toString().trim(), worktree: root, state: 'active' } }, events: [], operations: [], iterationConfigs: { E1: mainAcceptancePolicy } });
   const accept = () => {
     const evidence = snapshot(root, sprint, record);
     write(record, '## Verdict\n\npass — verified\n\n## Evidence\n```supervibe-evidence\n' + JSON.stringify(evidence) + '\n```\n' + resultsBlock(evidence.fingerprint));
@@ -181,4 +183,12 @@ test('a landed no-ff merge is detectable for resume even with the carrier still 
   assert.equal(f.git('rev-parse', `${landing}^2`).toString().trim(), tip);
   // Recovery must examine landing evidence before the normal ancestry preflight.
   assert.equal(readFileSync(join(other, 'code.js'), 'utf8'), 'completed work');
+});
+
+test('Sprint final gate blocks missing claims declared by required scenarios', t => {
+  const f = fixture(t); f.accept();
+  f.write(f.sprint, readFileSync(join(f.root, f.sprint), 'utf8').replace('"required":true', '"required":true,"resourceGroups":["shared-db"]'));
+  const evidence = snapshot(f.root, f.sprint, f.record);
+  f.write(f.record, '## Verdict\npass\n\n```supervibe-evidence\n' + JSON.stringify(evidence) + '\n```\n' + resultsBlock(evidence.fingerprint));
+  assert.throws(() => verify(f.root, f.sprint, f.record), /supervibe-resource-execution/);
 });

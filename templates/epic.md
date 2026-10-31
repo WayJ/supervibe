@@ -16,6 +16,10 @@ appends date + evidence link. Fill every placeholder fill-in, replace the
 example-marked rows with real content, keep the section headings
 verbatim, then delete template notes. -->
 
+<!-- Overall kickoff must explicitly confirm independentAcceptance (true/false)
+with maxWorkers and harness choices through the shared iteration policy.
+Current main agent coordinates. No default; independent workers share the cap. -->
+
 ## Deliverables
 
 <!-- One row per committed deliverable: concrete and verifiable, never "improve X". -->
@@ -43,8 +47,12 @@ require modality browser and environment real. Each required scenario needs
 actual actions and observed results; CI/API/static screenshots alone cannot
 substitute. Keep this machine plan aligned with the human scenario wording. -->
 
+<!-- Declare actual shared environment resourceGroups IDs upfront per scenario
+(containers, ports, databases, accounts/credentials). Empty only when none are
+needed; do not omit known shared resources to bypass admission. -->
+
 ```supervibe-acceptance-plan
-{"schema":1,"scope":"roadmap","scenarios":[{"id":"R1","goal":"Export invoices through the complete report UI","required":true,"modality":"browser","environment":"real","steps":["Open the integrated report URL as an authorized user","Select a quarter and click Export","Open the downloaded CSV and compare totals with the displayed invoices"],"expected":"The browser flow succeeds and downloaded totals reconcile to the cent"}]}
+{"schema":1,"scope":"roadmap","scenarios":[{"id":"R1","goal":"Export invoices through the complete report UI","required":true,"modality":"browser","environment":"real","resourceGroups":[],"steps":["Open the integrated report URL as an authorized user","Select a quarter and click Export","Open the downloaded CSV and compare totals with the displayed invoices"],"expected":"The browser flow succeeds and downloaded totals reconcile to the cent"}]}
 ```
 
 <!-- Replace the example above with the actual overall plan. Every Sprint stub

@@ -1,11 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { initializeLedger, readLedger, changeLedger, commonDir } from '../scripts/ledger-store.mjs';
-import { readConfig, validateConfig, validateTask, validateResult, validateIterationConfig, confirmIterationConfig, readIterationConfig, iterationConfigFingerprint } from '../scripts/collaboration-contract.mjs';
+import { readConfig, validateConfig, validateTask, validateResult, validateIterationConfig, confirmIterationConfig, readIterationConfig, iterationConfigFingerprint, acceptanceWake } from '../scripts/collaboration-contract.mjs';
+import { snapshot, verify } from '../scripts/validate-workflow.mjs';
+import { planBlock, resultsBlock } from './acceptance-fixtures.mjs';
 const cli = resolve('scripts/collaboration-contract.mjs');
 function fixture(t, mode = 'native') {
   const root = mkdtempSync(join(tmpdir(), 'supervibe-contract-'));
@@ -16,7 +18,7 @@ function fixture(t, mode = 'native') {
   const config = (m = mode) => writeFileSync(join(root, 'AGENTS.md'), `# Host\n## supervibe\n- collaboration_mode: ${m}\n- collaboration_provider: ${m === 'native' ? 'harness' : 'orca'}\n`);
   config(); git(root, 'add', '.'); git(root, 'commit', '-m', 'fixture');
   initializeLedger(root, { schema: 1, revision: 0, wipLimit: 1, mainRef: 'main', sprintsDir: 'sprints', events: [], operations: [], sprints: { S1: { id: 'S1', epic: 'E1', state: 'active', document: 'sprints/S1.md', branch: 'main', worktree: root } } });
-  const iteration = { schema: 1, epic: 'E1', revision: 1, mode, provider: mode === 'native' ? 'harness' : 'orca', maxWorkers: 2, status: 'confirmed', confirmation: { by: 'user', source: 'fixture:user-message-1', at: '2026-10-31T00:00:00Z' }, allowMixed: false, ...(mode === 'native' ? { workerHarness: 'inherit' } : { workerHarnesses: ['codex'] }) };
+  const iteration = { schema: 1, epic: 'E1', revision: 1, mode, provider: mode === 'native' ? 'harness' : 'orca', maxWorkers: 2, independentAcceptance: false, status: 'confirmed', confirmation: { by: 'user', source: 'fixture:user-message-1', at: '2026-10-31T00:00:00Z' }, allowMixed: false, ...(mode === 'native' ? { workerHarness: 'inherit' } : { workerHarnesses: ['codex'] }) };
   confirmIterationConfig(root, { ledgerRevision: 0, operation: 'confirm-fixture', config: iteration });
   const task = { iterationConfigRevision: 1, iterationConfigFingerprint: iterationConfigFingerprint(iteration), workerHarness: mode === 'native' ? 'inherit' : 'codex', schema: 1, sprint: 'S1', taskId: 'T1', objective: 'Implement bounded change', worktree: root, allowedPaths: ['src/'], acceptance: ['Tests pass'], mode, provider: mode === 'native' ? 'harness' : 'orca' };
   const result = { workerHarness: task.workerHarness, iterationConfigRevision: task.iterationConfigRevision, iterationConfigFingerprint: task.iterationConfigFingerprint, schema: 1, sprint: 'S1', taskId: 'T1', worktree: root, mode, provider: task.provider, status: 'succeeded', execution: mode === 'native' ? { workerId: 'worker-1' } : { runId: 'run-1', taskId: 'orca-task-1', dispatchId: 'dispatch-1' }, evidence: ['tests: pass; evidence saved in sprint task record'], blockers: [] };
@@ -165,4 +167,100 @@ test('corrupt optional iterationConfigs fails closed before save, never silently
   const legacy = { ...before }; delete legacy.iterationConfigs;
   writeFileSync(file, JSON.stringify(legacy));
   assert.equal(readLedger(f.root).iterationConfigs, undefined);
+});
+
+function acceptanceFixture(t, mode = 'native') {
+  const f = fixture(t, mode);
+  const config = { ...f.iteration, revision: 2, maxWorkers: 1, independentAcceptance: true, confirmation: { ...f.iteration.confirmation, source: 'user:independent-yes' } };
+  confirmIterationConfig(f.root, { ledgerRevision: 1, operation: 'independent', config });
+  mkdirSync(join(f.root, 'sprints'));
+  writeFileSync(join(f.root, 'sprints/S1.md'), '---\nsprint: S1\nstate: active\n---\n' + planBlock());
+  const development = mode === 'native' ? { workerId: 'developer' } : { executorIdentity: { kind: 'session', id: 'developer', source: 'backend:receipt' } };
+  const execution = mode === 'native' ? { workerId: 'reviewer' } : { ...f.result.execution, executorIdentity: { kind: 'session', id: 'reviewer', source: 'backend:receipt' } };
+  const context = { wakeId: 'wake-1', wakeSequence: 1, candidate: snapshot(f.root, 'sprints/S1.md', 'acceptance.md').fingerprint, build: 'build-1', environmentRevision: 'env-1', record: 'acceptance.md', developers: [{ mode, execution: development }] };
+  f.task = { ...f.task, role: 'acceptance', iterationConfigRevision: 2, iterationConfigFingerprint: iterationConfigFingerprint(config), acceptanceContext: context };
+  const preflight = { schema: 1, status: 'ready', ...Object.fromEntries(['wakeId', 'wakeSequence', 'candidate', 'build', 'environmentRevision'].map(k => [k, context[k]])), executor: mode === 'native' ? 'native:reviewer' : 'orca:session:reviewer', evidence: 'acceptance.md#preflight', checks: Object.fromEntries(['targetBuild', 'environment', 'resourceSafety', 'authorization', 'testData', 'evidenceRecording', 'capability:cli'].map(k => [k, { status: 'ready', evidence: 'fixture check only' }])) };
+  f.result = { ...f.result, role: 'acceptance', iterationConfigRevision: 2, iterationConfigFingerprint: f.task.iterationConfigFingerprint, execution, preflight, evidence: [preflight.evidence] };
+  return f;
+}
+test('independent acceptance policy is explicit; legacy policy requires fresh confirmation', t => {
+  const f = fixture(t);
+  for (const independentAcceptance of [undefined, null, 'yes', 1]) assert.throws(() => validateIterationConfig({ ...f.iteration, independentAcceptance }), /independentAcceptance/);
+  assert.throws(() => validateTask(f.root, { ...f.task, role: 'acceptance' }), /disabled/);
+  changeLedger(f.root, 1, 'legacy', 'fixture', {}, state => { delete state.iterationConfigs.E1.independentAcceptance; });
+  assert.throws(() => readIterationConfig(f.root, 'E1'), /independentAcceptance/);
+  confirmIterationConfig(f.root, { ledgerRevision: 2, operation: 'upgrade', config: { ...f.iteration, revision: 2, confirmation: { ...f.iteration.confirmation, source: 'user:new-choice' } } });
+  assert.equal(readIterationConfig(f.root, 'E1').independentAcceptance, false);
+});
+test('cap one permits sequential independent acceptance, no extra slot or browser requirement', t => {
+  const f = acceptanceFixture(t);
+  acceptanceWake(f.root, { ledgerRevision: 2, operation: 'wake', task: f.task });
+  const before = readLedger(f.root);
+  assert.equal(validateResult(f.root, { task: f.task, result: f.result }).sprintAccepted, false);
+  assert.equal(before.iterationConfigs.E1.maxWorkers, 1);
+  assert.deepEqual(readLedger(f.root), before);
+});
+test('acceptance blocks missing preflight, unknown readiness, wrong candidate and stale wake', t => {
+  const f = acceptanceFixture(t), check = result => validateResult(f.root, { task: f.task, result });
+  assert.throws(() => check(f.result), /registered/);
+  acceptanceWake(f.root, { ledgerRevision: 2, operation: 'wake', task: f.task });
+  for (const patch of [{ preflight: undefined }, { role: undefined }, { preflight: { ...f.result.preflight, candidate: 'wrong' } }, { preflight: { ...f.result.preflight, wakeId: 'old' } }, { preflight: { ...f.result.preflight, checks: { ...f.result.preflight.checks, resourceSafety: { status: 'unknown', evidence: 'shared container busy' } } } }]) assert.throws(() => check({ ...f.result, ...patch }));
+  const task = { ...f.task, acceptanceContext: { ...f.task.acceptanceContext, wakeId: 'wake-2', wakeSequence: 2 } };
+  acceptanceWake(f.root, { ledgerRevision: 3, operation: 'resume', task });
+  assert.throws(() => check(f.result), /stale/);
+  assert.throws(() => acceptanceWake(f.root, { ledgerRevision: 4, operation: 'reuse-old', task: f.task }), /wakeSequence/);
+});
+test('candidate modifications and build/environment changes require a new self-check', t => {
+  const f = acceptanceFixture(t);
+  acceptanceWake(f.root, { ledgerRevision: 2, operation: 'wake', task: f.task });
+  for (const patch of [{ build: 'build-2' }, { environmentRevision: 'env-2' }]) assert.throws(() => validateResult(f.root, { task: { ...f.task, acceptanceContext: { ...f.task.acceptanceContext, ...patch } }, result: f.result }), /stale/);
+  writeFileSync(join(f.root, 'new-code.txt'), 'changed');
+  assert.throws(() => validateResult(f.root, { task: f.task, result: f.result }), /candidate/);
+});
+test('independence requires real executor identity, not another Orca dispatch in same session', t => {
+  for (const mode of ['native', 'external']) {
+    const f = acceptanceFixture(t, mode);
+    acceptanceWake(f.root, { ledgerRevision: 2, operation: 'wake', task: f.task });
+    const execution = mode === 'native' ? { workerId: 'developer' } : { ...f.result.execution, dispatchId: 'new-dispatch', executorIdentity: { kind: 'session', id: 'developer', source: 'backend:receipt' } };
+    assert.throws(() => validateResult(f.root, { task: f.task, result: { ...f.result, execution } }), /independent/);
+    if (mode === 'external') {
+      const missing = { ...f.result.execution }; delete missing.executorIdentity;
+      assert.throws(() => validateResult(f.root, { task: f.task, result: { ...f.result, execution: missing } }), /executorIdentity/);
+      assert.equal(validateResult(f.root, { task: f.task, result: { ...f.result, execution: missing, status: 'blocked', preflight: undefined, blockers: ['Backend did not expose durable identity'] } }).status, 'blocked');
+    }
+  }
+});
+
+test('every required preflight check and its evidence is mandatory; browser is scenario conditional', t => {
+  const f = acceptanceFixture(t);
+  acceptanceWake(f.root, { ledgerRevision: 2, operation: 'wake', task: f.task });
+  for (const key of Object.keys(f.result.preflight.checks)) {
+    const checks = { ...f.result.preflight.checks }; delete checks[key];
+    assert.throws(() => validateResult(f.root, { task: f.task, result: { ...f.result, preflight: { ...f.result.preflight, checks } } }), /preflight/);
+  }
+  assert.throws(() => validateResult(f.root, { task: f.task, result: { ...f.result, evidence: ['unrelated'] } }), /link/);
+  const doc = join(f.root, 'sprints/S1.md');
+  writeFileSync(doc, '---\nsprint: S1\nstate: active\n---\n' + planBlock('sprint', [{ id: 'UI', goal: 'UI', required: true, modality: 'browser', environment: 'real', steps: ['click'], expected: 'works' }]));
+  const context = { ...f.task.acceptanceContext, candidate: snapshot(f.root, 'sprints/S1.md', 'acceptance.md').fingerprint, wakeId: 'wake-2', wakeSequence: 2 };
+  const task = { ...f.task, acceptanceContext: context };
+  acceptanceWake(f.root, { ledgerRevision: 3, operation: 'browser-wake', task });
+  const preflight = { ...f.result.preflight, candidate: context.candidate, wakeId: context.wakeId, wakeSequence: 2 };
+  assert.throws(() => validateResult(f.root, { task, result: { ...f.result, preflight } }), /capability:browser/);
+});
+
+test('Sprint acceptance gate requires configured independent receipt and exact sprint identity', t => {
+  const f = acceptanceFixture(t);
+  acceptanceWake(f.root, { ledgerRevision: 2, operation: 'wake', task: f.task });
+  const c = f.task.acceptanceContext;
+  const sprint = 'sprints/S1.md', record = c.record;
+  const evidence = snapshot(f.root, sprint, record);
+  writeFileSync(join(f.root, sprint), readFileSync(join(f.root, sprint), 'utf8').replace('state: active', `state: acceptance\nacceptance-record: ${record}\naccepted-at: 2026-10-31`));
+  const base = '## Verdict\npass\n\n```supervibe-evidence\n' + JSON.stringify(evidence) + '\n```\n' + resultsBlock(evidence.fingerprint);
+  const save = (task, result) => writeFileSync(join(f.root, record), base + (task ? '\n```supervibe-acceptance-execution\n' + JSON.stringify({ task, result }) + '\n```\n' : ''));
+  save(); assert.throws(() => verify(f.root, sprint, record), /supervibe-acceptance-execution/);
+  save(f.task, f.result); assert.equal(verify(f.root, sprint, record).fingerprint, c.candidate);
+  save({ ...f.task, sprint: 'S2' }, { ...f.result, sprint: 'S2' });
+  assert.throws(() => verify(f.root, sprint, record), /sprint\/epic/);
+  save(f.task, { ...f.result, execution: { workerId: 'developer' } });
+  assert.throws(() => verify(f.root, sprint, record), /independent/);
 });

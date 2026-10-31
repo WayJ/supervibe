@@ -10,6 +10,27 @@ not substitute CI/API checks, fixture runs or static screenshots. -->
 
 blocked — <!-- placeholder: evidence-backed basis; never prefill pass -->
 
+## Executor Readiness
+
+<!-- Record the confirmed iteration policy revision/fingerprint and acceptance owner
+(main agent or independent worker), actual identity provenance if a worker,
+all candidate developer identities for independent acceptance, current wake,
+candidate/build/context, and linked structured self-check evidence. Never invent IDs.
+Every wake/resume and every candidate/build/environment/context change requires
+fresh self-check: target environment ownership/availability/no conflicting mutation,
+scenario-required tools, account authorization, test data, evidence recording.
+Missing/unknown required conditions block; not-applicable needs a scenario reason.
+Main-agent acceptance follows the same checks without a fictional worker ID.
+Do not put credentials or sensitive raw logs in this versioned record. -->
+
+<!-- If the confirmed independentAcceptance policy is true, insert exactly one
+fenced supervibe-acceptance-execution JSON block containing the actual {task, result}.
+Task: scope roadmap, epic ID, epicDocument, role acceptance, no sprint; actual
+configured main-branch worktree, registered current wake and integrated candidate.
+roadmap-verify checks current policy, latest wake, candidate, identity and readiness.
+Do not prefill a fake ready receipt. If false, the main agent needs no worker ID
+or worker execution block; still perform and record the scenario readiness checks. -->
+
 ## Acceptance Evidence
 
 <!-- Exact BEFORE output of validate-workflow.mjs roadmap-snapshot --epic PATH
@@ -49,3 +70,9 @@ It cannot retroactively turn this attempt green. -->
 ## Doc-Drift Audit
 
 <!-- Check mapped documentation for all integrated changes. -->
+
+<!-- If required scenarios declare resourceGroups, include exactly one fenced
+supervibe-resource-execution JSON block with actual held/frozen claim proofs.
+Acquire and check ownership before operations; freeze the current candidate
+before acceptance. Main-agent owners use role main, never a fake worker ID.
+Use resource-policy contract fields and real evidence; never fabricate claims. -->

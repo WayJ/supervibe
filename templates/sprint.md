@@ -67,8 +67,12 @@ pass. -->
 machine-readable counterpart of the scenario table, not a replacement for it.
 For UI scenarios use browser + real and specify actual user actions. -->
 
+<!-- Declare actual shared environment resourceGroups IDs upfront per scenario
+(containers, ports, databases, accounts/credentials). Empty only when none are
+needed; do not omit known shared resources to bypass admission. -->
+
 ```supervibe-acceptance-plan
-{"schema":1,"scope":"sprint","scenarios":[{"id":"S1","goal":"Export a bounded quarter","required":true,"modality":"api","environment":"real","steps":["Run the configured export command for Q3 and compare invoice line count"],"expected":"200; line count matches the invoiced-lines count for Q3"}]}
+{"schema":1,"scope":"sprint","scenarios":[{"id":"S1","goal":"Export a bounded quarter","required":true,"modality":"api","environment":"real","resourceGroups":[],"steps":["Run the configured export command for Q3 and compare invoice line count"],"expected":"200; line count matches the invoiced-lines count for Q3"}]}
 ```
 
 ## Handover Clauses

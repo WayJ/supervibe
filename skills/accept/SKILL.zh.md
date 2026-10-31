@@ -10,6 +10,24 @@ sprint 评审门禁：把每条验收场景真跑一遍，逐项以证据核对 
 
 这里是执行层的断言与战略层的标准碰面的检查点：本技能的 pass 正是解锁 `supervibe:complete` 的东西。零栈假设：证明命令来自场景正文与宿主 `### gates` 配置——绝不发明；一切路径取自宿主配置，绝不硬编码。
 
+## 验收归属与每次唤醒自检
+
+Sprint 或 Roadmap 验收前读取 epic 已确认的 `independentAcceptance`。缺失/未确认即阻塞，先经既有配置 revision/CAS 流程取得用户确认。协调者就是当前主 Agent，不另起协调 Agent。`false` 由主 Agent 验收，不虚构 worker ID；`true` 在同一 `maxWorkers` 上限内派独立验收 worker。上限为 1 时，先核实开发结束并释放名额，再顺序验收。主 Agent 仍负责最终证据复核与门禁。可用相同 harness；派发时由用户在已有允许集合中选择（原生继承）。
+
+独立验收必须有不同于该候选版本所有开发者的真实执行身份：原生 worker ID 或真实回执支持的 Orca 持久 worker/session 身份。同一 terminal/session 的新 dispatch 不算独立。身份或开发来源不全时阻塞并上报，不虚构 ID，不复用开发成功结果。
+
+**每次唤醒/恢复**，验收执行者在跑场景前必须自检并记录：当前候选版本/build/上下文；目标环境运行、归属、可用性及需稳定时无冲突修改；场景所需 browser/CLI/API 能力；测试账号及授权；测试数据；证据采集。要求依据事前场景，纯 CLI 验收不强制浏览器；不适用必须写明场景依据。必需条件缺失/未知就 blocked 并列具体阻塞。代码/build/环境/上下文变化即就绪失效并重新检查，不沿用上一唤醒假设。主 Agent 验收同样自检，但不虚构 worker ID。
+
+独立 Sprint 或 Roadmap worker 执行前，通过 `collaboration-contract.mjs acceptance-wake` 及台账 CAS 登记新的 `acceptanceContext`，再校验绑定角色的结果及结构化 `preflight`；精确字段见所链契约。两种 worker 范围均有唤醒/preflight 契约校验；主 Agent 就绪仍是技能义务，不需要 worker 身份。
+
+自检与身份来源随验收结果留存，并绑定本次唤醒与候选版本；开发证据不能升级成独立验收。不得自动安装/登录/刷新凭证/修改容器或测试数据，也不得声称持有资源锁，须有真实能力与授权。本实现没有资源管理器。必需真实操作不能替换为静态/CI/API 检查。参见[协作契约](../../docs/collaboration-modes.md)；校验仅为 contract-only，不证明真实 backend/环境已执行。
+
+Sprint 验收选择 `independentAcceptance: true` 时，验收记录必须包含恰好一个 `supervibe-acceptance-execution` fenced JSON 块 `{task, result}`。`verify`/`verify-clean` 门禁绑定实际 Sprint ID、共享 epic/文档、当前候选版本、策略、最新唤醒、独立身份和就绪；开发成功或另一个 Sprint 的回执不能替代。缺失策略时主 Agent 与独立验收路径均阻塞。
+
+
+必需场景声明 `resourceGroups` 时，真实操作前先取得并检查实际资源声明，核实主机/环境就绪及独占归属，再冻结当前候选版本开始验收。遵循 `docs/resources.md` 与 resource-policy 契约，在恰好一个 `supervibe-resource-execution` fenced 块中记录真实声明凭据。Sprint 与 Roadmap 门禁都对主 Agent/独立 worker 强制校验；主 Agent 使用 role main，不虚构 worker ID。缺失、未知或冲突即阻塞，不能重置共享容器、端口、数据或账号凭据绕过准入。这是协作约定，不是操作系统沙箱，也不证明进程存活。
+
+
 ## Roadmap 最终集成验收分流
 
 `accept roadmap <epic-id 或路径>` 审查 epic 计划中 Overall Acceptance Scenarios，不是某个 Sprint。解析 roadmaps_dir/acceptances_dir，读取共享账本 mainRef，并核对全部 Breakdown ID 都有同 epic 的 merged/closed 条目。不调用 sprint review-begin/review-pass、不改变 Sprint 状态、不复用旧裁决。
@@ -19,6 +37,8 @@ sprint 评审门禁：把每条验收场景真跑一遍，逐项以证据核对 
 验收前准备全部笔记与计划修订，在既有授权下提交集成输入和前置计划。基于 `templates/roadmap-acceptance-record.md` 创建新记录；在当前集成主线候选上，于实际场景、DoD、漂移核对前后分别运行 `validate-workflow.mjs roadmap-snapshot --epic "<epic-doc>" --record "<new-record>" --main-ref "<stored-mainRef>"`，要求输出一致。下述真实执行、必需证据、禁止替代、障碍规则同样适用，scope 改为 roadmap。验收前 JSON 放入 supervibe-evidence，结果放 supervibe-acceptance-results，candidate 为该指纹。必须重新做集成测试，不能汇总旧 Sprint 记录充数。能力/证据缺失即 blocked。
 
 写只增不改的 pass/blocked 记录，只设置 epic 的 final-acceptance-record 与 final-accepted-at（快照后不追加正文）。pass 后以同样参数运行 roadmap-verify；失败禁止关闭。blocked 保留 epic open，不恢复旧 pass。后续 closed 由 roadmap 管理。下面 Sprint 专用分流、共享转换与 frontmatter 指令不适用于本分流。
+
+若 `independentAcceptance` 为 true，Roadmap 验收任务使用 `scope: "roadmap"`、`epic`、`epicDocument`，不填 `sprint`，worktree 为配置 main 分支的真实载体。`acceptanceContext.candidate` 绑定集成 `roadmap-snapshot`；每次唤醒/恢复通过 `acceptance-wake` 登记。无需 active Sprint 或新增 Sprint WIP 预留。最终记录必须嵌入恰好一个 `supervibe-acceptance-execution` fenced JSON 块 `{task, result}`。`roadmap-verify` 校验当前策略、候选版本、最新唤醒、不同执行者与就绪。为 false 时，主 Agent 验收不要求 worker ID 或此 worker execution 块。契约校验不证明真实执行。
 
 ## 共享运行权威（Shared runtime authority）
 

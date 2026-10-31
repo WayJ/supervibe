@@ -6,6 +6,8 @@ import { lstatSync, readFileSync, readdirSync, readlinkSync, realpathSync } from
 import { resolve, relative, sep, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readLedger, CAPACITY_STATES } from './ledger-store.mjs';
+import { verifyAcceptanceResources } from './resource-policy.mjs';
+import { verifyAcceptanceExecution } from './acceptance-worker.mjs';
 import { acceptancePlan, verifyResults, jsonBlock } from './acceptance-contract.mjs';
 
 const STATES = new Set(['active', 'acceptance', 'merged', 'closed']);
@@ -113,6 +115,8 @@ export function roadmapVerify(root, epic, record, mainRef) {
   const evidence = jsonBlock(result, 'supervibe-evidence');
   for (const key of Object.keys(current)) if (evidence[key] !== current[key]) fail(`Stale or mismatched roadmap ${key}; rerun integrated acceptance`);
   verifyResults(document, result, 'roadmap', current.fingerprint);
+  verifyAcceptanceExecution(root, { scope: 'roadmap', epic: data.epic, document: current.epic, record: current.record, candidate: current.fingerprint }, result);
+  verifyAcceptanceResources(root, { scope: 'roadmap', epic: data.epic, candidate: current.fingerprint }, document, result);
   const sections = [...document.matchAll(/^## Sprint Breakdown\s*\r?\n([\s\S]*?)(?=^## |$(?![\s\S]))/gm)];
   if (sections.length !== 1) fail('Missing or duplicate Sprint Breakdown');
   const rows = sections[0][1].split(/\r?\n/).map(line => line.trimStart()).filter(line => /^\|/.test(line)).map(line => line.split('|').slice(1, -1).map(cell => cell.trim())).filter(cells => cells[0] !== 'sprint' && !/^[-:]+$/.test(cells[0]));
@@ -158,6 +162,10 @@ export function verify(root, sprint, record) {
   try { evidence = JSON.parse(blocks[0][1]); } catch { fail('Malformed acceptance evidence JSON'); }
   for (const key of ['schema', 'sprint', 'record', 'fingerprint']) if (evidence[key] !== current[key]) fail(`Stale or mismatched acceptance ${key}; run accept again`);
   verifyResults(readFileSync(resolve(root, current.sprint), 'utf8'), text, 'sprint', current.fingerprint);
+  const entry = readLedger(root).sprints[data.sprint];
+  if (!entry || entry.document !== current.sprint || (data.epic && data.epic !== entry.epic)) fail('Acceptance sprint/epic differs from shared ledger');
+  verifyAcceptanceExecution(root, { scope: 'sprint', sprint: data.sprint, epic: entry.epic, document: current.sprint, record: current.record, candidate: current.fingerprint }, text);
+  verifyAcceptanceResources(root, { scope: 'sprint', sprint: data.sprint, epic: entry.epic, candidate: current.fingerprint }, readFileSync(resolve(root, current.sprint), 'utf8'), text);
   return current;
 }
 export function verifyClean(root, sprint, record) {

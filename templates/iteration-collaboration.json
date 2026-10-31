@@ -8,6 +8,7 @@
     "mode": "native",
     "provider": "harness",
     "maxWorkers": null,
+    "independentAcceptance": null,
     "workerHarness": "inherit",
     "allowMixed": false,
     "status": "draft",

@@ -16,6 +16,8 @@ sprint 何时算完、何时可以合入」——战略层。与
 
 ## 默认多 Agent 迭代，显式单 Agent 退出
 
+协调者就是**当前主 Agent**，不额外启动协调 Agent。Roadmap 启动时明确确认 `independentAcceptance`：false 由主 Agent 验收；true 使用独立验收 worker（可同 harness），主 Agent 最终复核。验收共用既有 worker 上限；上限 1 可用不同身份顺序开发与验收。每次验收唤醒/恢复都重新核实候选版本/build、场景所需环境/工具/账号/数据及证据采集；缺失或未知就阻塞，不静默降级。见[验收归属与自检](docs/collaboration-modes.md#acceptance-ownership-and-wake-self-check--验收归属与唤醒自检)。
+
 SuperVibe 默认由协调主 Agent 加 workers 完成整体迭代；启动时确认原生 harness 编排（如 Claude Code subagent）或外部 Orca 编排、worker 数量，以及适用的 worker harness。`maxWorkers: 1` 是协调主 Agent **加**一个 worker，不是单 Agent。所选能力缺失即阻塞，不静默退化为单 Agent。
 
 用户明确只用单 Agent、不启用 subagent 时，直接走 **superpowers**，先于任何 SuperVibe scaffold、账本初始化、配置、预留或迭代工件创建，不激活迭代模式；solo 不是第三种协作模式。`scripts/iteration-route.mjs` 是纯意图分流器，不是运行时启动器。
@@ -121,6 +123,13 @@ Markdown 与看板只是投影，不裁定 WIP。共享台账是 Git 元数据�
 新克隆须显式初始化。本地锁不等于远端合并锁；宿主合并保护与真实场景证据仍
 必需。子模块、不支持的多行 frontmatter、未解决冲突失败关闭。scaffold 用
 已提交 `.gitkeep` 保留归属空目录，已落地合并的恢复绝不重复合并。
+
+## 开发资源协调
+
+并行运行重型环境前先评估本机 CPU、内存、磁盘和负载开销，用户确认的环境预算与 worker
+上限分别管理。容器、端口、数据库、浏览器 profile 和账号按原子独占资源组协调，验收必需
+资源组与冻结候选一起核验。SSH 主机仅作可选资源环境登记，不自动连接或部署。
+详见[资源协议与边界](docs/resources.md)。
 
 ## 看板
 
