@@ -1,5 +1,7 @@
 # SuperVibe（中文说明）
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 **Claude Code 的迭代管理层。** SuperVibe 回答「做什么、什么顺序、一个
 sprint 何时算完、何时可以合入」——战略层。与
 [superpowers](https://github.com/obra/superpowers) 配对使用，后者是回答
@@ -88,11 +90,11 @@ flowchart TD
     L -->|全部 sprint merged| M["epic closed"]
 ```
 
-sync 侧线（固定节拍，独立于主链）：
+sync 侧线（落地主线后由事件驱动；多 sprint 在途时另用固定节拍防止漂移）：
 
 ```mermaid
 flowchart LR
-    O["origin/main"] -->|固定节拍| SY["sync（sprint-id 或 all）"]
+    O["origin/main"] -->|落地事件或固定节拍| SY["sync（sprint-id 或 all）"]
     SY --> C1["merge 进在途 sprint 分支<br/>冲突→双路径复核清单"]
     SY --> C2{"条款核查<br/>触发 = 签发方 merged-commit 抵达"}
     C2 -->|已触发 + 已验证| C3["签发方文档<br/>status: discharged<br/>main 上独立 commit"]
@@ -206,6 +208,8 @@ Orca、浏览器及 SSH 环境仍需另外核实，结构检查绝不代表验�
 - notes: .agents/notes/
 - debt_tracker: docs/tech-debt-tracker.md
 - wip_limit: 3
+- collaboration_mode: native
+- collaboration_provider: harness
 
 ### gates
 - contracts: npm run test:contracts
@@ -218,21 +222,14 @@ Orca、浏览器及 SSH 环境仍需另外核实，结构检查绝不代表验�
 ```
 
 新仓库运行 `supervibe:roadmap` 的 `scaffold` 即可生成此节。
+示例选择 native/harness；启动时确认协作路线，使用 Orca 时改为
+`external` / `orca`。Worker 上限仍须由用户显式确认。
 
 ## 没有 superpowers 时
 
 SuperVibe 检测到 superpowers 则调度它（brainstorming、spec 撰写、TDD）；
 没有时，同一工件契约手动产出——工件是纯 markdown，流程降级而非中断。
 不声明任何硬依赖。
-
-## 固定机械步骤交给脚本
-
-`host-config.mjs` 统一解析宿主配置，`artifact-inventory.mjs` 定位 ID 并检查投影/载体异常，
-`doc-sync.mjs` 核对逐提交文档义务，`clause-ids.mjs` 在显式旧数据迁移后原子预留 HC 编号。
-Skill 调用命令并处理结果，不再重复手工执行这些固定步骤；业务判断、用户授权和真实验收仍由 Agent 负责。
-详见[机械预检命令](docs/mechanical-preflight.md)和[条款编号迁移](docs/clause-id-allocation.md)。
-
-整体迭代启动时统一询问 worker 并发上限；原生继承当前 harness，Orca 另询问 worker harness 及是否允许混用。真实用户确认后保存到本地共享台账，恢复直接复用。无默认数量，不自动启动。上限/harness 契约有校验，真实 backend 容量准入仍由 coordinator 负责。
 
 ## 开发
 
@@ -243,6 +240,19 @@ node --test tests/*.test.mjs
 ```
 
 零 npm 依赖；Node ≥ 20。
+
+## 官网部署
+
+GitHub Pages 使用 **Deploy from a branch → main → /(root)**。根目录的
+`index.html`、`styles.css`、`app.js` 和 `icon.svg` 是 `site/` 中四个文件的完整发布副本；
+修改 `site/` 后，将四个文件同步复制到根目录，网站测试会检查是否一致。
+`_config.yml` 排除所有其他顶层条目，避免发布仓库文档和运行/工具文件。
+必须保留 Jekyll 处理：不要添加 `.nojekyll`。新增顶层文件或目录时，同步将其名称
+加入 `exclude` 并运行测试。
+
+`.github/workflows/pages.yml` 仅运行校验，发布由 GitHub 内置 Pages 工作流独立完成，
+分支发布不会等待这个校验任务。若发布必须受校验约束，应设置合并前必需检查。
+发布后，核对目标提交的 Pages 构建、首页及三个资源文件，并确认排除路径不可访问。
 
 ## 许可证
 
