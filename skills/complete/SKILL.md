@@ -1,10 +1,10 @@
 ---
-name: merge
-description: Use when the user says merge, close out, ship, finish, or wrap up a sprint.
+name: complete
+description: Use when the user says complete, close out, ship, finish, or wrap up a sprint.
 argument-hint: <sprint-id>
 ---
 
-# supervibe:merge — sprint close-out
+# supervibe:complete — sprint close-out
 
 The sprint close-out — the last act of a sprint: run the gates, confirm the acceptance verdict is in place, merge to main, tear down the worktree, finalize the sprint ledger, fire the handover clauses, write the closing note. "Ship", "finish", "wrap up" all route here and all meet the same bar — none of them is a reason to lower it.
 
@@ -38,18 +38,18 @@ Then resolve the sprint being closed out:
 
 ## Ordered sequence, stop on red
 
-Seven stages, strictly ordered. Each numbered stage is a hard stop: green → the next stage; anything else → the run ends right there — the user sees the failing output, the sprint stays exactly where it was, nothing downstream runs. The order puts every check before every irreversible act: gates and verdict precede the merge, the merge precedes teardown, teardown precedes the writes that record it. Red means: a gate command exits non-zero or its output contradicts expectation; arrears exist; the verdict is not in place; a conflict lacks its review list. Clearing a red belongs to execution (gate output, doc-sync arrears) or to `supervibe:accept` (the verdict); then merge runs again from stage 1 — a half-green run proves nothing.
+Seven stages, strictly ordered. Each numbered stage is a hard stop: green → the next stage; anything else → the run ends right there — the user sees the failing output, the sprint stays exactly where it was, nothing downstream runs. The order puts every check before every irreversible act: gates and verdict precede the merge, the merge precedes teardown, teardown precedes the writes that record it. Red means: a gate command exits non-zero or its output contradicts expectation; arrears exist; the verdict is not in place; a conflict lacks its review list. Clearing a red belongs to execution (gate output, doc-sync arrears) or to `supervibe:accept` (the verdict); then complete runs again from stage 1 — a half-green run proves nothing.
 
 1. **Gates + doc-sync arrears final check.**
    - Run **every** command in the host's `### gates` list, verbatim — the whole list, no selection.
    - Run it in the sprint's own environment: the worktree/branch the frontmatter names, its stack live — not a stale build elsewhere. A gate green against yesterday's artifact proves nothing at merge time.
    - Any red → stop, showing the failing command's full output and naming the gate. A sprint does not merge while any gate is red — no partial credit, no substitution: the configured command runs, or the gate is not green.
-   - Then the **arrears final check** — the second of the doc-sync discipline's two checkpoint verifications (accept audits drift periodically; merge runs the final arrears check).
+   - Then the **arrears final check** — the second of the doc-sync discipline's two checkpoint verifications (accept audits drift periodically; complete runs the final arrears check).
    - Enumerate the sprint's changed paths: the worktree branch diffed against its merge-base with the main line, plus the paths named in the sprint doc's Stories & Tasks — the same enumeration accept's drift audit uses; the two checkpoints must see the same sprint.
    - For each `### doc_sync_map` row whose change pattern matches a changed path, verify operationally: a commit exists **in the branch range** (merge-base..tip) touching **both** the changed path and the mapped doc — the doc's update rides in the same commit as the change that owes it. A doc updated in a later branch commit still counts as arrears until the two are squashed together.
    - No such commit → arrears → stop, naming the row, the mapped doc, and what is owed.
    - Unmatched rows owe nothing. An absent or empty map is a clean check — record that; never invent rows.
-   - The sanctioned repair is amend/rebase on the branch: rewriting branch history is permitted **before** merge — nothing has landed yet — so the owed doc lands in the same commit as the change that owes it; then this stage re-runs. Merge never writes the owed doc itself to green its own gate.
+   - The sanctioned repair is amend/rebase on the branch: rewriting branch history is permitted **before** merge — nothing has landed yet — so the owed doc lands in the same commit as the change that owes it; then this stage re-runs. Complete never writes the owed doc itself to green its own gate.
 
 2. **Acceptance verdict in place.**
    - Green is exactly: the sprint doc frontmatter reads `state: acceptance`, **and** the acceptance record named by the frontmatter evidence link carries verdict `pass`. Never read the verdict off the state flip alone — open the linked record and confirm.

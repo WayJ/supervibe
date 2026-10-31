@@ -1,10 +1,10 @@
 ---
-name: merge
-description: 当用户说 merge、close out、ship、finish 或 wrap up 一个 sprint 时使用。
+name: complete
+description: 当用户说 complete、close out、ship、finish 或 wrap up 一个 sprint 时使用。
 argument-hint: <sprint-id>
 ---
 
-# supervibe:merge — sprint 收口（sprint close-out）
+# supervibe:complete — sprint 收口（sprint close-out）
 
 sprint 收口——一个 sprint 的最后一幕：跑门禁、核实验收裁决在案、合入 main、拆除 worktree、定稿 sprint 台账、发射交接条款、写收口条目。「ship」「finish」「wrap up」全都路由到这里，也全都面对同一道标准——其中没有任何一个词构成降标准的理由。
 
@@ -38,18 +38,18 @@ sprint 收口——一个 sprint 的最后一幕：跑门禁、核实验收裁�
 
 ## 有序序列，遇红即停（Ordered sequence, stop on red）
 
-七个阶段严格排序。每个编号阶段都是硬停：绿 → 下一阶段；其余任何情况 → 运行当场结束——用户看到失败输出，sprint 原地不动，下游一概不跑。顺序把一切检查放在一切不可逆动作之前：门禁与裁决先于合并，合并先于拆除，拆除先于记录它的写入。红的意思是：gate 命令非零退出或输出与预期相悖；欠账存在；裁决不在案；冲突缺复核单。清红归执行层（gate 输出、doc-sync 欠账）或 `supervibe:accept`（裁决）；之后 merge 从阶段 1 重跑——跑了一半的绿什么也证明不了。
+七个阶段严格排序。每个编号阶段都是硬停：绿 → 下一阶段；其余任何情况 → 运行当场结束——用户看到失败输出，sprint 原地不动，下游一概不跑。顺序把一切检查放在一切不可逆动作之前：门禁与裁决先于合并，合并先于拆除，拆除先于记录它的写入。红的意思是：gate 命令非零退出或输出与预期相悖；欠账存在；裁决不在案；冲突缺复核单。清红归执行层（gate 输出、doc-sync 欠账）或 `supervibe:accept`（裁决）；之后 complete 从阶段 1 重跑——跑了一半的绿什么也证明不了。
 
 1. **门禁 + doc-sync 欠账终检。**
    - 按宿主 `### gates` 清单**逐条**运行命令，原样执行——整张清单，不做挑选。
    - 在 sprint 自己的环境里跑：即 frontmatter 记载的 worktree/分支、其栈存活——而不是别处的陈旧构建。对着昨天的工件跑绿的 gate 在合并时刻证明不了任何东西。
    - 任一红 → 停，展示失败命令的完整输出并点名该 gate。门禁红着 sprint 就不合并——没有部分分，没有替代：配置的命令要么运行，要么这个 gate 不算绿。
-   - 然后做**欠账终检**——doc-sync 纪律两个检查点核验中的第二个（accept 周期审计漂移；merge 跑欠账终检）。
+   - 然后做**欠账终检**——doc-sync 纪律两个检查点核验中的第二个（accept 周期审计漂移；complete 跑欠账终检）。
    - 枚举本 sprint 的变更路径：worktree 分支对其与 main 线 merge-base 的 diff，加上 sprint 文档 Stories & Tasks 点名的路径——与 accept 漂移审计同一套枚举；两个检查点必须看到同一个 sprint。
    - 对 `### doc_sync_map` 中 change 模式命中任一变更路径的行，按操作化方式核验：**分支范围**（merge-base..tip）内存在**同时**触碰该变更路径与被映射文档的 commit——文档的更新搭载在欠下该变更的同一 commit 里。在更晚的分支 commit 里更新的文档仍算欠账，直到两者被压合在一起。
    - 不存在这样的 commit → 欠账 → 停，点名该行、被映射文档与所欠内容。
    - 未命中的行不欠什么。映射缺失或为空即干净——记录之；绝不发明行。
-   - 受认可的修复是在分支上 amend/rebase：合并**之前**允许改写分支历史——尚未有任何东西落地——让所欠文档与欠下它的变更落在同一 commit；然后本阶段重跑。merge 绝不自己动手写所欠文档，给自己的门禁刷绿。
+   - 受认可的修复是在分支上 amend/rebase：合并**之前**允许改写分支历史——尚未有任何东西落地——让所欠文档与欠下它的变更落在同一 commit；然后本阶段重跑。complete 绝不自己动手写所欠文档，给自己的门禁刷绿。
 
 2. **验收裁决在案。**
    - 绿的定义恰好是：sprint 文档 frontmatter 读作 `state: acceptance`，**且** frontmatter 证据链接点名的验收记录裁决为 `pass`。绝不只看状态翻转就读出裁决——打开被链接的记录并确认。

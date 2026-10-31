@@ -8,7 +8,7 @@ argument-hint: <sprint-id or plan path>
 
 The sprint review gate: run every acceptance scenario for real, check every DoD item against evidence, record obstacles verbatim, audit doc drift — then write the acceptance record and rule the verdict. A verdict is a claim about observed behavior, and the discipline of this skill is **evidence before claims**: nothing passes on expectation, memory, or an earlier run. "Is this sprint done?" gets the same treatment — the answer is the verdict, backed by fresh evidence, never an opinion.
 
-This is the checkpoint where the execution layer's claims meet the strategic layer's standards: a pass here is what unblocks `supervibe:merge`. Zero stack assumptions: proving commands come from the scenario text and the host's `### gates` config — never invented; every path comes from host config, never hardcoded.
+This is the checkpoint where the execution layer's claims meet the strategic layer's standards: a pass here is what unblocks `supervibe:complete`. Zero stack assumptions: proving commands come from the scenario text and the host's `### gates` config — never invented; every path comes from host config, never hardcoded.
 
 ## Inputs
 
@@ -69,7 +69,7 @@ Each entry carries the exact command line and its observed output — a workarou
 
 ## Doc-drift audit
 
-The periodic doc-sync checkpoint of this skill — the counterpart to merge's final arrears check:
+The periodic doc-sync checkpoint of this skill — the counterpart to complete's final arrears check:
 
 - Enumerate the sprint's changed paths: the branch recorded in the sprint doc's `worktree` frontmatter diffed against its base — the merge-base with the main line — plus the paths named in the doc's Stories & Tasks.
 - For each row of the host's `### doc_sync_map`: does the row's change pattern match any changed path? Match → open the mapped doc and check that it reflects the change. No match → the row owes nothing this sprint.
@@ -85,11 +85,11 @@ Write `<acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md` from `templates/acce
 - pass → update the sprint doc frontmatter `state: acceptance`, appending date + the record path as the evidence link. The record and the flip are written in the same act — a flipped state without its record is incomplete.
 - blocked → the record is still written and kept — evidence preserves. State stays `active`: the sprint returns to execution to clear the named blockers and is accepted again afterwards; each run writes its own record.
 
-The record is the evidence anchor for what follows: merge's closing note cites it back — records and closing notes reference each other.
+The record is the evidence anchor for what follows: complete's closing note cites it back — records and closing notes reference each other.
 
 ## Invariants
 
-- This skill owns exactly one state transition: sprint-doc frontmatter `active → acceptance`, on verdict pass only. Never `merged`/`closed` (merge/roadmap), never clause discharge (sync), never stub states (roadmap/start).
+- This skill owns exactly one state transition: sprint-doc frontmatter `active → acceptance`, on verdict pass only. Never `merged`/`closed` (complete/roadmap), never clause discharge (sync), never stub states (roadmap/start).
 - The frontmatter state flip is the only mutation this skill makes to the sprint doc — scenarios, DoD, stories, and clauses are inputs to review, never targets to edit toward a pass.
 - Evidence before claims, every scenario, every DoD item, every run — a pass without a fresh run is not a pass.
 - Acceptance records are append-only; history is never rewritten or greenwashed.

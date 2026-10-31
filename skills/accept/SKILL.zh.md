@@ -8,7 +8,7 @@ argument-hint: <sprint-id or plan path>
 
 sprint 评审门禁：把每条验收场景真跑一遍，逐项以证据核对 DoD，逐字留痕障碍，审计文档漂移——然后写出验收记录并给出裁决。裁决是关于「观察到的行为」的断言，本技能的纪律是**证据先于断言**：任何东西不因预期、记忆或上一次运行而通过。「这个 sprint 做完了吗？」享受同等待遇——答案是裁决，由新鲜证据背书，绝非观点。
 
-这里是执行层的断言与战略层的标准碰面的检查点：本技能的 pass 正是解锁 `supervibe:merge` 的东西。零栈假设：证明命令来自场景正文与宿主 `### gates` 配置——绝不发明；一切路径取自宿主配置，绝不硬编码。
+这里是执行层的断言与战略层的标准碰面的检查点：本技能的 pass 正是解锁 `supervibe:complete` 的东西。零栈假设：证明命令来自场景正文与宿主 `### gates` 配置——绝不发明；一切路径取自宿主配置，绝不硬编码。
 
 ## 输入（Inputs）
 
@@ -69,7 +69,7 @@ sprint 评审门禁：把每条验收场景真跑一遍，逐项以证据核对 
 
 ## 文档漂移审计（Doc-drift audit）
 
-本技能的周期 doc-sync 检查点——与 merge 的欠账终检相对应：
+本技能的周期 doc-sync 检查点——与 complete 的欠账终检相对应：
 
 - 枚举本 sprint 的变更路径：sprint 文档 frontmatter `worktree` 记载的分支对其 base——即与 main 线的 merge-base——的 diff，加上文档 Stories & Tasks 点名的路径。
 - 对宿主 `### doc_sync_map` 的每一行：该行的 change 模式是否命中任一变更路径？命中 → 打开映射文档，核对它反映了该变更。未命中 → 该行本 sprint 不欠什么。
@@ -85,11 +85,11 @@ sprint 评审门禁：把每条验收场景真跑一遍，逐项以证据核对 
 - pass → 更新 sprint 文档 frontmatter `state: acceptance`，追加日期 + 记录路径作为证据链接。记录与翻转在同一动作里写出——翻了状态却没有记录是不完整的。
 - blocked → 记录照写照留——证据要保全。状态保持 `active`：sprint 回到执行层清理点名的问题，之后再验收；每次运行写自己的记录。
 
-记录是后续环节的证据锚点：merge 的收口条目回引它——记录与收口条目互相引用。
+记录是后续环节的证据锚点：complete 的收口条目回引它——记录与收口条目互相引用。
 
 ## Invariants（不变量）
 
-- 本技能只拥有一个状态转换：sprint 文档 frontmatter `active → acceptance`，且仅在裁决 pass 时发生。绝不 `merged`/`closed`（merge/roadmap），绝不做条款兑现（sync），绝不碰桩行状态（roadmap/start）。
+- 本技能只拥有一个状态转换：sprint 文档 frontmatter `active → acceptance`，且仅在裁决 pass 时发生。绝不 `merged`/`closed`（complete/roadmap），绝不做条款兑现（sync），绝不碰桩行状态（roadmap/start）。
 - frontmatter 状态翻转是本技能对 sprint 文档的唯一改动——场景、DoD、story、条款都是受审的输入，绝不是为凑 pass 而改写的目标。
 - 证据先于断言，每条场景、每项 DoD、每次运行——没有新鲜运行的 pass 不是 pass。
 - 验收记录只增不改；历史绝不重写、绝不美化。

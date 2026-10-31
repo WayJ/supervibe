@@ -22,7 +22,7 @@ Before anything, grep the host AGENTS.md for the `## supervibe` section:
 - Once the section exists, resolve the configured dirs this skill touches (`roadmaps_dir`, `sprints_dir`, `notes`) and verify they exist. Missing → STOP: direct the user to run `supervibe:roadmap scaffold` or fix the config path; never implicitly create artifacts — a config path typo must not silently fork the truth source.
 - Resolve templates as `<plugin base dir>/templates/<file>` (here `sprint.md` and `handover-clause.md`); never assume they live in the host repo.
 - Consult `### doc_sync_map` before writing the sprint doc: if the map covers an artifact path this skill writes, the map takes precedence — the "artifacts this skill writes owe no further doc-sync" exemption holds only for uncovered paths.
-- Gate commands from `### gates` are not this skill's concern — gates bind at accept and merge; starting runs none.
+- Gate commands from `### gates` are not this skill's concern — gates bind at accept and complete; starting runs none.
 
 ## Locate the stub
 
@@ -41,7 +41,7 @@ Four rulings before any file is written — each either blocks the start or shap
    - Dependency already merged → satisfied: verify the target sprint doc's frontmatter reads `state: merged` with `merged-commit` set, then move on.
    - Dependency on an unmerged sprint → not a stopper; route to ruling 4.
 2. **WIP limit** — count active sprints by scanning every doc in `sprints_dir` for frontmatter `state: active`.
-   - Count at or above `wip_limit` → stop, naming the active sprints; one of them must merge or close before this start can proceed.
+   - Count at or above `wip_limit` → stop, naming the active sprints; one of them must complete or close before this start can proceed.
    - An early-started sprint is `active` and counts toward the limit like any other.
 3. **Early start** — applies whenever any sprint is still in flight (frontmatter `state` not `merged`) — not only ones this sprint depends on.
    - Estimate the file intersection: the number of files both this sprint (epic Deliverables + stub note) and each in-flight sprint (its sprint doc) are expected to touch.
@@ -85,7 +85,7 @@ Execution belongs to the superpowers layer; this skill only hands over the artif
 
 ## Invariants
 
-- This skill owns exactly one state transition: a `ready` stub → `started`, plus a sprint doc created with `state: active`. Never planned→ready (roadmap), never acceptance/merged/closed (accept/merge/roadmap), never clause discharge (sync).
+- This skill owns exactly one state transition: a `ready` stub → `started`, plus a sprint doc created with `state: active`. Never planned→ready (roadmap), never acceptance/merged/closed (accept/complete/roadmap), never clause discharge (sync).
 - Never materialize a sprint doc by any other path — `sprints/` docs come only from `ready` stubs.
 - DoD verbatim, always — the epic doc is its only home.
 - HC# ids are never reused: max+1 across every sprint doc's Handover Clauses sections; an empty scan starts at 1.

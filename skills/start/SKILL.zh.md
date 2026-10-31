@@ -22,7 +22,7 @@ pre-start 状态活在桩行里；自实体化起，sprint 文档 frontmatter �
 - 该节确认存在后，解析本技能涉及的已配置目录（`roadmaps_dir`、`sprints_dir`、`notes`）并核实其存在。缺失 → STOP：指引用户运行 `supervibe:roadmap scaffold` 或修正配置路径；绝不隐式创建工件——配置路径笔误绝不能静默分叉真源。
 - 模板按 `<plugin base dir>/templates/<file>` 解析（此处为 `sprint.md` 与 `handover-clause.md`）；绝不假设它们在宿主仓库里。
 - 写 sprint 文档之前先查 `### doc_sync_map`：若映射表覆盖了本技能写的工件路径，以映射表为准——「本技能写出的工件不欠进一步 doc-sync」的豁免仅适用于未覆盖的路径。
-- `### gates` 的 gate 命令与本技能无关——gate 在 accept 与 merge 处生效；start 不运行任何 gate。
+- `### gates` 的 gate 命令与本技能无关——gate 在 accept 与 complete 处生效；start 不运行任何 gate。
 
 ## 定位桩行（Locate the stub）
 
@@ -41,7 +41,7 @@ pre-start 状态活在桩行里；自实体化起，sprint 文档 frontmatter �
    - 依赖已合入 → 已满足：核实目标 sprint 文档 frontmatter 为 `state: merged` 且 `merged-commit` 已填，然后继续。
    - 依赖未合入 → 并非阻断项；路由到裁决 4。
 2. **WIP 上限（WIP limit）**——扫 `sprints_dir` 内全部文档的 frontmatter `state: active`，计数在途 sprint。
-   - 计数已达或超过 `wip_limit` → 停，点名在途 sprint；其中之一必须先 merge 或 close，本次 start 才能继续。
+   - 计数已达或超过 `wip_limit` → 停，点名在途 sprint；其中之一必须先 complete 或 close，本次 start 才能继续。
    - 提前启动的 sprint 就是 `active`，与其他在途 sprint 同等计入上限。
 3. **提前启动（early start）**——只要还有任何 sprint 在途（frontmatter `state` 非 `merged`）即适用——不限于本 sprint 所依赖的那些。
    - 估算文件交集：本 sprint（epic Deliverables + 桩行备注）与每个在途 sprint（其 sprint 文档）预计都会触碰的文件数量。
@@ -85,7 +85,7 @@ notes 是跨 sprint 的知识资产，不是流水账——写一行 plan 之前
 
 ## Invariants（不变量）
 
-- 本技能只拥有一个状态转换：`ready` 桩行 → `started`，外加一份以 `state: active` 创建的 sprint 文档。绝不 planned→ready（roadmap），绝不 acceptance/merged/closed（accept/merge/roadmap），绝不做条款兑现（sync）。
+- 本技能只拥有一个状态转换：`ready` 桩行 → `started`，外加一份以 `state: active` 创建的 sprint 文档。绝不 planned→ready（roadmap），绝不 acceptance/merged/closed（accept/complete/roadmap），绝不做条款兑现（sync）。
 - 绝不经由其他路径实体化 sprint 文档——`sprints/` 文档只来自 `ready` 桩行。
 - DoD 永远逐字——epic 文档是其唯一归宿。
 - HC# id 绝不复用：扫全部 sprint 文档的 Handover Clauses 节取 max+1；空集扫描从 1 起。

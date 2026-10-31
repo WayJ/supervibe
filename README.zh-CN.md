@@ -129,7 +129,7 @@ claude --plugin-dir /path/to/supervibe
 | `supervibe:roadmap` | 创建/收口 epic、脚手架配置节、管理技术债、裁决桩行 |
 | `supervibe:start` | 把桩行实体化为 sprint 文档 + worktree；登记交接条款 |
 | `supervibe:accept` | 以新鲜证据真跑验收场景、审计文档漂移、出具裁决 |
-| `supervibe:merge` | 七阶段收口：门禁 → 裁决 → 合并 → 拆除 → 台账 → 发射条款 → 收口笔记 |
+| `supervibe:complete` | 七阶段收口：门禁 → 裁决 → 合并 → 拆除 → 台账 → 发射条款 → 收口笔记 |
 | `supervibe:sync` | 按节拍把 `origin/main` merge 进在途 sprint；核查并兑现交接条款 |
 
 每个技能双语交付：`SKILL.md`（英文真源）+ `SKILL.zh.md`（忠实中文镜像）。

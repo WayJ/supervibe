@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 const TPL = process.env.TEMPLATES_DIR ?? 'templates';
 const SKILLS = process.env.SKILLS_DIR ?? 'skills';
 
-const SKILL_DIRS = ['roadmap', 'start', 'accept', 'merge', 'sync', 'board'];
+const SKILL_DIRS = ['roadmap', 'start', 'accept', 'complete', 'sync', 'board'];
 const EPIC_H2 = ['## Deliverables', '## Definition of Done', '## Sprint Breakdown',
   '## Decisions (ADR)', '## Asset Disposition', '## Open Questions', '## Cross-cutting'];
 const SPRINT_H2 = ['## Decisions (D-x)', '## Stories & Tasks', '## Definition of Done',

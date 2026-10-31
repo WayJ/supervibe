@@ -81,7 +81,7 @@ Update the epic doc's Asset Disposition for inherited assets. Dispositions: reus
 
 ## ready / close
 
-This skill owns exactly two state transitions; refuse all others (stub materialization `ready→active` belongs to supervibe:start, `→acceptance` to supervibe:accept, `→merged` to supervibe:merge, clause discharge to supervibe:sync).
+This skill owns exactly two state transitions; refuse all others (stub materialization `ready→active` belongs to supervibe:start, `→acceptance` to supervibe:accept, `→merged` to supervibe:complete, clause discharge to supervibe:sync).
 
 - **ready — planned → ready**: flip the stub row's state in the epic doc's Sprint Breakdown section. The go decision is strategic: verify the epic's DoD covers what this sprint will deliver, then record the decision in the stub note. Detailed readiness adjudication (dependencies, WIP count, early start, deferred dependencies) happens at materialization under supervibe:start. No stub row matches the given sprint id → reject and state which id is unknown.
 - **close — → closed**: write `state: closed` into the sprint doc's frontmatter. **Precondition: current state is `merged`, and merged only — closed does not block on handover clauses.** Clause lifecycle is independent of closed: open clauses are discharged by the target side's sync at its own time, and the issuing side may close first (field-proven: R3.6 closed while its clause awaited the target's merge). No sprint doc matches the given id → reject naming the unknown id.

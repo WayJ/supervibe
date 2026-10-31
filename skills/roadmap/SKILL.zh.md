@@ -81,7 +81,7 @@ argument-hint: [scaffold|epic|breakdown|adr|question|asset|debt|ready|close]
 
 ## ready / close
 
-本技能只拥有两个状态转换；其余一律拒绝（`ready→active` 桩行实体化归 supervibe:start，`→acceptance` 归 supervibe:accept，`→merged` 归 supervibe:merge，条款兑现归 supervibe:sync）。
+本技能只拥有两个状态转换；其余一律拒绝（`ready→active` 桩行实体化归 supervibe:start，`→acceptance` 归 supervibe:accept，`→merged` 归 supervibe:complete，条款兑现归 supervibe:sync）。
 
 - **ready —— planned → ready**：在 epic 文档 Sprint Breakdown 节翻转桩行状态。go 决策是战略性的：核实该 epic 的 DoD 覆盖此 sprint 将交付的内容，再把决策记入桩行备注。细粒度就绪裁决（依赖、WIP 计数、early start、deferred dependency）发生在实体化时，归 supervibe:start。没有匹配给定 sprint id 的桩行 → 拒绝，并言明哪个 id 未知。
 - **close —— → closed**：向 sprint 文档 frontmatter 写 `state: closed`。**前置：当前状态为 `merged`，且仅为 merged——closed 不卡交接条款。** 条款生命周期独立于 closed：open 条款由目标方 sync 在其时机兑现，签发方可先收口（实证：R3.6 已收口而其条款等待目标合入）。没有匹配给定 id 的 sprint 文档 → 拒绝，言明未知 id。
