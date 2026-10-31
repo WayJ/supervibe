@@ -6,6 +6,7 @@ import { lstatSync, readFileSync, readdirSync, readlinkSync, realpathSync } from
 import { resolve, relative, sep, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readLedger, CAPACITY_STATES } from './ledger-store.mjs';
+import { acceptancePlan, verifyResults, jsonBlock } from './acceptance-contract.mjs';
 
 const STATES = new Set(['active', 'acceptance', 'merged', 'closed']);
 export const IN_FLIGHT = new Set(['active', 'acceptance']);
@@ -51,13 +52,14 @@ function normalizedSprint(text) {
   return text.replace(/^---\r?\n([\s\S]*?)\r?\n---/, (_, body) =>
     `---\n${body.split(/\r?\n/).filter(l => !/^(state|acceptance-record|accepted-at):/.test(l)).join('\n')}\n---`);
 }
-export function snapshot(root, sprintInput, recordInput) {
+function contentSnapshot(root, sprintInput, recordInput, roadmap = false) {
   root = resolve(root);
   const sprint = repoPath(root, sprintInput), record = repoPath(root, recordInput);
   if (sprint === record || !record.endsWith('.md')) fail('Acceptance record must be a separate Markdown file');
   if (git(root, 'ls-files', '--unmerged').trim()) fail('Resolve Git conflicts before acceptance');
-  const data = sprintData(root, sprint);
-  if (!IN_FLIGHT.has(data.state)) fail('Acceptance requires an active or acceptance sprint');
+  const data = roadmap ? frontmatter(readFileSync(resolve(root, sprint), 'utf8')) : sprintData(root, sprint);
+  if (roadmap && (!data.epic || !['open', 'closed'].includes(data.status))) fail('Malformed epic id/status');
+  if (!roadmap && !IN_FLIGHT.has(data.state)) fail('Acceptance requires an active or acceptance sprint');
   const names = new Set(git(root, 'ls-files', '-z', '--cached', '--others', '--exclude-standard').split('\0').filter(Boolean));
   if (!names.has(sprint)) fail('Sprint must be tracked or non-ignored');
   const hash = createHash('sha256');
@@ -71,12 +73,73 @@ export function snapshot(root, sprintInput, recordInput) {
     else if (stat.isFile()) {
       mode = stat.mode & 0o111 ? '100755' : '100644';
       content = readFileSync(full);
-      if (path === sprint) content = Buffer.from(normalizedSprint(content.toString('utf8')));
+      if (path === sprint) content = Buffer.from(roadmap ? normalizedEpic(content.toString('utf8')) : normalizedSprint(content.toString('utf8')));
     } else fail(`Unsupported entry (including submodule): ${path}`);
     // Length framing avoids path/content ambiguity, including unusual filenames.
     for (const chunk of [Buffer.from(path), Buffer.from(mode), content]) hash.update(`${chunk.length}:`).update(chunk);
   }
   return { schema: 1, sprint, record, fingerprint: hash.digest('hex') };
+}
+export function snapshot(root, sprintInput, recordInput) { return contentSnapshot(root, sprintInput, recordInput); }
+function normalizedEpic(text) {
+  return text.replace(/^---\r?\n([\s\S]*?)\r?\n---/, (_, body) =>
+    `---\n${body.split(/\r?\n/).filter(l => !/^(status|final-acceptance-record|final-accepted-at):/.test(l)).join('\n')}\n---`);
+}
+export function roadmapSnapshot(root, epicInput, recordInput, mainRef) {
+  root = resolve(root);
+  if (!mainRef || mainRef.startsWith('-') || git(root, 'rev-parse', '--symbolic-full-name', mainRef).trim() !== `refs/heads/${mainRef}`) fail('Main ref must be a local branch');
+  if (git(root, 'rev-parse', 'HEAD').trim() !== git(root, 'rev-parse', mainRef).trim()) fail('Final acceptance must run on the current integrated main candidate');
+  const epic = repoPath(root, epicInput), record = repoPath(root, recordInput);
+  if (!lstatSync(resolve(root, epic)).isFile()) fail('Epic must be a regular file');
+  const document = readFileSync(resolve(root, epic), 'utf8');
+  acceptancePlan(document, 'roadmap');
+  const changed = new Set([...git(root, 'diff', '--name-only', '-z', 'HEAD').split('\0'), ...git(root, 'ls-files', '--others', '--exclude-standard', '-z').split('\0')].filter(Boolean));
+  for (const path of changed) {
+    if (path === record) continue;
+    if (path !== epic || normalizedEpic(document) !== normalizedEpic(git(root, 'show', `HEAD:${epic}`))) fail('Commit integrated inputs and upfront plan before final acceptance');
+  }
+  const base = contentSnapshot(root, epic, record, true);
+  return { schema: 1, scope: 'roadmap', epic, record, mainRef, fingerprint: base.fingerprint };
+}
+export function roadmapVerify(root, epic, record, mainRef) {
+  const current = roadmapSnapshot(root, epic, record, mainRef);
+  const document = readFileSync(resolve(root, current.epic), 'utf8'), data = frontmatter(document);
+  if (data['final-acceptance-record'] !== current.record) fail('Final acceptance record pointer mismatch');
+  if (!data['final-accepted-at'] || Number.isNaN(Date.parse(data['final-accepted-at']))) fail('Missing final acceptance date');
+  const recordPath = resolve(root, current.record);
+  if (!lstatSync(recordPath).isFile()) fail('Acceptance record must be a regular file');
+  const result = readFileSync(recordPath, 'utf8');
+  assertPass(result);
+  const evidence = jsonBlock(result, 'supervibe-evidence');
+  for (const key of Object.keys(current)) if (evidence[key] !== current[key]) fail(`Stale or mismatched roadmap ${key}; rerun integrated acceptance`);
+  verifyResults(document, result, 'roadmap', current.fingerprint);
+  const sections = [...document.matchAll(/^## Sprint Breakdown\s*\r?\n([\s\S]*?)(?=^## |$(?![\s\S]))/gm)];
+  if (sections.length !== 1) fail('Missing or duplicate Sprint Breakdown');
+  const rows = sections[0][1].split(/\r?\n/).map(line => line.trimStart()).filter(line => /^\|/.test(line)).map(line => line.split('|').slice(1, -1).map(cell => cell.trim())).filter(cells => cells[0] !== 'sprint' && !/^[-:]+$/.test(cells[0]));
+  if (rows.some(cells => !/^S\d+$/.test(cells[0]) || !['started', 'merged', 'closed'].includes(cells[1]))) fail('Every roadmap stub must be started or historically landed; planned/ready blocks closure');
+  const ids = rows.map(cells => cells[0]);
+  if (!ids.length || new Set(ids).size !== ids.length) fail('Missing or duplicate sprint stubs');
+  const ledger = readLedger(root);
+  if (ledger.mainRef !== mainRef) fail('Main ref differs from shared ledger');
+  if (Object.values(ledger.sprints).some(s => s.epic === data.epic && s.state !== 'cancelled' && !ids.includes(s.id))) fail('Shared epic sprint missing from breakdown');
+  for (const id of ids) {
+    const sprint = ledger.sprints[id];
+    if (!sprint || sprint.epic !== data.epic || !LANDED.has(sprint.state)) fail(`Roadmap sprint is not landed: ${id}`);
+    try { git(root, 'merge-base', '--is-ancestor', sprint.landing, mainRef); } catch { fail(`Sprint landing not reachable from integrated main: ${id}`); }
+  }
+  return current;
+}
+export function roadmapVerifyClean(root, epic, record, mainRef) {
+  const evidence = roadmapVerify(root, epic, record, mainRef);
+  for (const path of [evidence.epic, evidence.record]) {
+    if (!git(root, 'ls-files', '-z', '--', path).split('\0').includes(path)) fail('Epic and final acceptance record must be tracked before roadmap close');
+  }
+  if (git(root, 'status', '--porcelain', '--untracked-files=all').trim()) fail('Commit all integrated inputs and final evidence before roadmap close; candidate must be clean');
+  return evidence;
+}
+function assertPass(text) {
+  const verdicts = [...text.matchAll(/^## Verdict\s*\r?\n([\s\S]*?)(?=^## |$(?![\s\S]))/gm)];
+  if (verdicts.length !== 1 || !/^\s*pass(?:\s|$|[—-])/.test(verdicts[0][1])) fail('Acceptance verdict is not pass');
 }
 export function verify(root, sprint, record) {
   const current = snapshot(root, sprint, record);
@@ -94,6 +157,7 @@ export function verify(root, sprint, record) {
   let evidence;
   try { evidence = JSON.parse(blocks[0][1]); } catch { fail('Malformed acceptance evidence JSON'); }
   for (const key of ['schema', 'sprint', 'record', 'fingerprint']) if (evidence[key] !== current[key]) fail(`Stale or mismatched acceptance ${key}; run accept again`);
+  verifyResults(readFileSync(resolve(root, current.sprint), 'utf8'), text, 'sprint', current.fingerprint);
   return current;
 }
 export function verifyClean(root, sprint, record) {
@@ -183,10 +247,11 @@ export function main(args) {
     if (!key?.startsWith('--') || !rest[i + 1] || Object.hasOwn(options, key)) fail('Expected unique --option value pairs');
     options[key] = rest[i + 1];
   }
-  const expected = command === 'wip' ? ['--sprints-dir', '--limit'] : ['--sprint', '--record'];
-  if (!['snapshot', 'verify', 'verify-clean', 'wip'].includes(command) || Object.keys(options).some(k => !expected.includes(k)) || expected.some(k => !options[k])) fail('Usage: snapshot|verify|verify-clean --sprint PATH --record PATH; wip --sprints-dir PATH --limit N');
+  const roadmap = ['roadmap-snapshot', 'roadmap-verify', 'roadmap-verify-clean'].includes(command);
+  const expected = roadmap ? ['--epic', '--record', '--main-ref'] : command === 'wip' ? ['--sprints-dir', '--limit'] : ['--sprint', '--record'];
+  if (!['snapshot', 'verify', 'verify-clean', 'wip', 'roadmap-snapshot', 'roadmap-verify', 'roadmap-verify-clean'].includes(command) || Object.keys(options).some(k => !expected.includes(k)) || expected.some(k => !options[k])) fail('Usage: snapshot|verify|verify-clean --sprint PATH --record PATH; roadmap-snapshot|roadmap-verify|roadmap-verify-clean --epic PATH --record PATH --main-ref BRANCH; wip --sprints-dir PATH --limit N');
   const root = git(process.cwd(), 'rev-parse', '--show-toplevel').trim();
-  const result = command === 'wip' ? checkWip(root, options['--sprints-dir'], options['--limit']) : (command === 'verify-clean' ? verifyClean : command === 'verify' ? verify : snapshot)(root, options['--sprint'], options['--record']);
+  const result = roadmap ? (command === 'roadmap-snapshot' ? roadmapSnapshot : command === 'roadmap-verify-clean' ? roadmapVerifyClean : roadmapVerify)(root, options['--epic'], options['--record'], options['--main-ref']) : command === 'wip' ? checkWip(root, options['--sprints-dir'], options['--limit']) : (command === 'verify-clean' ? verifyClean : command === 'verify' ? verify : snapshot)(root, options['--sprint'], options['--record']);
   console.log(JSON.stringify(result, null, 2));
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

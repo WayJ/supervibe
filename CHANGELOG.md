@@ -27,3 +27,10 @@
 Initial release: 5 skills (roadmap / start / accept / merge / sync), 6 artifact
 templates, self-marketplace manifest, bilingual skill bodies, artifact
 validation script.
+
+### Multi-agent iteration routing and layered acceptance
+
+- Default SuperVibe iteration uses a coordinator and workers; explicit solo routes to superpowers before iteration side effects. A worker cap of one is not solo.
+- Upfront per-Sprint and independent overall Roadmap scenarios now carry required execution evidence. Required browser/real-environment checks cannot pass with substituted or missing evidence.
+- Final Roadmap close requires a fresh integrated-content-bound record plus every planned sprint landed; old Sprint acceptance records without the new scenario/result contract require reacceptance.
+- Added metadata/coverage/provenance and no-mutation fixtures, not a browser engine or live native/Orca certification.

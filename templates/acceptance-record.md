@@ -13,7 +13,7 @@ notes. -->
 ## Verdict
 
 <!-- One word first — pass or blocked — then the basis. pass requires ALL of:
-every scenario passed with fresh evidence or a labeled substitution; every
+every required scenario passed with fresh evidence in its prescribed modality/environment; substitutions or not-run do not pass; every
 DoD item checked with evidence; no unpaid doc-sync drift on triggered rows.
 Anything less is blocked, naming the blocking items. -->
 
@@ -31,6 +31,19 @@ The block binds inputs, not external environment state or proof of execution. --
 
 ```supervibe-evidence
 {"schema":1,"sprint":"<sprint-doc>","record":"<this-record>","fingerprint":"<snapshot fingerprint>"}
+```
+
+## Execution Evidence
+
+<!-- Exactly one results block. candidate equals the BEFORE snapshot fingerprint;
+environment names the actual URL/service/device, deployed build or revision,
+data/role and run time. artifacts reference inspectable action logs, output,
+recording/screenshots plus observed results, not a bare screenshot as UI proof.
+Required browser/real scenarios cannot be replaced by CI, API or fixtures.
+blocked/not-run results retain blockers; never fabricate observed evidence. -->
+
+```supervibe-acceptance-results
+{"schema":1,"scope":"sprint","candidate":"<before snapshot fingerprint>","environment":"<actual environment, deployed build/revision, role/data and run time>","results":[{"id":"S1","status":"not-run","modality":"api","environment":"real","steps":["<actual steps or planned steps if not-run>"],"expected":"<exact plan expectation>","observed":"Not run yet","artifacts":[],"blockers":["<reason not run>"]}]}
 ```
 
 ## Gate Evidence
@@ -56,7 +69,7 @@ claim. Substituted evidence must be labeled as such. -->
 <!-- Every item checked with evidence. Items come from the sprint doc's DoD,
 itself verbatim from the epic doc. -->
 
-- [x] Export totals reconcile with invoiced totals to the cent — export-vs-ledger diff: 0.00 <!-- example -->
+- [x] Applicable quality gates pass on the reviewed build — configured gate command and full output linked here <!-- example -->
 - [ ] <!-- placeholder: DoD item --> — <!-- placeholder: evidence -->
 
 ## Obstacles (verbatim)

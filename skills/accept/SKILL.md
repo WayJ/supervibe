@@ -1,7 +1,7 @@
 ---
 name: accept
-description: Use when the user asks to accept, review, or verify a sprint, or asks whether a sprint is done.
-argument-hint: <sprint-id or plan path>
+description: Use when the user asks to accept, review, or verify a sprint or roadmap, or asks whether an iteration is done.
+argument-hint: <sprint-id or plan path> | roadmap <epic-id or path>
 ---
 
 # supervibe:accept — sprint review gate
@@ -9,6 +9,38 @@ argument-hint: <sprint-id or plan path>
 The sprint review gate: run every acceptance scenario for real, check every DoD item against evidence, record obstacles verbatim, audit doc drift — then write the acceptance record and rule the verdict. A verdict is a claim about observed behavior, and the discipline of this skill is **evidence before claims**: nothing passes on expectation, memory, or an earlier run. "Is this sprint done?" gets the same treatment — the answer is the verdict, backed by fresh evidence, never an opinion.
 
 This is the checkpoint where the execution layer's claims meet the strategic layer's standards: a pass here is what unblocks `supervibe:complete`. Zero stack assumptions: proving commands come from the scenario text and the host's `### gates` config — never invented; every path comes from host config, never hardcoded.
+
+## Roadmap final integration route
+
+For `accept roadmap <epic-id or path>`, review the epic's upfront Overall
+Acceptance Scenarios, not an individual sprint. Resolve host roadmaps_dir and
+acceptances_dir; read shared status for the configured mainRef and confirm all
+Breakdown sprint IDs have same-epic merged/closed entries. Do not call sprint
+review-begin/review-pass, mutate sprint state, or reuse old sprint verdicts.
+
+Before every final review or re-review, revoke any old usable final pass: set
+`status: open`, `final-acceptance-record: null` and `final-accepted-at: null`
+before any scenarios. Preserve the old record as history, never restore its
+pointer after failure/interruption. Commit this revocation with the prepared
+inputs within existing authorization; without authorization stop before review.
+
+Prepare all notes and plan amendments before review; commit integrated inputs
+and the upfront plan under existing authorization. Use a fresh record from
+`templates/roadmap-acceptance-record.md`. On the current integrated main candidate,
+run `validate-workflow.mjs roadmap-snapshot --epic "<epic-doc>" --record
+"<new-record>" --main-ref "<stored-mainRef>"` before and after all actual scenario,
+DoD and drift checks; require identical output. Apply the scenario execution,
+required-evidence, no-substitution and obstacle rules below at scope `roadmap`.
+Store the before JSON in `supervibe-evidence`, and `supervibe-acceptance-results`
+with scope roadmap and candidate fingerprint. This is separate integrated testing,
+never a summary of sprint records. Missing capability/evidence means blocked.
+
+Write the append-only pass/blocked record and set only epic
+`final-acceptance-record` and `final-accepted-at` for the attempt (do not append
+body text after snapshot). On pass run `roadmap-verify` with the same arguments;
+failure blocks closure. On blocked retain open epic and never restore an old
+pass. `roadmap` owns the subsequent closed status. The Sprint-only routing,
+shared transitions and frontmatter instructions below do not apply to this route.
 
 ## Shared runtime authority
 
@@ -56,7 +88,7 @@ The snapshot includes tracked and nonignored untracked files, paths, modes and c
 
 ## Execute scenarios
 
-Read the sprint doc's `## Acceptance Scenarios (S1–Sn)` section. Each scenario runs for real, exactly as its text specifies — browser, CLI, stack commands. A scenario is an observation to make, not a box to tick.
+Read the sprint doc's `## Acceptance Scenarios (S1–Sn)` section and validate its unique `supervibe-acceptance-plan` block before execution; missing/malformed plans block the run, not just the final verdict. Each scenario runs for real, exactly as its text specifies — browser, CLI, stack commands. A scenario is an observation to make, not a box to tick.
 
 Reject the malformed doc before anything runs: the Acceptance Scenarios section missing or empty → reject, naming the malformed sprint doc — zero scenarios must never yield a vacuous pass. A `## Definition of Done` section missing or empty → reject the same way; the DoD lives verbatim in the epic doc — direct the fix there, never patch it into the sprint doc.
 
@@ -74,6 +106,38 @@ Run against the sprint's own environment — the worktree/branch the sprint doc'
 When a scenario's text admits two readings, run the stricter one — the review gate never benefits from the charitable interpretation.
 
 On an obstacle — a command fails, the environment blocks, the output contradicts expectation — search the notes dir for prior workarounds first: grep by the obstacle's keywords (error strings, tool names, failure mode). A hit → reuse the workaround and cite the source entry (file + section) in the record. No hit → improvise the narrowest workaround and record it verbatim in the obstacles log. An empty notes dir is not an error — a first sprint has no history; say so and proceed.
+
+## Required scenario contract and real user operations
+
+At Sprint planning, each scenario must already exist in the unique fenced
+`supervibe-acceptance-plan` block in the sprint doc (see template). Keep its IDs,
+goals, steps and expected observations aligned with the human scenario table.
+The universal epic DoD is a quality baseline, not the overall Roadmap outcome;
+passing this sprint never certifies the final integrated Roadmap.
+
+For a UI scenario, operate the current build in a real browser: open the entry
+URL, enter data, click/navigate/submit and verify visible/persisted outcomes as
+specified. Capture actual steps, expected versus observed behavior, environment,
+deployed build/revision, test role/data, run time, artifact references and blockers.
+A CI green run, API-only probe, static screenshot, or worker success claim is not
+a substitute for required browser actions. Inspect evidence, not just its filename.
+Unavailable browser, credentials or environment means blocked/not-run, not pass;
+do not install tools or acquire permissions implicitly.
+
+Write exactly one `supervibe-acceptance-results` block in the acceptance record:
+schema 1, scope sprint, candidate equal to the before fingerprint, actual environment
+description, and results for every plan ID. Required results must be passed with
+matching modality/environment, actual steps, expected/observed, artifacts and no
+blockers. `validate-workflow.mjs verify` enforces structure/coverage/provenance,
+not whether a real interaction happened; the reviewer must verify authenticity.
+Old records lacking this contract require a new review, never fabricated backfill.
+
+A labeled substitution remains useful diagnostic evidence but cannot satisfy a
+mandatory requirement, especially browser/real-environment requirements. Changing
+scope requires an explicit user-authorized acceptance-plan amendment recorded with
+source/date/reason in the planning artifacts, then a new snapshot and full fresh
+review against the revised plan. Preserve the blocked attempt; never retrospectively
+reinterpret it as passing. Acceptance itself must not weaken the plan.
 
 ## DoD checklist
 
@@ -107,7 +171,7 @@ The periodic doc-sync checkpoint of this skill — the counterpart to complete's
 
 Write `<acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md` from `templates/acceptance-record.md`; the date is today, the acceptance-run date. The record carries at minimum: the scenario result table, the DoD checklist with evidence, the verbatim obstacles log, the drift report, the verdict, and the **gate-evidence block** — the branch tip hash at run time, the gates list as run (each configured gate command that ran, verbatim), and its green outputs. That block is the mechanical key complete's stage 1 short-circuits on, exactly when tip and list are unchanged; without it, complete re-runs everything. Records are append-only — a same-day re-run never overwrites an earlier record; it takes a distinguishing suffix (`-2`, `-3`, …); the `acceptance-record` pointer names the latest completed attempt; only a pass in acceptance state can authorize close-out.
 
-- **pass** requires all of: every scenario passed with fresh evidence or a labeled substitution; every DoD item checked with evidence; no unpaid drift on triggered rows. Anything less → **blocked**, naming the blocking items.
+- **pass** requires all of: every required scenario passed with fresh evidence in the prescribed modality and environment (not substituted or not-run); every DoD item checked with evidence; no unpaid drift on triggered rows. Anything less → **blocked**, naming the blocking items.
 - Every completed record contains exactly one fenced `supervibe-evidence` block holding the before-review JSON (schema, sprint, record, fingerprint). Only an unchanged after-review snapshot may support pass.
 - pass → write the record, then provisionally set sprint frontmatter `state: acceptance`, `acceptance-record: <record-path>`, and `accepted-at: <ISO date/time>`, using these fields as the dated evidence link (do not append body text after the snapshot). The record must exist before the state flip. Run `verify --sprint "<sprint-doc>" --record "<record-path>"` through the same validator before reporting a usable pass; failure blocks close-out. Commit all reviewed payload plus the provisional projection and new record, then call `shared-ledger.mjs review-pass` with ID/revision/operation flags; it requires verify-clean in the carrier and stores the accepted commit/tree before granting shared acceptance. Until this succeeds, Markdown acceptance is only a provisional projection and does not authorize merge.
 - blocked → keep the new record and set `state: active`, `acceptance-record: <new-blocked-record>`, and `accepted-at: <ISO date/time>` for the dated attempt. The pointer identifies the latest attempt, not necessarily a pass. Call `shared-ledger.mjs review-blocked` with ID/revision/operation flags to record the attempt; shared state stays active. The old pass is never restored. Return to execution and then re-review; each run writes its own record.

@@ -15,6 +15,14 @@ The two layers couple through an **artifact contract**, not code: a sprint plan
 doc and an acceptance record. SuperVibe never forks or rewrites a superpowers
 skill.
 
+## Default multi-agent iteration, explicit solo exit
+
+SuperVibe defaults to a coordinating main agent plus workers for an overall iteration. Choose native harness orchestration (such as Claude Code subagents) or external Orca orchestration, and confirm worker count and applicable worker harnesses at kickoff. `maxWorkers: 1` means one worker **plus** the coordinator. Missing selected capabilities block execution; they never silently turn multi-agent work into solo work.
+
+Explicit single-agent/no-subagent work goes directly to **superpowers**, before any SuperVibe scaffold, ledger initialization, configuration, reservation or iteration artifact. It does not activate iteration mode; solo is not a third collaboration mode. `scripts/iteration-route.mjs` is a pure intent router, not a runtime launcher.
+
+Acceptance is planned up front at **two distinct scopes**: each sprint's scenarios, and the Roadmap's final integrated outcomes. Universal DoD is the shared quality baseline, not a requirement that each sprint deliver the entire roadmap. CI/CD success does not replace real user acceptance: UI scenarios require real browser actions, observed outcomes and artifact evidence. Missing, not-run or substituted mandatory evidence blocks acceptance. All planned sprints must be landed, and a separate fresh overall acceptance must pass against current integrated content before Roadmap closure. Structural/provenance checks do not prove that browser evidence is authentic.
+
 ## Terminology (deliberately Scrum-aligned)
 
 Core nouns come straight from Scrum — nothing new to learn: **epic**, **sprint**,
@@ -214,7 +222,7 @@ dependency is declared.
 ```
 claude plugin validate . --strict   # plugin/marketplace manifest check
 node tests/check-artifacts.mjs      # bilingual pairing, template completeness, assembly dry-run
-node --test tests/workflow-guard.test.mjs tests/shared-ledger.test.mjs tests/board-parser.test.mjs
+node --test tests/*.test.mjs
 ```
 
 Zero npm dependencies; Node ≥ 20.
@@ -222,3 +230,5 @@ Zero npm dependencies; Node ≥ 20.
 ## License
 
 MIT
+
+At overall iteration kickoff, ask once for the concurrent worker cap; native inherits the current harness, while Orca asks for worker harness(es) and explicit mixed-mode permission. Save the user-confirmed policy in the local shared ledger and reuse it on resume. No default cap; no automatic spawning. Cap and harness contracts are validated, but real backend capacity admission remains the coordinator’s responsibility.

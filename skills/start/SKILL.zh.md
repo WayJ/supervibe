@@ -12,6 +12,12 @@ pre-start 规划活在桩行里；准入与运行状态活在共享台账。预�
 
 围绕这个动作：先做就绪裁决、先读史，再把脚手架文档交给执行层。superpowers 是推荐配对——在场则调度之；不在场则以同一工件契约手动产出。耦合仅止于工件契约：本技能绝不 fork 或改写执行层技能。零栈假设：一切路径取自宿主配置，绝不硬编码。
 
+## 入口分流——先于迭代副作用（Entry routing）
+
+第一步判断用户执行意图，必须先于读取/初始化共享账本、询问 epic/sprint ID、确认迭代配置、scaffold、预留 WIP 或创建任何迭代工件。默认是 **协调主 Agent 主持的多 Agent 迭代**。若用户明确只要单 Agent、不使用 subagent，直接交给可用的 **superpowers** 执行技能，不激活 SuperVibe 迭代、不创建或修改迭代状态，并把禁止 subagent 的约束传给执行层。superpowers 不可用则报告能力缺失，不以初始化迭代替代。
+
+纯函数辅助命令 `node "<plugin base dir>/scripts/iteration-route.mjs"` 从 stdin 读取 `{ "execution": "solo" }` 或 `{ "execution": "iteration" }`（省略 execution 默认 iteration）。它只返回路由意图，不调用技能、不探测 harness。迭代内部仍只有 native/harness 与 external/orca 两种模式；检查真实能力，所选模式不可用即停止，不静默退回单 Agent。`maxWorkers: 1` 是 **协调主 Agent 加一个 worker**，不是 solo。以下指令仅在选择迭代路径后适用。
+
 ## 共享运行权威（Shared runtime authority）
 
 读取 `<plugin base dir>/docs/shared-ledger.md`。在宿主仓库根目录运行
@@ -25,7 +31,7 @@ frontmatter 检查均是投影检查。无存储就停止，显式 init/import�
 
 ## 读取宿主配置（Read host config）
 
-任何动作之前，先在宿主 AGENTS.md 中 grep `## supervibe` 节：
+入口分流选择迭代后，在宿主 AGENTS.md 中 grep `## supervibe` 节：
 
 - 本技能读取的配置键：`roadmaps_dir`、`sprints_dir`、`notes`、`wip_limit`；子节 `### doc_sync_map`。
 - 键缺失时的默认值：`roadmaps_dir: docs/superpowers/roadmaps/`、`sprints_dir: docs/superpowers/sprints/`、`notes: .agents/notes/`、`wip_limit: 3`。
@@ -34,6 +40,12 @@ frontmatter 检查均是投影检查。无存储就停止，显式 init/import�
 - 模板按 `<plugin base dir>/templates/<file>` 解析（此处为 `sprint.md` 与 `handover-clause.md`）；绝不假设它们在宿主仓库里。
 - 写 sprint 文档之前先查 `### doc_sync_map`：若映射表覆盖了本技能写的工件路径，以映射表为准——「本技能写出的工件不欠进一步 doc-sync」的豁免仅适用于未覆盖的路径。
 - `### gates` 的 gate 命令与本技能无关——gate 在 accept 与 complete 处生效；start 不运行任何 gate。
+
+## 整体迭代协作确认
+
+epic 首个 sprint 启动前统一向用户询问一次：模式、并发 worker 上限，以及（仅 Orca）worker harness ID 和是否明确允许混用。原生继承当前 harness。worker 数量无默认值，与 sprint WIP 分开。读取[启动/配置规则](../../docs/collaboration-modes.md)和 `templates/iteration-collaboration.json`。仅将真实确认选择通过 `collaboration-contract.mjs confirm-config` 保存，含用户消息来源、当前 ledgerRevision 和 epic 配置 revision；不得伪造同意。common-dir 台账 `iterationConfigs[epic]` 是执行权威，AGENTS 仅提供提议。恢复/后续 sprint 直接复用，不反复询问。缺失/草稿配置阻止委派；变更需新确认、新 revision，并先结束和收集旧 worker/结果。
+
+每次派发/重试前，跨本 epic 核实 backend 真实占用（启动中/运行中/不确定，含嵌套 worker；不含 coordinator）。占用未知或容量不足就阻止派发。由一个 coordinator 串行准入；这不是已实现的 backend 信号量。每项任务绑定配置 revision/指纹及获准 workerHarness；核实真实所选 harness 能力，不自动安装/降级。读写命令和 Orca terminal 复用限制见链接规则。
 
 ## 定位桩行（Locate the stub）
 
@@ -101,9 +113,11 @@ notes 是跨 sprint 的知识资产，不是流水账——写一行 plan 之前
 
 载体、sprint 文档与开线笔记存在后，用 ID/revision/operation 参数调用 `shared-ledger.mjs activate`，确认共享 active。失败/中断保留 reserved 和 WIP 槽，检查并恢复，不创建另一个 sprint。
 
+实现或委派 worker 前，从桩行验收目标填好 sprint 的验收计划：在 `supervibe-acceptance-plan` 块记录稳定场景 ID、目标、必需操作方式/环境、顺序操作步骤与预期观察。关联 Roadmap 的独立整体场景，但不把整个 Roadmap 交付要求照搬为此 sprint 的验收范围。场景计划缺失/为空即阻塞实现。UI 场景必须操作真实运行环境中的浏览器，CI/API/静态截图不能单独满足。验收范围改变必须记录用户明确授权的修订并重新执行，不能把旧失败/替代结果改名为通过。
+
 ## 调度执行（Dispatch execution）
 
-Agent 协作只有两条路，由宿主 `## supervibe` 显式选择：`collaboration_mode: native` + `collaboration_provider: harness`，或 `external` + `orca`。缺失、不支持、不匹配或能力不可用时阻止委派；询问选择或报告缺失能力，绝不静默切换模式。SuperVibe 管契约，不自建调度器。见[协作模式](../../docs/collaboration-modes.md)。
+Agent 协作只有两条路，按 epic 确认选择（宿主 `## supervibe` 提供提议值）：`collaboration_mode: native` + `collaboration_provider: harness`，或 `external` + `orca`。缺失、不支持、不匹配或能力不可用时阻止委派；询问选择或报告缺失能力，绝不静默切换模式。SuperVibe 管契约，不自建调度器。见[协作模式](../../docs/collaboration-modes.md)。
 
 1. 委派前检查真实能力。**原生：**使用当前 harness 已提供且有文档的 worker 创建与结果工具（需要交互时还需通信）（如 Claude Code subagent）；不发明工具名，不假设跨会话能力。**外部：**定位 Orca CLI，读取 `orca skills get orchestration` 及相关当前参考；缺 CLI/skill 就阻止此路由，不自动安装。
 2. 以 stdin 向 `node <plugin-root>/scripts/collaboration-contract.mjs task` 提交任务 JSON 校验：显式模式/provider、sprint/task 身份、目标、worktree、允许路径与验收要求。将同一边界交给 worker。不隐式扩大权限、安装依赖、配置凭证或授权提交/推送。

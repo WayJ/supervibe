@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
-import { realpathSync, lstatSync } from 'node:fs';
+import { realpathSync, lstatSync, readFileSync } from 'node:fs';
 import { resolve, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readLedger, initializeLedger, changeLedger, commonDir, CAPACITY_STATES } from './ledger-store.mjs';
 import { repoPath, sprintData, frontmatter, verifyClean, inspectWorktreeSprints } from './validate-workflow.mjs';
+import { acceptancePlan } from './acceptance-contract.mjs';
 const fail = message => { throw new Error(message); };
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 function projectionIdentity(data, e) { return data.sprint === e.id && data.epic === e.epic && [e.branch, e.worktree].includes(data.worktree); }
@@ -99,6 +100,7 @@ export function mutate(root, command, options) {
       if (e.state !== 'reserved') fail('activate requires reserved');
       const target = carrier(root, e), d = sprintData(target, e.document);
       if (!projectionIdentity(d, e) || d.state !== 'active') fail('Carrier needs matching active sprint projection before activate');
+      acceptancePlan(readFileSync(resolve(target, e.document), 'utf8'), 'sprint');
       e.state = 'active';
     } else if (command === 'review-begin') {
       if (!['active', 'acceptance'].includes(e.state)) fail('review-begin requires active or acceptance');

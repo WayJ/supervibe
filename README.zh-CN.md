@@ -14,6 +14,14 @@ sprint 何时算完、何时可以合入」——战略层。与
 两层通过**工件契约**耦合，而非代码耦合：一份 sprint plan 文档 + 一份验收
 记录。SuperVibe 绝不 fork 或重写任何 superpowers 技能。
 
+## 默认多 Agent 迭代，显式单 Agent 退出
+
+SuperVibe 默认由协调主 Agent 加 workers 完成整体迭代；启动时确认原生 harness 编排（如 Claude Code subagent）或外部 Orca 编排、worker 数量，以及适用的 worker harness。`maxWorkers: 1` 是协调主 Agent **加**一个 worker，不是单 Agent。所选能力缺失即阻塞，不静默退化为单 Agent。
+
+用户明确只用单 Agent、不启用 subagent 时，直接走 **superpowers**，先于任何 SuperVibe scaffold、账本初始化、配置、预留或迭代工件创建，不激活迭代模式；solo 不是第三种协作模式。`scripts/iteration-route.mjs` 是纯意图分流器，不是运行时启动器。
+
+验收在规划时明确**两个独立层次**：每个 sprint 自己的场景，以及 Roadmap 的最终集成目标。通用 DoD 是共享质量基线，不要求每个 sprint 交付整个 Roadmap。CI/CD 成功不能替代真实用户验收：UI 场景须有真实浏览器操作、观察结果和工件证据。必需证据缺失、未运行或被替代均阻塞。所有计划内 sprint 落地主线后，还要对当前集成内容完成独立、全新的整体验收，才能关闭 Roadmap。结构/来源校验不证明浏览器证据真实。
+
 ## 术语（刻意对齐 Scrum）
 
 核心名词直接采用 Scrum 词汇——无需重复学习：**epic**、**sprint**、
@@ -196,7 +204,7 @@ SuperVibe 检测到 superpowers 则调度它（brainstorming、spec 撰写、TDD
 ```
 claude plugin validate . --strict   # plugin/marketplace manifest 校验
 node tests/check-artifacts.mjs      # 双语配对、模板完整性、装配干跑
-node --test tests/workflow-guard.test.mjs tests/shared-ledger.test.mjs tests/board-parser.test.mjs
+node --test tests/*.test.mjs
 ```
 
 零 npm 依赖；Node ≥ 20。
@@ -204,3 +212,5 @@ node --test tests/workflow-guard.test.mjs tests/shared-ledger.test.mjs tests/boa
 ## 许可证
 
 MIT
+
+整体迭代启动时统一询问 worker 并发上限；原生继承当前 harness，Orca 另询问 worker harness 及是否允许混用。真实用户确认后保存到本地共享台账，恢复直接复用。无默认数量，不自动启动。上限/harness 契约有校验，真实 backend 容量准入仍由 coordinator 负责。

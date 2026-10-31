@@ -1,3 +1,4 @@
+import { planBlock, resultsBlock } from './acceptance-fixtures.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
@@ -22,7 +23,7 @@ function setup(t, limit = 1) {
     const worktree = `${root}-${id}`; paths.push(worktree);
     return mutate(root, 'reserve', options(id, revision, operation, { '--epic': 'E1', '--document': `sprints/${id}.md`, '--branch': `sprint/${id}`, '--worktree': worktree }));
   };
-  const doc = (worktree, id, state, record = 'null', landing = 'null') => writeFileSync(join(worktree, `sprints/${id}.md`), `---\nsprint: ${id}\nepic: E1\nstate: ${state}\nworktree: sprint/${id}\nacceptance-record: ${record}\naccepted-at: 2026-10-31\nmerged-commit: ${landing}\n---\n## DoD\nWorks\n`);
+  const doc = (worktree, id, state, record = 'null', landing = 'null') => writeFileSync(join(worktree, `sprints/${id}.md`), `---\nsprint: ${id}\nepic: E1\nstate: ${state}\nworktree: sprint/${id}\nacceptance-record: ${record}\naccepted-at: 2026-10-31\nmerged-commit: ${landing}\n---\n## DoD\nWorks\n` + planBlock());
   const activate = (id = 'S1') => {
     const worktree = `${root}-${id}`; git(root, 'worktree', 'add', '-b', `sprint/${id}`, worktree); doc(worktree, id, 'active');
     mutate(root, 'activate', options(id, readLedger(root).revision, `activate-${id}`)); return worktree;
@@ -31,7 +32,7 @@ function setup(t, limit = 1) {
     mutate(root, 'review-begin', options(id, readLedger(root).revision, `begin-${id}${suffix}`));
     doc(worktree, id, 'active');
     const record = `acceptances/${id}${suffix}.md`, evidence = snapshot(worktree, `sprints/${id}.md`, record);
-    writeFileSync(join(worktree, record), `## Verdict\npass\n\n\`\`\`supervibe-evidence\n${JSON.stringify(evidence)}\n\`\`\`\n`);
+    writeFileSync(join(worktree, record), `## Verdict\npass\n\n\`\`\`supervibe-evidence\n${JSON.stringify(evidence)}\n\`\`\`\n` + resultsBlock(evidence.fingerprint));
     doc(worktree, id, 'acceptance', record); git(worktree, 'add', '.'); git(worktree, 'commit', '-m', 'accepted candidate');
     return mutate(root, 'review-pass', options(id, readLedger(root).revision, `pass-${id}${suffix}`));
   };
@@ -127,4 +128,18 @@ test('explicit reservation cancellation frees capacity only before any carrier a
   f.git(f.root, 'branch', '-D', 'sprint/S2'); mkdirSync(`${f.root}-S2`);
   assert.throws(() => mutate(f.root, 'cancel-reservation', f.options('S2', readLedger(f.root).revision, 'cancel-S2')), /path exists/);
   assert.equal(readLedger(f.root).sprints.S2.state, 'reserved');
+});
+test('activation requires valid upfront scenario plan before granting execution state', t => {
+  const f = setup(t); f.reserve();
+  const worktree = `${f.root}-S1`; f.git(f.root, 'worktree', 'add', '-b', 'sprint/S1', worktree); f.doc(worktree, 'S1', 'active');
+  const document = join(worktree, 'sprints/S1.md'), original = readFileSync(document, 'utf8');
+  const before = readLedger(f.root);
+  for (const invalid of [original.replace(/```supervibe-acceptance-plan[\s\S]*?```/, ''), original.replace('"scenarios":[{', '"scenarios":[BROKEN{'), original.replace('"required":true', '"required":false')]) {
+    writeFileSync(document, invalid);
+    assert.throws(() => mutate(f.root, 'activate', f.options('S1', before.revision, 'activate-missing-plan')));
+    assert.deepEqual(readLedger(f.root), before);
+  }
+  writeFileSync(document, original);
+  mutate(f.root, 'activate', f.options('S1', before.revision, 'activate-valid-plan'));
+  assert.equal(readLedger(f.root).sprints.S1.state, 'active');
 });

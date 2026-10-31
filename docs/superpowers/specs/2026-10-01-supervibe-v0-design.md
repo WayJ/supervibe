@@ -365,3 +365,13 @@ docs/superpowers/specs/2026-10-01-supervibe-v0-design.md   # 本文件
 
 1. 托管 owner/URL — 发布时解决（只阻塞 `homepage`，不阻塞本地开发）。
 2. v0.2 是否加 `acceptance-verifier` subagent（延后；YAGNI）。
+
+## 11. SuperVibe 与分层验收（2026-10-31 修订，ADR D12）
+
+SuperVibe 默认管理多 Agent 迭代，仅有 native/harness 与 external/orca 两种协作模式。用户明确不要 subagent 的单 Agent 任务先路由到 superpowers，不进入迭代，不初始化/修改共享账本、不创建 epic/sprint。maxWorkers=1 是协调者加一个 worker，不是 solo。缺失协作能力阻断所选模式，不能静默降级 solo。
+
+计划时即定义 Sprint 场景及独立 Roadmap 总体验收场景。通用 DoD 是每个 Sprint 的质量标准，不承载只有完整 Roadmap 才能交付的目标。所有 Sprint 合并只满足前置条件；还需集成主线上的新鲜最终验收。每个 Breakdown 桩行都必须有已合并/关闭的共享条目，不能靠遗漏尚未开始的 Sprint 完成关闭。
+
+验收计划与结果使用有界 JSON 合约：范围、场景 ID、目标、必需性、方式、真实/fixture 环境、操作步骤、预期、实际、构建/候选指纹、证据引用与阻塞。UI 必须浏览器真实用户路径操作：打开页面、输入/点击、提交/导航、核对可见与持久化结果等；CI/API、静态截图或 worker 自报成功不能替代。必需场景 substituted/not-run/缺证据均阻断；如确需改标准，先记录用户授权的计划修订，保留旧失败，再按新计划完整重验，不能追认旧 pass。
+
+最终 Roadmap 记录绑定受审集成内容，精确排除其自身并归一化仅关闭元数据以避免 SHA 自引用；源码、计划、配置、其他证据变化都使其失效。校验器只检查结构、覆盖、元数据与来源一致性，不证明实际操作或截图真实。协调者仍须核对真实运行、当前部署构建与证据；不引入浏览器执行器、自有编排器或额外共享范围。旧记录缺少新合约需重验，不能推断补造证据。

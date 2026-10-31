@@ -1,0 +1,16 @@
+{
+  "ledgerRevision": null,
+  "operation": "",
+  "config": {
+    "schema": 1,
+    "epic": "",
+    "revision": 1,
+    "mode": "native",
+    "provider": "harness",
+    "maxWorkers": null,
+    "workerHarness": "inherit",
+    "allowMixed": false,
+    "status": "draft",
+    "confirmation": { "by": "", "source": "", "at": "" }
+  }
+}

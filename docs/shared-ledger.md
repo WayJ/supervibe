@@ -26,7 +26,7 @@ node "<plugin>/scripts/shared-ledger.mjs" doctor
 Choose init for a new ledger or import to migrate existing documents explicitly.
 Both init/import accept optional `--main <branch-name>` (default `main`), stored as `mainRef`. Neither overwrites an existing store. Init rejects existing sprint documents; import rejects conflicting copies and legacy acceptance. Explicitly revoke legacy acceptance to active before migration and run a fresh shared review; never import an old pass as trusted evidence. No store means stop and initialize/import;
 never silently fall back to branch-local scans. The schema carries `schema: 1`,
-`revision`, `wipLimit`, `mainRef`, `sprints`, `events`, and `operations`. The store is local
+`revision`, `wipLimit`, `mainRef`, `sprints`, `events`, and `operations`, plus optional `iterationConfigs[epic]` for user-confirmed mode, worker cap and harness policy. Its per-epic config revision is distinct from the global ledger revision. See [collaboration kickoff](collaboration-modes.md). The store is local
 Git metadata, not a file to commit or push; a fresh clone needs explicit setup.
 
 先完成已授权的脚手架提交，确认所选主线分支已有提交。scaffold 可在存储尚不存在时运行，运行态动作不可。新仓库使用 init，已有文档须显式 import 迁移；init/import 可选 `--main <分支名>`（默认 main），存为 mainRef。两者都不覆盖已有存储。init 拒绝已有 sprint 文档；import 拒绝冲突副本与旧 acceptance。迁移前显式将旧 acceptance 撤回 active，之后重新进行共享评审，不能导入旧 pass 冒充可信证据。
@@ -61,7 +61,7 @@ All commands below also require the ID/revision/operation flags above.
 |---|---|
 | `reserve --epic E1 --document <relative-doc> --branch <branch> --worktree <absolute-path>` | Atomically counts reserved+active+acceptance against stored wipLimit, then reserves before creating carrier/docs. 原子计数并预留后才创建载体/文档。 |
 | `cancel-reservation` | reserved → cancelled only if planned path, local branch and registered worktree are all absent; otherwise block. 仅计划路径、本地分支和登记 worktree 全部不存在时取消预留，否则阻断。 |
-| `activate` | reserved → active after carrier and active Markdown projection exist. 载体与 active 投影存在后激活。 |
+| `activate` | reserved → active after carrier, active Markdown projection and valid upfront sprint acceptance plan exist. 载体、active 投影与合法前置 Sprint 验收计划存在后激活。 |
 | `review-begin` | active/acceptance → active, clears evidence before any review/doc edits. 评审/文档编辑前撤销旧证据。 |
 | `review-pass` | active → acceptance only after verify-clean succeeds in carrier. Commit provisional Markdown state/pointer/date, record and payload first; shared state stores the accepted commit/tree. 先提交临时投影、记录和内容，载体 verify-clean 通过后记录受验 commit/tree、置共享 acceptance。 |
 | `review-blocked` | active remains active; records failed review. 记录阻断，保持 active。 |
@@ -116,3 +116,19 @@ still require host protections; the local state lock is not a remote Git lock.
 acceptance，先识别真实落点（worktree 存在也适用），再调用 land、更新投影；land 即使载体已不在也会按已存受验树校验实际落点及主线可达性，
 之后拆除，绝不再次合并。squash/rebase 歧义须用户确认。本地状态锁不等于
 远端 Git 锁，远端合并竞态仍依赖宿主保护。
+
+`iterationConfigs[epic]` 另登记真实用户确认的模式、worker 并发上限、harness/混用策略和确认来源。epic 配置 revision 与台账全局 revision 不同；同样只在本地 common-dir 共享、不提交。通过显式 confirm-config 原子保存，不手改存储。
+
+## Layered acceptance gates / 分层验收门禁
+
+Sprint activation validates the upfront `supervibe-acceptance-plan` structure;
+review-pass verifies required scenario results plus clean committed provenance.
+Legacy records missing the plan/results contract need a fresh review, not invented
+backfill. Roadmap closure separately uses `validate-workflow.mjs roadmap-verify-clean`
+after committing the new integrated acceptance record and final pointers. Every
+planned sprint must be landed, but that alone is never overall acceptance.
+
+Sprint 激活检查前置计划结构；review-pass 还检查必需场景结果与干净已提交来源。
+旧记录缺少新合约必须重验，不能补造。Roadmap 另在提交最终记录与指针后运行
+roadmap-verify-clean；所有计划 Sprint 落地只是必要条件，不是整体通过。
+这些检查不能证明浏览器实际执行或截图真实性，协调者仍须核对真实环境证据。

@@ -1,3 +1,4 @@
+import { planBlock, resultsBlock } from './acceptance-fixtures.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync, symlinkSync } from 'node:fs';
@@ -14,13 +15,13 @@ function fixture(t) {
   mkdirSync(join(root, 'sprints')); mkdirSync(join(root, 'acceptances'));
   const sprint = 'sprints/S1.md', record = 'acceptances/S1.md';
   const write = (p, text) => writeFileSync(join(root, p), text);
-  write(sprint, '---\nsprint: S1\nstate: active\n---\n## DoD\nWorks\n');
+  write(sprint, '---\nsprint: S1\nstate: active\n---\n## DoD\nWorks\n' + planBlock());
   write('code.js', 'original'); write('AGENTS.md', 'gates: test');
   git('add', '.'); git('commit', '-m', 'baseline');
   const accept = () => {
     const evidence = snapshot(root, sprint, record);
-    write(record, '## Verdict\n\npass — verified\n\n## Evidence\n```supervibe-evidence\n' + JSON.stringify(evidence) + '\n```\n');
-    write(sprint, `---\nsprint: S1\nstate: acceptance\nacceptance-record: ${record}\naccepted-at: 2026-10-31\n---\n## DoD\nWorks\n`);
+    write(record, '## Verdict\n\npass — verified\n\n## Evidence\n```supervibe-evidence\n' + JSON.stringify(evidence) + '\n```\n' + resultsBlock(evidence.fingerprint));
+    write(sprint, `---\nsprint: S1\nstate: acceptance\nacceptance-record: ${record}\naccepted-at: 2026-10-31\n---\n## DoD\nWorks\n` + planBlock());
     return evidence;
   };
   return { root, git, write, sprint, record, accept };
@@ -49,14 +50,14 @@ test('reaccept is available after changes; interrupted review cannot complete', 
   assert.equal(current.schema, 1);
   f.write(f.sprint, readFileSync(join(f.root, f.sprint), 'utf8').replace('state: acceptance', 'state: active'));
   assert.throws(() => verify(f.root, f.sprint, f.record), /not in acceptance/);
-  f.write('acceptances/S1-2.md', '## Verdict\npass\n\n```supervibe-evidence\n' + JSON.stringify(current) + '\n```\n');
+  f.write('acceptances/S1-2.md', '## Verdict\npass\n\n```supervibe-evidence\n' + JSON.stringify(current) + '\n```\n' + resultsBlock(current.fingerprint));
   f.write(f.sprint, readFileSync(join(f.root, f.sprint), 'utf8').replace('state: active', 'state: acceptance').replace('acceptances/S1.md', 'acceptances/S1-2.md'));
   assert.deepEqual(verify(f.root, f.sprint, 'acceptances/S1-2.md'), current);
 });
 test('legacy, blocked, duplicate or malformed records fail closed', t => {
   const f = fixture(t); f.accept();
   const original = readFileSync(join(f.root, f.record), 'utf8');
-  for (const text of ['## Verdict\npass\n', original.replace('pass —', 'blocked —'), original + original, original.replace('"schema":1', '"schema":2')]) {
+  for (const text of ['## Verdict\npass\n', original.replace('pass —', 'blocked —'), original + original, original.replace('"schema":1', '"schema":2'), original.replace(/```supervibe-acceptance-results[\s\S]*?```/, '')]) {
     f.write(f.record, text); assert.throws(() => verify(f.root, f.sprint, f.record));
   }
 });

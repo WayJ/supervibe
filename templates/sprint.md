@@ -49,7 +49,7 @@ checked only with evidence (command run, scenario passed) — never pre-check. -
 edited in place. A DoD change goes back to the epic doc as an amendment and is
 re-copied from there; it is never changed inside this doc. -->
 
-- [ ] Export totals reconcile with invoiced totals to the cent <!-- example, verbatim from the epic DoD -->
+- [ ] Applicable quality gates pass on the reviewed build <!-- example, verbatim from the epic DoD -->
 - [ ] <!-- placeholder: DoD item, verbatim from the epic doc -->
 
 ## Acceptance Scenarios (S1–Sn)
@@ -62,6 +62,14 @@ pass. -->
 |---|---|---|---|
 | S1 | Export a bounded quarter | `curl -sf -u tester -o /tmp/q3.csv https://api.local/export/billing.csv?quarter=2026Q3 && wc -l /tmp/q3.csv` | 200; line count matches the invoiced-lines count for Q3 <!-- example --> |
 | <!-- placeholder: S# --> | <!-- placeholder: scenario --> | <!-- placeholder: how to verify --> | <!-- placeholder: expected --> |
+
+<!-- Define this plan at Sprint planning, before implementation. It is the
+machine-readable counterpart of the scenario table, not a replacement for it.
+For UI scenarios use browser + real and specify actual user actions. -->
+
+```supervibe-acceptance-plan
+{"schema":1,"scope":"sprint","scenarios":[{"id":"S1","goal":"Export a bounded quarter","required":true,"modality":"api","environment":"real","steps":["Run the configured export command for Q3 and compare invoice line count"],"expected":"200; line count matches the invoiced-lines count for Q3"}]}
+```
 
 ## Handover Clauses
 

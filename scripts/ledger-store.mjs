@@ -10,6 +10,7 @@ function paths(root) { const dir = join(commonDir(root), 'supervibe'); return { 
 function regular(path) { if (!lstatSync(path).isFile()) throw new Error(`Not a regular ledger file: ${path}`); }
 export function validateState(state) {
   if (!state || state.schema !== 1 || !Number.isSafeInteger(state.revision) || state.revision < 0 || !Number.isSafeInteger(state.wipLimit) || state.wipLimit < 1 || typeof state.mainRef !== 'string' || !state.mainRef || typeof state.sprintsDir !== 'string' || !state.sprintsDir || !state.sprints || Array.isArray(state.sprints) || typeof state.sprints !== 'object' || !Array.isArray(state.events) || !Array.isArray(state.operations)) throw new Error('Corrupt shared ledger schema; stop and repair explicitly');
+  if (state.iterationConfigs !== undefined && (!state.iterationConfigs || typeof state.iterationConfigs !== 'object' || Array.isArray(state.iterationConfigs))) throw new Error('Corrupt shared iterationConfigs; expected an object');
   const safeRelative = value => typeof value === 'string' && value && !isAbsolute(value) && !value.split(/[\\/]/).includes('..');
   if (!safeRelative(state.sprintsDir)) throw new Error('Corrupt shared ledger directory');
   for (const [id, e] of Object.entries(state.sprints)) {

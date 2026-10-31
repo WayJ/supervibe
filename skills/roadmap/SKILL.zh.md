@@ -10,6 +10,12 @@ argument-hint: [scaffold|epic|breakdown|adr|question|asset|debt|ready|close]
 
 按子命令参数（`scaffold|epic|breakdown|adr|question|asset|debt|ready|close`）分派。参数缺失或无法识别时，列出子命令并询问。下文所有路径均取自宿主配置，而非对宿主仓库布局的臆测。
 
+## 入口分流——先于迭代副作用（Entry routing）
+
+第一步判断用户执行意图，必须先于读取/初始化共享账本、询问 epic/sprint ID、确认迭代配置、scaffold、预留 WIP 或创建任何迭代工件。默认是 **协调主 Agent 主持的多 Agent 迭代**。若用户明确只要单 Agent、不使用 subagent，直接交给可用的 **superpowers** 执行技能，不激活 SuperVibe 迭代、不创建或修改迭代状态，并把禁止 subagent 的约束传给执行层。superpowers 不可用则报告能力缺失，不以初始化迭代替代。
+
+纯函数辅助命令 `node "<plugin base dir>/scripts/iteration-route.mjs"` 从 stdin 读取 `{ "execution": "solo" }` 或 `{ "execution": "iteration" }`（省略 execution 默认 iteration）。它只返回路由意图，不调用技能、不探测 harness。迭代内部仍只有 native/harness 与 external/orca 两种模式；检查真实能力，所选模式不可用即停止，不静默退回单 Agent。`maxWorkers: 1` 是 **协调主 Agent 加一个 worker**，不是 solo。以下指令仅在选择迭代路径后适用。
+
 ## 共享运行权威（Shared runtime authority）
 
 读取 `<plugin base dir>/docs/shared-ledger.md`。在宿主仓库根目录运行
@@ -35,6 +41,8 @@ frontmatter 检查均是投影检查。无存储就停止并显式 init/import�
 
 协作配置无默认值：`collaboration_mode` / `collaboration_provider` 必须选择 `native` / `harness` 或 `external` / `orca`。scaffold 时说明两条路并请用户选择；未选择则明确保持未配置。不覆盖已有选择。缺失/无效配置阻止委派，不阻止 roadmap 编辑；能力不可用绝不静默改变选择。见[协作模式](../../docs/collaboration-modes.md)。
 
+整体迭代/epic 启动、首个 sprint 开始前，统一询问一次 worker 并发上限及 Orca worker harness/混用选择，再按真实用户确认来源保存迭代策略。宿主 mode/provider 仅为提议，恢复复用已确认共享快照。worker 上限不等于 sprint WIP，不伪造默认值。见[协作模式](../../docs/collaboration-modes.md)启动规则。
+
 ## scaffold
 
 为仓库接入 supervibe：
@@ -55,8 +63,10 @@ frontmatter 检查均是投影检查。无存储就停止并显式 init/import�
 以 `templates/epic.md` 创建 `<roadmaps_dir>/YYYY-MM-DD-<epic>.md`：
 
 - frontmatter：`{epic: E#, status: open, date}`——epic id 扫 `roadmaps/` 内全部文档取 max+1。
-- 正文七节，按模板：核心交付（Deliverables）/ Definition of Done / Sprint Breakdown / 决策（Decisions (ADR)）/ 资产处置（Asset Disposition）/ 开放问题（Open Questions）/ 横切关注（Cross-cutting）。
+- 正文按模板：核心交付（Deliverables）/ Definition of Done / Overall Acceptance Scenarios / Final Acceptance / Sprint Breakdown / 决策（Decisions (ADR)）/ 资产处置（Asset Disposition）/ 开放问题（Open Questions）/ 横切关注（Cross-cutting）。
 - **缺 DoD 即拒绝**——没有 Definition of Done 的 epic 无效；停下并向用户索要。DoD 挂在 epic 层；sprint 文档逐字复制，后续改动在此处以修订方式进行，绝不在 sprint 文档内改。
+
+实现前定义独立的 **Overall Acceptance Scenarios**，描述 Roadmap 整体集成交付结果，以 `supervibe-acceptance-plan` 块登记稳定 ID、必需的操作方式/环境、步骤和预期观察。它不同于通用 DoD：DoD 是每个 sprint 复用的质量基线，不要求单个 sprint 完成整个 Roadmap。每条 breakdown 桩行也要预先明确该 sprint 自己的验收目标，并在开工前细化为可执行场景。UI 目标必须真实浏览器交互并记录观察结果，CI/API 或没有交互过程的截图不能替代。缺必需证据即阻塞。验收范围修改必须先获得用户明确授权并留痕，再重新执行，不能追溯涂绿。
 
 `breakdown` 子命令——向 epic 文档的 Sprint Breakdown 节追加桩行：`{sprint id、state: planned、备注}`：
 
@@ -99,9 +109,11 @@ frontmatter 检查均是投影检查。无存储就停止并显式 init/import�
 
 本技能只拥有两个状态转换；其余一律拒绝（`ready→active` 桩行实体化归 supervibe:start，`→acceptance` 归 supervibe:accept，`→merged` 归 supervibe:complete，条款兑现归 supervibe:sync）。
 
-- **ready —— planned → ready**：在 epic 文档 Sprint Breakdown 节翻转桩行状态。go 决策是战略性的：核实该 epic 的 DoD 覆盖此 sprint 将交付的内容，再把决策记入桩行备注。细粒度就绪裁决（依赖、WIP 计数、early start、deferred dependency）发生在实体化时，归 supervibe:start。没有匹配给定 sprint id 的桩行 → 拒绝，并言明哪个 id 未知。
+- **ready —— planned → ready**：在 epic 文档 Sprint Breakdown 节翻转桩行状态。go 决策是战略性的：核实该 epic 的通用 DoD 适用，且桩行已明确此 sprint 自己的验收目标，再把决策记入桩行备注。细粒度就绪裁决（依赖、WIP 计数、early start、deferred dependency）发生在实体化时，归 supervibe:start。没有匹配给定 sprint id 的桩行 → 拒绝，并言明哪个 id 未知。
 - **close —— → closed**：先用 ID/revision/operation 参数调用 shared-ledger `close`，再在已存 mainRef 上向 sprint 文档投影 `state: closed`，并在 doctor 或下一次 reserve 前提交该投影。close 前置读取主线已提交投影，不读调用方旧分支。**前置：当前共享状态为 `merged`，且仅为 merged——closed 不卡交接条款。** 条款生命周期独立于 closed：open 条款由目标方 sync 在其时机兑现，签发方可先收口（实证：R3.6 已收口而其条款等待目标合入）。没有匹配给定 id 的 sprint 文档 → 拒绝，言明未知 id。
-- **epic 收口**：当该 epic 的全部 sprint 已 closed 且文档内无开放问题阻塞时，把 epic 文档 frontmatter `status: open → closed`；言明核实了什么。
+- **epic 收口**：枚举 **Sprint Breakdown 的全部 ID**，不能只选调用者给的子集或已存在的共享条目。每个计划内 sprint 都必须有同 epic 的共享条目且为 `merged` 或 `closed`；planned/ready/未启动桩行、条目缺失或其他状态均阻塞。还要核对全部同 epic 共享条目、主线投影和阻塞性开放问题。所有 sprint 通过/合入是必要但**不充分**条件：必须在当前集成 mainRef 内容上，针对预定 Overall Acceptance Scenarios 做独立、全新的整体验收。
+- 让 `supervibe:accept` 执行 Roadmap 整体场景，沿用 sprint 验收的真实环境与禁止替代必需证据规则。在验收前后运行 `validate-workflow.mjs roadmap-snapshot --epic "<epic-doc>" --record "<new-final-record>" --main-ref "<stored-mainRef>"`，结果绑定该 fingerprint。写追加式最终验收记录，先设置 final-acceptance-record 与 final-accepted-at，再以相同参数运行 `roadmap-verify`，紧接着收口。证据缺失、阻塞或过期均不得收口。仅排除当前记录并规范化最终状态/指针元数据，避免自引用；场景计划或集成内容变化必须重验。校验器仅检查元数据覆盖/来源，不证明浏览器观察真实，必须检查实际工件与结果。
+- 在既有授权下先提交临时记录和指针元数据，再以相同参数运行 `roadmap-verify-clean`：epic 与记录必须已跟踪且工作树干净。忽略或未提交的记录不能授权关闭。无提交授权时报告 ready-awaiting-commit，不报 closed。干净校验通过后才投影 `status: closed`；已有最终记录指针和时间即证据链接，不在快照后追加正文。正文备注须在 snapshot 前准备，不在校验后改变被验收内容。提交仍受已有授权限制。CI/CD 成功不能代替整体用户验收。
 
 ## Invariants（不变量）
 

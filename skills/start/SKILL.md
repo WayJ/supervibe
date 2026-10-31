@@ -12,6 +12,12 @@ Pre-start planning lives in the stub row; admission and runtime state live in th
 
 Around that act: adjudicate readiness, read history, then hand a scaffolded doc to the execution layer. superpowers is the recommended pair — present, dispatch to it; absent, produce the same artifact contract manually. The coupling is artifact-contract only: this skill never forks or rewrites execution-layer skills. Zero stack assumptions: every path comes from host config, never hardcoded.
 
+## Entry routing — before iteration side effects
+
+First resolve the user's execution intent, before reading/initializing the shared ledger, asking for epic/sprint IDs, confirming iteration configuration, scaffolding, reserving WIP, or creating any iteration artifact. The default is **coordinator-led multi-agent iteration**. Explicit single-agent work with no subagents routes directly to available **superpowers** execution skills; do not activate SuperVibe iteration mode or create/change its state. Preserve the no-subagents constraint in that handoff. If superpowers is unavailable, report the missing capability; do not initialize an iteration as a fallback.
+
+The pure helper `node "<plugin base dir>/scripts/iteration-route.mjs"` reads `{ "execution": "solo" }` or `{ "execution": "iteration" }` on stdin (omitted execution defaults to iteration). It only reports routing intent; it neither invokes skills nor probes harness capabilities. In iteration mode, use exactly native/harness or external/orca, inspect actual capabilities, and stop when the selected route is unavailable — never silently execute solo. `maxWorkers: 1` means **one worker plus the coordinating main agent**, not solo. The remaining instructions apply only after the iteration route is selected.
+
 ## Shared runtime authority
 
 Read `<plugin base dir>/docs/shared-ledger.md`. From the host repository root run
@@ -27,7 +33,7 @@ the same operation ID for an exact uncertain retry. Do not hand-edit the store.
 
 ## Read host config
 
-Before anything, grep the host AGENTS.md for the `## supervibe` section:
+After entry routing selects iteration, grep the host AGENTS.md for the `## supervibe` section:
 
 - Config keys this skill reads: `roadmaps_dir`, `sprints_dir`, `notes`, `wip_limit`; subsection `### doc_sync_map`.
 - Defaults when a key is absent: `roadmaps_dir: docs/superpowers/roadmaps/`, `sprints_dir: docs/superpowers/sprints/`, `notes: .agents/notes/`, `wip_limit: 3`.
@@ -36,6 +42,12 @@ Before anything, grep the host AGENTS.md for the `## supervibe` section:
 - Resolve templates as `<plugin base dir>/templates/<file>` (here `sprint.md` and `handover-clause.md`); never assume they live in the host repo.
 - Consult `### doc_sync_map` before writing the sprint doc: if the map covers an artifact path this skill writes, the map takes precedence — the "artifacts this skill writes owe no further doc-sync" exemption holds only for uncovered paths.
 - Gate commands from `### gates` are not this skill's concern — gates bind at accept and complete; starting runs none.
+
+## Overall iteration collaboration confirmation
+
+Before the first sprint of an epic starts, ask the user once for mode, concurrent worker cap, and (Orca only) worker harness IDs and explicit mixed-harness permission. Native workers inherit the current harness. No default worker count; sprint WIP is separate. Read [kickoff/config rules](../../docs/collaboration-modes.md) and `templates/iteration-collaboration.json`. Persist only the actual confirmed choice via `collaboration-contract.mjs confirm-config`, including user-message provenance, current ledgerRevision and per-epic config revision. Never fabricate consent. The common-dir ledger's `iterationConfigs[epic]` is execution authority; AGENTS supplies proposals only. On resume/later sprints, reuse it without asking again. Missing/draft config blocks delegation; changed choices need fresh confirmation, a new revision, and old workers/results drained first.
+
+Before every dispatch/retry, reconcile real backend occupied slots across the epic (starting/running/uncertain, including nested workers; excluding coordinator). Unknown occupancy or insufficient capacity blocks dispatch. One coordinator serializes admission; this is not an implemented backend semaphore. Bind every task to config revision/fingerprint and allowed workerHarness; verify actual chosen harness availability without installing/falling back. See the linked rules for read/save commands and Orca terminal-reuse constraints.
 
 ## Locate the stub
 
@@ -109,9 +121,11 @@ Pre-flight, before creating anything — duplicate-materialization guard: scan `
 
 After the carrier, sprint doc and opening note exist, call `shared-ledger.mjs activate` with ID/revision/operation flags, then confirm its shared `active` state. A failed/interrupted activation retains `reserved` and its WIP slot; inspect/resume rather than creating another sprint.
 
+Before implementation or worker dispatch, fill the sprint's acceptance plan from its stub goals: stable scenario IDs, goal, required modality/environment, ordered user actions and expected observations in the `supervibe-acceptance-plan` block. Link its scope to the Roadmap's independent overall scenarios without copying the entire overall delivery requirement into this sprint. A missing or empty scenario plan blocks implementation. UI scenarios require browser interaction in the real running environment; CI/API/static screenshots alone cannot satisfy them. Scope changes require a recorded user-authorized amendment and a fresh run, never relabeling old failed/substituted results as passed.
+
 ## Dispatch execution
 
-Agent collaboration has exactly two routes, selected explicitly in host `## supervibe`: `collaboration_mode: native` + `collaboration_provider: harness`, or `external` + `orca`. Missing, unsupported, mismatched or unavailable selection blocks delegation; ask for a choice or report the missing capability, never silently switch modes. SuperVibe owns the contract, not a scheduler. See [collaboration modes](../../docs/collaboration-modes.md).
+Agent collaboration has exactly two routes, confirmed per epic (host `## supervibe` supplies proposals): `collaboration_mode: native` + `collaboration_provider: harness`, or `external` + `orca`. Missing, unsupported, mismatched or unavailable selection blocks delegation; ask for a choice or report the missing capability, never silently switch modes. SuperVibe owns the contract, not a scheduler. See [collaboration modes](../../docs/collaboration-modes.md).
 
 1. Before delegation, inspect actual capabilities. **Native:** use the current harness's documented available worker creation and result tools (plus messaging if interaction is required) (for example Claude Code subagents); do not invent tool names or assume cross-session support. **External:** locate the Orca CLI and read `orca skills get orchestration` plus relevant current references; missing CLI/skill blocks this route, not an installation request.
 2. Validate the task JSON with `node <plugin-root>/scripts/collaboration-contract.mjs task` on stdin: explicit mode/provider, sprint/task identity, objective, worktree, allowed paths and acceptance. Pass this same scope to the worker. Do not broaden permissions, install dependencies, provision credentials, or authorize commits/pushes implicitly.

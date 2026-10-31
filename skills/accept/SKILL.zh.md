@@ -1,7 +1,7 @@
 ---
 name: accept
-description: 当用户要求 accept、review 或 verify 一个 sprint，或询问某个 sprint 是否已完成时使用。
-argument-hint: <sprint-id or plan path>
+description: 当用户要求 accept、review 或 verify 一个 sprint 或 roadmap，或询问迭代是否已完成时使用。
+argument-hint: <sprint-id or plan path> | roadmap <epic-id or path>
 ---
 
 # supervibe:accept — sprint 评审门禁（sprint review gate）
@@ -9,6 +9,16 @@ argument-hint: <sprint-id or plan path>
 sprint 评审门禁：把每条验收场景真跑一遍，逐项以证据核对 DoD，逐字留痕障碍，审计文档漂移——然后写出验收记录并给出裁决。裁决是关于「观察到的行为」的断言，本技能的纪律是**证据先于断言**：任何东西不因预期、记忆或上一次运行而通过。「这个 sprint 做完了吗？」享受同等待遇——答案是裁决，由新鲜证据背书，绝非观点。
 
 这里是执行层的断言与战略层的标准碰面的检查点：本技能的 pass 正是解锁 `supervibe:complete` 的东西。零栈假设：证明命令来自场景正文与宿主 `### gates` 配置——绝不发明；一切路径取自宿主配置，绝不硬编码。
+
+## Roadmap 最终集成验收分流
+
+`accept roadmap <epic-id 或路径>` 审查 epic 计划中 Overall Acceptance Scenarios，不是某个 Sprint。解析 roadmaps_dir/acceptances_dir，读取共享账本 mainRef，并核对全部 Breakdown ID 都有同 epic 的 merged/closed 条目。不调用 sprint review-begin/review-pass、不改变 Sprint 状态、不复用旧裁决。
+
+每次最终验收或重验，在任何场景开始前先撤销旧 pass：置 status: open、final-acceptance-record: null、final-accepted-at: null。旧记录保留历史，失败或中断后绝不恢复旧指针。在既有授权下将撤销与准备输入提交；没有授权则在验收前停止。
+
+验收前准备全部笔记与计划修订，在既有授权下提交集成输入和前置计划。基于 `templates/roadmap-acceptance-record.md` 创建新记录；在当前集成主线候选上，于实际场景、DoD、漂移核对前后分别运行 `validate-workflow.mjs roadmap-snapshot --epic "<epic-doc>" --record "<new-record>" --main-ref "<stored-mainRef>"`，要求输出一致。下述真实执行、必需证据、禁止替代、障碍规则同样适用，scope 改为 roadmap。验收前 JSON 放入 supervibe-evidence，结果放 supervibe-acceptance-results，candidate 为该指纹。必须重新做集成测试，不能汇总旧 Sprint 记录充数。能力/证据缺失即 blocked。
+
+写只增不改的 pass/blocked 记录，只设置 epic 的 final-acceptance-record 与 final-accepted-at（快照后不追加正文）。pass 后以同样参数运行 roadmap-verify；失败禁止关闭。blocked 保留 epic open，不恢复旧 pass。后续 closed 由 roadmap 管理。下面 Sprint 专用分流、共享转换与 frontmatter 指令不适用于本分流。
 
 ## 共享运行权威（Shared runtime authority）
 
@@ -73,6 +83,16 @@ node "<plugin base dir>/scripts/validate-workflow.mjs" snapshot --sprint "<sprin
 
 遇障碍——命令失败、环境阻塞、输出与预期相悖——先检索 notes 目录的历史绕行：按障碍关键词（报错串、工具名、失败模式）grep。命中 → 复用该绕行并在记录中引用来源条目（文件 + 节）。未命中 → 即兴出最窄的绕行，并逐字记入障碍日志。notes 目录为空不是错误——第一个 sprint 没有历史；言明后继续。
 
+## 必需场景合约与真实用户操作
+
+开始执行前先校验计划块；缺失或畸形即阻断，不等到结束才发现。Sprint 计划阶段就必须在文档唯一的 `supervibe-acceptance-plan` JSON 围栏中定义场景（见模板），其 ID、目标、步骤和预期与人工可读场景表一致。epic 通用 DoD 是每个 Sprint 的质量基线，不是整体 Roadmap 结果；单个 Sprint 通过不证明最终集成达标。
+
+UI 场景必须针对当前构建在真实浏览器操作：打开入口、输入、点击/导航/提交，并按计划核对可见与持久化结果。记录实际步骤、预期与观察、环境、部署构建/版本、测试角色/数据、时间、证据引用和阻塞。CI 绿灯、API 探测、静态截图、worker 自报成功不能替代必需的浏览器操作。核对证据内容，不只文件名。缺少浏览器、凭据或环境即 blocked/not-run，不能 pass，也不隐式授权安装工具或获取权限。
+
+验收记录恰好一个 `supervibe-acceptance-results` 块：schema 1、scope sprint、candidate 等于验收前指纹、真实环境说明，以及覆盖全部计划 ID 的结果。必需结果必须 passed，方式/环境匹配，包含实际步骤、预期/观察、证据且无阻塞。`validate-workflow.mjs verify` 只验证结构/覆盖/来源，不证明真实操作发生；评审者仍须核实真实性。旧记录缺少合约必须重新验收，不能伪造补填。
+
+已标注的替代只是诊断证据，不能满足必需要求，尤其浏览器/真实环境要求。改变范围必须先取得用户明确授权，在计划中记录来源/日期/理由的修订，再重新取快照并完整新鲜验收。保留旧 blocked 尝试，不能追溯改绿；验收阶段不能自行降低标准。
+
 ## DoD 清单（DoD checklist）
 
 读 sprint 文档的 `## Definition of Done` 节。逐项以证据核对——场景结果覆盖处用场景结果，未覆盖处跑新的证明命令。
@@ -105,7 +125,7 @@ node "<plugin base dir>/scripts/validate-workflow.mjs" snapshot --sprint "<sprin
 
 以 `templates/acceptance-record.md` 写 `<acceptances_dir>/YYYY-MM-DD-<sprint>-acceptance.md`；日期是今天，即验收运行日。记录至少携带：场景结果表、带证据的 DoD 清单、逐字障碍日志、漂移报告、裁决，以及**门禁证据块（gate-evidence block）**——运行时的分支 tip hash、按原样跑过的 gates 清单（逐条已运行的配置 gate 命令）、其绿的输出。该块正是 complete 阶段 1 短路所用的机械钥匙，条件恰好是 tip 与清单未变；没有它，complete 全量重跑。记录只增不改——同日重跑绝不覆盖既有记录，改用区分性后缀（`-2`、`-3`、……）；`acceptance-record` 指针指向最新完成的尝试；只有 acceptance 状态下的 pass 才可授权收口。
 
-- **pass** 需要全部满足：每条场景以新鲜证据或已标注的替代通过；每项 DoD 有证据核对；被触发行上无未偿漂移。任一不满足 → **blocked**，点名阻断项。
+- **pass** 需要全部满足：每条必需场景以指定方式和环境下的新鲜证据通过（非 substituted 或 not-run）；每项 DoD 有证据核对；被触发行上无未偿漂移。任一不满足 → **blocked**，点名阻断项。
 - 每份完成的记录必须包含恰好一个 `supervibe-evidence` 围栏块，内放验收前 JSON（schema、sprint、record、fingerprint）。只有验收后快照未变，才可支撑 pass。
 - pass → 先写记录，再临时置 sprint frontmatter `state: acceptance`、`acceptance-record: <record-path>`、`accepted-at: <ISO 日期时间>`，以这两个字段作为带日期的证据链接（快照后不再追加正文）。记录必须先于状态翻转存在。报告可用 pass 前，用同一校验器运行 `verify --sprint "<sprint-doc>" --record "<record-path>"`；失败即阻断收口。先提交全部受审内容、临时投影与新记录，再用 ID/revision/operation 参数调用 `shared-ledger.mjs review-pass`；它要求载体 verify-clean，通过后存受验 commit/tree，才授予共享 acceptance。成功前，Markdown acceptance 只是临时投影，不授权合并。
 - blocked → 保留新记录，置 `state: active`、`acceptance-record: <new-blocked-record>`、`accepted-at: <ISO 日期时间>`，记下本次尝试。指针指向最新尝试，不保证是 pass。用 ID/revision/operation 参数调用 `shared-ledger.mjs review-blocked` 记录尝试，共享状态仍 active。绝不恢复旧 pass。回执行层清理问题后再验收，每次写独立记录。
