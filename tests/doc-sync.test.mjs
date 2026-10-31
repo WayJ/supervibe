@@ -1,6 +1,8 @@
+import { fileLink } from './filesystem-fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -9,7 +11,7 @@ import { validateDocSyncRule, globMatch } from '../scripts/doc-sync-rules.mjs';
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'supervibe-doc-sync-')); t.after(() => rmSync(root, { recursive: true, force: true }));
   const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: 'pipe' }).trim();
-  git('init', '-q'); git('config', 'user.email', 'test@example.invalid'); git('config', 'user.name', 'test');
+  git('init', '-q'); git('config', 'core.autocrlf', 'false'); git('config', 'user.email', 'test@example.invalid'); git('config', 'user.name', 'test');
   const write = (path, text = 'initial') => { mkdirSync(dirname(join(root, path)), { recursive: true }); writeFileSync(join(root, path), text); };
   const commit = () => { git('add', '.'); git('commit', '-qm', 'test'); return git('rev-parse', 'HEAD'); };
   write('README.md'); const base = commit();
@@ -72,7 +74,7 @@ test('CLI loads strict host map and emits a failing machine-readable report with
   const f = fixture(t); f.write('AGENTS.md', '## supervibe\n\n### doc_sync_map\n\n| change | owes |\n|---|---|\n| `skills/**/SKILL.md` | `{dir}/SKILL.zh.md` |\n');
   f.write('skills/a/SKILL.md'); f.commit();
   const cli = new URL('../scripts/doc-sync.mjs', import.meta.url);
-  try { execFileSync(process.execPath, [cli.pathname, '--root', f.root, '--base', f.base], { encoding: 'utf8', stdio: 'pipe' }); assert.fail('must fail'); }
+  try { execFileSync(process.execPath, [fileURLToPath(cli), '--root', f.root, '--base', f.base], { encoding: 'utf8', stdio: 'pipe' }); assert.fail('must fail'); }
   catch (e) { assert.equal(e.status, 1); assert.equal(JSON.parse(e.stdout).checks[0].status, 'missing-same-commit-doc'); }
   assert.equal(f.git('status', '--porcelain'), '');
 });
@@ -97,13 +99,15 @@ test('added then deleted source is not erased from the historical path inventory
 });
 test('symlink owed documents are neither regular proof nor paired deletions', async t => {
   const f = fixture(t); f.write('skills/a/SKILL.md');
-  symlinkSync('/tmp/nonexistent-supervibe-owed-document', join(f.root, 'skills/a/SKILL.zh.md')); f.commit();
+  if (!fileLink(t, join(f.root, 'nonexistent-owed-document'), join(f.root, 'skills/a/SKILL.zh.md'))) return;
+  f.git('config', 'core.symlinks', 'true'); f.commit();
   let report = await checkDocSync(f.root, { base: f.base, config });
   assert.equal(report.pass, false);
   const base = f.git('rev-parse', 'HEAD');
   rmSync(join(f.root, 'skills/a/SKILL.md'));
   rmSync(join(f.root, 'skills/a/SKILL.zh.md'));
-  symlinkSync('/tmp/another-nonexistent-supervibe-document', join(f.root, 'skills/a/SKILL.zh.md')); f.commit();
+  if (!fileLink(t, join(f.root, 'another-nonexistent-document'), join(f.root, 'skills/a/SKILL.zh.md'))) return;
+  f.commit();
   report = await checkDocSync(f.root, { base, config });
   assert.equal(report.pass, false);
 });

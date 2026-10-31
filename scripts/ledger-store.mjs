@@ -54,6 +54,26 @@ function locked(root, fn) {
     return fn(p);
   } finally { rmSync(p.lock, { recursive: true }); }
 }
+// Windows can reject directory handles even though regular-file fsync and rename
+// succeed. Only tolerate known unsupported directory operations on that platform;
+// permission/storage failures elsewhere must remain visible. This does not promise
+// power-loss durability for the directory entry on Windows.
+export function syncLedgerDirectory(path, { platform = process.platform, open = openSync, sync = fsyncSync, close = closeSync } = {}) {
+  let directory;
+  try { directory = open(path, 'r'); }
+  catch (error) {
+    if (platform === 'win32' && ['EPERM', 'EISDIR'].includes(error.code)) return false;
+    throw error;
+  }
+  try {
+    try { sync(directory); }
+    catch (error) {
+      if (platform === 'win32' && ['EPERM', 'EINVAL'].includes(error.code)) return false;
+      throw error;
+    }
+    return true;
+  } finally { close(directory); }
+}
 function atomicWrite(p, state) {
   validateState(state);
   const temp = join(p.dir, `state-${randomUUID()}.tmp`);
@@ -61,9 +81,13 @@ function atomicWrite(p, state) {
   try {
     fd = openSync(temp, 'wx', 0o600); writeFileSync(fd, JSON.stringify(state, null, 2) + '\n'); fsyncSync(fd); closeSync(fd); fd = undefined;
     renameSync(temp, p.file);
-    // Windows (and some network filesystems) cannot fsync a directory handle; the
-    // durable atomic rename above already landed the state, so tolerate EPERM/EINVAL.
-    const directory = openSync(p.dir, 'r'); try { fsyncSync(directory); } catch (e) { if (e.code !== 'EPERM' && e.code !== 'EINVAL') throw e; } finally { closeSync(directory); }
+    try { syncLedgerDirectory(p.dir); }
+    catch (cause) {
+      const error = new Error('Ledger state was renamed, but directory durability could not be confirmed; reread the ledger before retrying (reuse the same operation id)', { cause });
+      error.code = 'LEDGER_DURABILITY_UNCERTAIN';
+      error.committed = true;
+      throw error;
+    }
   } finally { if (fd !== undefined) closeSync(fd); try { unlinkSync(temp); } catch (e) { if (e.code !== 'ENOENT') throw e; } }
 }
 export function initializeLedger(root, state) {

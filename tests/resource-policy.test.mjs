@@ -14,7 +14,7 @@ const vector = n => ({ cpu: n, memoryBytes: n * 1024, diskBytes: n * 1024 });
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'sv-resource-')); t.after(() => rmSync(root, { recursive: true, force: true }));
   const git = (...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: 'pipe' }).trim();
-  git('init', '-b', 'main'); git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'test@example.invalid');
+  git('init', '-b', 'main'); git('config', 'core.autocrlf', 'false'); git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'test@example.invalid');
   writeFileSync(join(root, 'fixture'), 'fixture'); git('add', '.'); git('commit', '-m', 'fixture');
   const config = { schema: 1, epic: 'E1', revision: 1, mode: 'native', provider: 'harness', maxWorkers: 2, independentAcceptance: false, status: 'confirmed', confirmation, allowMixed: false, workerHarness: 'inherit' };
   initializeLedger(root, { schema: 1, revision: 0, wipLimit: 1, mainRef: 'main', sprintsDir: 'sprints', events: [], operations: [], sprints: { S1: { id: 'S1', epic: 'E1', state: 'active', document: 'sprints/S1.md', branch: 'main', worktree: root } }, iterationConfigs: { E1: config } });

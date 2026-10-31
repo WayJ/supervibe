@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { lstatSync, readFileSync, readdirSync, readlinkSync, realpathSync } from 'node:fs';
 import { resolve, relative, sep, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { samePath } from './path-identity.mjs';
 import { readLedger, CAPACITY_STATES } from './ledger-store.mjs';
 import { verifyAcceptanceResources } from './resource-policy.mjs';
 import { verifyAcceptanceExecution } from './acceptance-worker.mjs';
@@ -16,9 +17,10 @@ export const LANDED = new Set(['merged', 'closed']);
 const fail = (message) => { throw new Error(message); };
 function git(root, ...args) { return execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
 export function repoPath(root, value) {
-  if (!value || isAbsolute(value)) fail('Use a non-empty repository-relative path');
+  if (!value || isAbsolute(value) || (process.platform === 'win32' && (value.includes(':') || value.split(/[\\/]/).some(part => /[. ]$/.test(part) && part !== '.' && part !== '..')))) fail('Use a non-empty repository-relative path');
   const path = relative(root, resolve(root, value)).split(sep).join('/');
-  if (!path || path === '..' || path.startsWith('../') || path === '.git' || path.startsWith('.git/')) fail('Path must stay inside the repository');
+  const guardedPath = process.platform === 'win32' ? path.toLowerCase() : path;
+  if (!path || isAbsolute(path) || path === '..' || path.startsWith('../') || guardedPath === '.git' || guardedPath.startsWith('.git/')) fail('Path must stay inside the repository');
   let parent = root;
   for (const part of path.split('/').slice(0, -1)) {
     parent = resolve(parent, part);
@@ -208,7 +210,7 @@ export function inspectWorktreeSprints(root, dirInput, limitInput = Number.MAX_S
     let treeCommon;
     try { treeCommon = realpathSync(git(location, 'rev-parse', '--path-format=absolute', '--git-common-dir').trim()); }
     catch { fail(`Invalid registered worktree: ${tree.worktree}`); }
-    if (treeCommon !== commonDir) fail(`Registered worktree belongs to another repository: ${tree.worktree}`);
+    if (!samePath(treeCommon, commonDir)) fail(`Registered worktree belongs to another repository: ${tree.worktree}`);
     // Each copy uses the same host-config-relative ledger path. Directory absence
     // in an older checkout means no ledger there; missing worktrees are NOT ignored.
     repoPath(location, dir);
@@ -218,7 +220,7 @@ export function inspectWorktreeSprints(root, dirInput, limitInput = Number.MAX_S
       if (!lstatSync(ledgerDir).isDirectory()) fail(`Ledger path must be a real directory: ${ledgerDir}`);
       entries = readdirSync(ledgerDir, { withFileTypes: true });
     } catch (error) {
-      if (error.code === 'ENOENT' && location !== root) { missingLedgerDirs.push(location); continue; }
+      if (error.code === 'ENOENT' && !samePath(location, root)) { missingLedgerDirs.push(location); continue; }
       throw error;
     }
     scannedWorktrees.push(location);

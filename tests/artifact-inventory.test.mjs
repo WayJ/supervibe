@@ -1,6 +1,7 @@
+import { fileLink } from './filesystem-fixtures.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -10,7 +11,7 @@ function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'supervibe-inventory-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const git = (...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: 'pipe' }).trim();
-  git('init', '-b', 'main'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
+  git('init', '-b', 'main'); git('config', 'core.autocrlf', 'false'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
   mkdirSync(join(root, 'roadmaps')); mkdirSync(join(root, 'sprints'));
   const put = (name, content) => writeFileSync(join(root, name), content);
   const epic = (rows = '| S1 | ready | first |', id = 'E1') => `---\nepic: ${id}\nstatus: open\n---\n## Sprint Breakdown\n| sprint | state | note |\n|---|---|---|\n${rows}\n`;
@@ -58,12 +59,17 @@ test('missing shared ledger is a blocker, not a branch-scan fallback', t => {
   const r = f.run(); assert.equal(r.ok, false); assert.equal(r.ledgerRevision, null);
   assert.ok(r.issues.some(i => i.code === 'ledger-unavailable'));
 });
-test('reject symlink artifacts and duplicate frontmatter; report duplicate clause bodies', t => {
-  const f = fixture(t); symlinkSync('E1.md', join(f.root, 'roadmaps/link.md'));
+test('reject symlink artifacts', t => {
+  const f = fixture(t);
+  if (!fileLink(t, 'E1.md', join(f.root, 'roadmaps/link.md'))) return;
+  assert.ok(f.run().issues.some(i => i.code === 'invalid-artifact'));
+});
+test('reject duplicate frontmatter; report duplicate clause bodies', t => {
+  const f = fixture(t);
   f.put('roadmaps/bad.md', f.epic().replace('epic: E1', 'epic: E2\nepic: E3'));
   const clause = '## Handover Clauses\n| id | target | trigger | obligation | status | evidence |\n|---|---|---|---|---|---|\n| HC1 | S3 | path | review | open | none |';
   f.put('sprints/S1.md', f.sprint('S1', clause)); f.put('sprints/S2.md', f.sprint('S2', clause));
-  const r = f.run(); assert.equal(r.issues.filter(i => i.code === 'invalid-artifact').length, 2);
+  const r = f.run(); assert.equal(r.issues.filter(i => i.code === 'invalid-artifact').length, 1);
   assert.ok(r.issues.some(i => i.code === 'duplicate-clause'));
 });
 test('started stub can resolve a valid shared carrier without a local sprint document', t => {

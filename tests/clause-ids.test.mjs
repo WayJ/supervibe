@@ -1,6 +1,7 @@
+import { directoryLink } from './filesystem-fixtures.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync, execFile } from 'node:child_process';
@@ -13,7 +14,7 @@ function fixture(t) {
   t.after(() => rmSync(parent, { recursive: true, force: true }));
   mkdirSync(root);
   const git = (...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: 'pipe' });
-  git('init', '-b', 'main'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
+  git('init', '-b', 'main'); git('config', 'core.autocrlf', 'false'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
   mkdirSync(join(root, 'sprints')); writeFileSync(join(root, 'sprints/.gitkeep'), '');
   git('add', '.'); git('commit', '-m', 'baseline'); git('worktree', 'add', '-b', 'linked', linked);
   initializeLedger(root, { schema: 1, revision: 0, wipLimit: 3, mainRef: 'main', sprintsDir: 'sprints', sprints: { S1: { id: 'S1', state: 'reserved', document: 'sprints/S1.md', branch: 'linked', worktree: linked, epic: 'E1' } }, events: [], operations: [] });
@@ -73,7 +74,7 @@ test('bootstrap refuses missing worktrees, missing sprint directories and unsafe
 
 test('bootstrap rejects symlinked/unreadable nonregular sprint inputs without partial state', t => {
   const f = fixture(t);
-  symlinkSync(join(f.root, 'sprints'), join(f.linked, 'sprints', 'nested'));
+  directoryLink(t, join(f.root, 'sprints'), join(f.linked, 'sprints', 'nested'));
   assert.throws(() => bootstrap(f.root, 0, 'boot', true), /Symlink/);
   rmSync(join(f.linked, 'sprints', 'nested'));
   mkdirSync(join(f.linked, 'sprints', 'bad.md'));

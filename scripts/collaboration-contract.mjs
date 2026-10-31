@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { validateConfig, validateIterationConfig, iterationConfigFingerprint, readIterationConfig } from './iteration-policy.mjs';
 export { validateConfig, validateIterationConfig, iterationConfigFingerprint, readIterationConfig } from './iteration-policy.mjs';
 import { snapshot, roadmapSnapshot, frontmatter } from './validate-workflow.mjs';
+import { samePath } from './path-identity.mjs';
 import { workerEntry, activeWorkers } from './worker-lifecycle.mjs';
 import { readHostConfig } from './host-config.mjs';
 import { fileURLToPath } from 'node:url';
@@ -41,8 +42,8 @@ function validateWorktree(root, task, allowAccepted, registration = false) {
   if (!entry || !['active', ...(allowAccepted ? ['acceptance'] : [])].includes(entry.state)) fail('Task requires a shared active sprint (result may also be acceptance); no new WIP reservation per subtask');
   if (!isAbsolute(task.worktree)) fail('worktree must be absolute');
   const target = realpathSync(task.worktree);
-  if (commonDir(target) !== commonDir(root)) fail('Worker must stay within the same local Git common-dir');
-  const canonical = target === realpathSync(entry.worktree);
+  if (!samePath(commonDir(target), commonDir(root))) fail('Worker must stay within the same local Git common-dir');
+  const canonical = samePath(target, entry.worktree);
   if (!canonical && task.role === 'acceptance') fail('Acceptance must target canonical integrated Sprint carrier');
   const worker = !registration && (state.workerExecutions || !canonical) ? workerEntry(state, task) : undefined;
   if (!canonical && !worker) fail('Child worktree requires registered worker placement under the sprint carrier');
@@ -70,7 +71,9 @@ export function validateTask(root, input, allowAccepted = false, registration = 
   list(task.acceptance, 'acceptance', true);
   list(task.allowedPaths, 'allowedPaths', true);
   for (const path of task.allowedPaths) {
-    if (isAbsolute(path) || path.includes('\\') || path.split('/').includes('..') || path.split('/').includes('.git')) fail('allowedPaths must be repository-relative and outside Git metadata');
+    const parts = path.split('/');
+    const windowsAlias = process.platform === 'win32' && (path.includes(':') || parts.some(part => part.toLowerCase() === '.git' || (/[. ]$/.test(part) && part !== '.')));
+    if (isAbsolute(path) || path.includes('\\') || parts.includes('..') || parts.includes('.git') || windowsAlias) fail('allowedPaths must be repository-relative and outside Git metadata');
   }
   if (!roadmap) validateWorktree(root, task, allowAccepted, registration);
   else {
@@ -78,7 +81,7 @@ export function validateTask(root, input, allowAccepted = false, registration = 
       const worker = workerEntry(state, task);
       if (!allowAccepted && worker.state === 'settled') fail('Settled worker cannot receive more work; reserve a new execution');
     }
-    if (!isAbsolute(task.worktree) || commonDir(task.worktree) !== commonDir(root)) fail('Roadmap worktree must share local Git common-dir');
+    if (!isAbsolute(task.worktree) || !samePath(commonDir(task.worktree), commonDir(root))) fail('Roadmap worktree must share local Git common-dir');
     if (execFileSync('git', ['-C', task.worktree, 'symbolic-ref', '--short', 'HEAD'], { encoding: 'utf8' }).trim() !== state.mainRef) fail('Roadmap acceptance requires stored main branch');
     if (frontmatter(readFileSync(resolve(task.worktree, entry.document), 'utf8')).epic !== task.epic) fail('Roadmap epic identity mismatch');
   }
@@ -94,7 +97,7 @@ export function validateResult(root, input) {
   for (const key of ['scope', 'epic', 'epicDocument', 'sprint', 'taskId', 'mode', 'provider', 'workerHarness', 'iterationConfigRevision', 'iterationConfigFingerprint', 'workerExecutionId']) if (result[key] !== task[key]) fail(`Result ${key} does not match task`);
   if (!['succeeded', 'failed', 'blocked'].includes(result.status)) fail('Result status must be succeeded, failed or blocked');
   if (!isAbsolute(text(result.worktree, 'result.worktree'))) fail('result.worktree must be absolute');
-  if (realpathSync(result.worktree) !== realpathSync(task.worktree)) fail('Result worktree differs from assigned carrier');
+  if (!samePath(result.worktree, task.worktree)) fail('Result worktree differs from assigned carrier');
   const execution = object(result.execution, 'execution');
   const identities = task.mode === 'native' ? ['workerId'] : ['runId', 'taskId', 'dispatchId'];
   identities.forEach(key => text(execution[key], `execution.${key}`));

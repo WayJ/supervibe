@@ -1,7 +1,8 @@
+import { directoryLink } from './filesystem-fixtures.mjs';
 import { planBlock, resultsBlock, mainAcceptancePolicy } from './acceptance-fixtures.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -12,7 +13,7 @@ function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'supervibe-guard-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const git = (...args) => execFileSync('git', ['-C', root, ...args], { stdio: 'pipe' });
-  git('init'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
+  git('init'); git('config', 'core.autocrlf', 'false'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
   mkdirSync(join(root, 'sprints')); mkdirSync(join(root, 'acceptances'));
   const sprint = 'sprints/S1.md', record = 'acceptances/S1.md';
   const write = (p, text) => writeFileSync(join(root, p), text);
@@ -40,10 +41,12 @@ for (const [name, path, content] of [['code', 'code.js', 'changed'], ['config', 
     assert.throws(() => verify(f.root, f.sprint, f.record), /Stale/);
   });
 }
-test('deleted tracked file and executable mode invalidate pass', t => {
-  const f = fixture(t); f.accept(); chmodSync(join(f.root, 'code.js'), 0o755);
+test('deleted tracked file invalidates pass', t => {
+  const f = fixture(t); f.accept(); rmSync(join(f.root, 'code.js'));
   assert.throws(() => verify(f.root, f.sprint, f.record), /Stale/);
-  chmodSync(join(f.root, 'code.js'), 0o644); rmSync(join(f.root, 'code.js'));
+});
+test('POSIX executable mode invalidates pass', { skip: process.platform === 'win32' ? 'Windows chmod cannot change POSIX executable bits' : false }, t => {
+  const f = fixture(t); f.accept(); chmodSync(join(f.root, 'code.js'), 0o755);
   assert.throws(() => verify(f.root, f.sprint, f.record), /Stale/);
 });
 test('reaccept is available after changes; interrupted review cannot complete', t => {
@@ -95,7 +98,7 @@ test('CLI is usable from host repository, paths and arguments fail closed', t =>
 
 test('paths through symlink directories fail closed', t => {
   const f = fixture(t);
-  symlinkSync(join(f.root, 'sprints'), join(f.root, 'alias'));
+  directoryLink(t, join(f.root, 'sprints'), join(f.root, 'alias'));
   assert.throws(() => snapshot(f.root, 'alias/S1.md', f.record), /symlink directory/);
   assert.throws(() => snapshot(f.root, f.sprint, 'alias/result.md'), /symlink directory/);
 });

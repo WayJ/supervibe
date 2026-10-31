@@ -236,10 +236,26 @@ SuperVibe 检测到 superpowers 则调度它（brainstorming、spec 撰写、TDD
 ```
 claude plugin validate . --strict   # plugin/marketplace manifest 校验
 node tests/check-artifacts.mjs      # 双语配对、模板完整性、装配干跑
-node --test tests/*.test.mjs
+node --test
 ```
 
 零 npm 依赖；Node ≥ 20。
+
+### Windows
+
+安装 Node.js ≥ 20 和 Git for Windows，并确保 `node`、`git` 位于 `PATH`。
+在仓库根目录中使用 PowerShell、命令提示符或 Git Bash 运行上述命令；
+`node --test` 自动发现测试，不依赖 shell 展开通配符。CI 测试使用 LF 检出
+（全新克隆前设置 `git config --global core.autocrlf false`；此全局设置也影响其他仓库），
+本地复现测试时请保留 LF 换行符。含空格的路径需要加引号。
+CLI 脚本通过 `node scripts/<name>.mjs` 运行；provider 命令也必须能够在所选
+宿主环境中执行。
+
+共享账本先刷盘临时文件，再原子替换状态文件。Windows 不支持的目录打开或
+fsync 操作会被跳过，因此不保证断电后的目录项持久性。其他 I/O 错误仍会阻止
+正常成功返回；如果错误提示状态已重命名，请先重读账本，再使用相同的 operation ID
+重试。未检查锁的所有者前，不要删除账本锁。原生 harness/provider 的可用性取决于
+宿主环境，跨平台 Node 测试套件并不能证明其可用。
 
 ## 官网部署
 

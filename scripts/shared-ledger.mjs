@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { samePath } from './path-identity.mjs';
 import { activeWorkers } from './worker-lifecycle.mjs';
 import { execFileSync } from 'node:child_process';
 import { realpathSync, lstatSync, readFileSync } from 'node:fs';
@@ -9,11 +10,11 @@ import { repoPath, sprintData, frontmatter, verifyClean, inspectWorktreeSprints 
 import { acceptancePlan } from './acceptance-contract.mjs';
 const fail = message => { throw new Error(message); };
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
-function projectionIdentity(data, e) { return data.sprint === e.id && data.epic === e.epic && [e.branch, e.worktree].includes(data.worktree); }
+function projectionIdentity(data, e) { return data.sprint === e.id && data.epic === e.epic && (data.worktree === e.branch || (typeof data.worktree === 'string' && isAbsolute(data.worktree) && samePath(data.worktree, e.worktree, { allowMissing: true }))); }
 function carrier(root, e) {
   let target;
   try { target = realpathSync(e.worktree); } catch { fail(`Missing carrier for ${e.id}: ${e.worktree}; reconcile explicitly`); }
-  if (commonDir(target) !== commonDir(root) || git(target, 'symbolic-ref', '--short', 'HEAD') !== e.branch) fail(`Wrong carrier repository/branch for ${e.id}`);
+  if (!samePath(commonDir(target), commonDir(root)) || git(target, 'symbolic-ref', '--short', 'HEAD') !== e.branch) fail(`Wrong carrier repository/branch for ${e.id}`);
   repoPath(target, e.document);
   return target;
 }
@@ -53,7 +54,7 @@ export function initialize(root, sprintsDir, limit, importing = false, mainRef =
     let owners = [];
     for (const location of item.locations) {
       const branch = git(location, 'symbolic-ref', '--short', 'HEAD');
-      if (d.worktree === branch || resolve(location, d.worktree) === location || d.worktree === location) owners.push({ location, branch });
+      if (d.worktree === branch || (isAbsolute(d.worktree) && samePath(d.worktree, location, { allowMissing: true }))) owners.push({ location, branch });
     }
     if (d.state === 'active' && owners.length !== 1) fail(`Ambiguous import carrier for ${d.sprint}; use its exact branch or absolute worktree in the document`);
     const owner = owners[0] ?? { location: root, branch: d.worktree };
@@ -83,7 +84,7 @@ export function mutate(root, command, options) {
       const document = repoPath(root, options['--document']);
       if (!epic || !branch || !isAbsolute(worktree ?? '') || !document.startsWith(`${state.sprintsDir}/`)) fail('Reserve requires epic, branch, absolute worktree and document within sprintsDir');
       git(root, 'check-ref-format', '--branch', branch);
-      if (Object.values(state.sprints).some(s => s.document === document || s.branch === branch || s.worktree === resolve(worktree))) fail('Sprint document/branch/carrier already reserved');
+      if (Object.values(state.sprints).some(s => samePath(resolve(root, s.document), resolve(root, document), { allowMissing: true }) || s.branch === branch || samePath(s.worktree, resolve(worktree), { allowMissing: true }))) fail('Sprint document/branch/carrier already reserved');
       state.sprints[id] = { id, epic, document, branch, worktree: resolve(worktree), state: 'reserved', evidence: null, landing: null };
       return;
     }
@@ -95,7 +96,7 @@ export function mutate(root, command, options) {
       try { git(root, 'show-ref', '--verify', '--quiet', `refs/heads/${e.branch}`); fail('Reservation branch exists; reconcile before cancellation'); }
       catch (error) { if (error.status !== 1) throw error; }
       const registered = git(root, 'worktree', 'list', '--porcelain', '-z').split('\0');
-      if (registered.includes(`worktree ${e.worktree}`)) fail('Reservation has a registered worktree; reconcile before cancellation');
+      if (registered.some(field => field.startsWith('worktree ') && samePath(field.slice(9), e.worktree, { allowMissing: true }))) fail('Reservation has a registered worktree; reconcile before cancellation');
       e.state = 'cancelled';
     } else if (command === 'activate') {
       if (e.state !== 'reserved') fail('activate requires reserved');

@@ -261,10 +261,28 @@ dependency is declared.
 ```
 claude plugin validate . --strict   # plugin/marketplace manifest check
 node tests/check-artifacts.mjs      # bilingual pairing, template completeness, assembly dry-run
-node --test tests/*.test.mjs
+node --test
 ```
 
 Zero npm dependencies; Node ≥ 20.
+
+### Windows
+
+Install Node.js ≥ 20 and Git for Windows, and ensure `node` and `git` are on
+`PATH`. Run the commands above from the repository root in PowerShell, Command
+Prompt, or Git Bash; `node --test` discovers tests without shell wildcard expansion.
+The CI fixtures use LF checkouts (`git config --global core.autocrlf false` before
+a fresh clone); this global setting affects other repositories too. Keep LF line
+endings when reproducing the suite locally. Quote paths containing spaces. CLI scripts run via `node scripts/<name>.mjs`;
+provider commands must also be executable in the selected host environment.
+
+The shared ledger flushes its temporary file before atomically replacing the state.
+On Windows, unsupported directory open/fsync operations are skipped, so directory
+entry durability across power loss is not guaranteed. Other I/O errors remain
+fail-closed; if an error says the state was renamed, reread the ledger and reuse the
+same operation ID when retrying. Do not remove a ledger lock without inspecting its
+owner. Native harness/provider availability is host-specific and is not established
+by the cross-platform Node test suite.
 
 ## Public website deployment
 

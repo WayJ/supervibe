@@ -1,6 +1,7 @@
+import { directoryLink, fileLink } from './filesystem-fixtures.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, lstatSync, readlinkSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, lstatSync, readlinkSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -21,7 +22,7 @@ function fixture(t, configured = true) {
   const root = mkdtempSync(join(tmpdir(), 'supervibe-project-doctor-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const git = (...args) => execFileSync('git', ['-C', root, ...args], { stdio: 'pipe' });
-  git('init', '-b', 'main'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
+  git('init', '-b', 'main'); git('config', 'core.autocrlf', 'false'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
   const put = (p, data) => writeFileSync(join(root, p), data);
   const config = '## supervibe\n- roadmaps_dir: roadmaps\n- sprints_dir: sprints\n- acceptances_dir: acceptances\n- notes: notes\n- wip_limit: 1\n- collaboration_mode: external\n- collaboration_provider: orca\n### gates\n- secret: touch DO_NOT_CREATE; echo password=TOP_SECRET\n';
   if (configured) {
@@ -59,16 +60,19 @@ test('existing write lock stops runtime inspection without stealing lock', t => 
   f.put('.git/supervibe/write.lock/owner.json', '{"password":"TOP_SECRET"}');
   const r = f.run(); assert.equal(check(r, 'ledger.lock').level, 'blocker'); assert.equal(check(r, 'artifacts.inventory').level, 'manual');
 });
-test('unsafe configured paths, config symlink and ledger symlink fail closed', t => {
+test('unsafe configured paths and directory links fail closed', t => {
   const f = fixture(t); f.seed(); f.put('AGENTS.md', f.config.replace('roadmaps_dir: roadmaps', 'roadmaps_dir: ../TOP_SECRET'));
   assert.equal(check(f.run(), 'host.config').level, 'blocker');
-  f.put('AGENTS.md', f.config); rmSync(join(f.root, 'roadmaps'), { recursive: true }); symlinkSync('notes', join(f.root, 'roadmaps'));
+  f.put('AGENTS.md', f.config); rmSync(join(f.root, 'roadmaps'), { recursive: true }); directoryLink(t, 'notes', join(f.root, 'roadmaps'));
   assert.equal(check(f.run(), 'host.config').level, 'blocker');
-  rmSync(join(f.root, 'AGENTS.md')); symlinkSync('base', join(f.root, 'AGENTS.md'));
-  assert.equal(check(f.run(), 'host.config').level, 'blocker');
-  rmSync(join(f.root, '.git/supervibe/state.json')); symlinkSync('../../base', join(f.root, '.git/supervibe/state.json'));
-  assert.equal(check(f.run(), 'ledger.state').level, 'blocker');
 });
+for (const [path, target, id] of [['AGENTS.md', 'base', 'host.config'], ['.git/supervibe/state.json', '../../base', 'ledger.state']]) {
+  test(`${id} file symlink fails closed`, t => {
+    const f = fixture(t); f.seed(); rmSync(join(f.root, path));
+    if (!fileLink(t, target, join(f.root, path))) return;
+    assert.equal(check(f.run(), id).level, 'blocker');
+  });
+}
 test('duplicate artifact IDs, main ref and policy corruption get stable checks', t => {
   const f = fixture(t); f.seed({ ...f.state, mainRef: 'missing', iterationConfigs: { E1: { password: 'TOP_SECRET' } } });
   const epic = '---\nepic: E1\nstatus: open\n---\n## Sprint Breakdown\n| sprint | state | note |\n|---|---|---|\n| S1 | ready | TOP_SECRET |\n';

@@ -14,7 +14,7 @@ function setup(t, limit = 1) {
   const root = mkdtempSync(join(tmpdir(), 'supervibe-shared-'));
   const paths = [root]; t.after(() => paths.forEach(p => rmSync(p, { recursive: true, force: true })));
   const git = (cwd, ...args) => execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', stdio: 'pipe' }).trim();
-  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Test'); git(root, 'config', 'user.email', 'test@example.invalid');
+  git(root, 'init', '-b', 'main'); git(root, 'config', 'core.autocrlf', 'false'); git(root, 'config', 'user.name', 'Test'); git(root, 'config', 'user.email', 'test@example.invalid');
   for (const dir of ['sprints', 'acceptances']) { mkdirSync(join(root, dir)); writeFileSync(join(root, dir, '.gitkeep'), ''); }
   writeFileSync(join(root, 'code.js'), 'baseline'); git(root, 'add', '.'); git(root, 'commit', '-m', 'baseline');
   initialize(root, 'sprints', limit);

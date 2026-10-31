@@ -13,7 +13,7 @@ function fixture(t, mode = 'native') {
   const root = mkdtempSync(join(tmpdir(), 'supervibe-contract-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const git = (cwd, ...args) => execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', stdio: 'pipe' }).trim();
-  git(root, 'init', '-b', 'main');
+  git(root, 'init', '-b', 'main'); git(root, 'config', 'core.autocrlf', 'false');
   git(root, 'config', 'user.name', 'Test'); git(root, 'config', 'user.email', 'test@example.invalid');
   const config = (m = mode) => writeFileSync(join(root, 'AGENTS.md'), `# Host\n## supervibe\n- collaboration_mode: ${m}\n- collaboration_provider: ${m === 'native' ? 'harness' : 'orca'}\n`);
   config(); git(root, 'add', '.'); git(root, 'commit', '-m', 'fixture');
@@ -44,7 +44,7 @@ test('native contract validates but does not dispatch, mutate WIP or accept spri
 });
 test('worker placement rejects independent clone and unreserved linked carrier', t => {
   const f = fixture(t), other = join(f.root, 'independent'), linked = join(f.root, 'linked');
-  mkdirSync(other); f.git(other, 'init', '-b', 'main');
+  mkdirSync(other); f.git(other, 'init', '-b', 'main'); f.git(other, 'config', 'core.autocrlf', 'false');
   assert.throws(() => validateTask(f.root, { ...f.task, worktree: other }), /same local Git common-dir/);
   f.git(f.root, 'worktree', 'add', '-b', 'other', linked);
   assert.throws(() => validateTask(f.root, { ...f.task, worktree: linked }), /sprint carrier/);

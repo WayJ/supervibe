@@ -1,6 +1,7 @@
+import { directoryLink } from './filesystem-fixtures.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, mkdirSync, symlinkSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readHostConfig } from '../scripts/host-config.mjs';
@@ -29,7 +30,7 @@ test('section, keys, gates, directory requirements and maps fail closed', t => {
   assert.equal(readHostConfig(f.root, { requireDirs: ['notes'] }).notes, '.agents/notes/');
 });
 test('contained paths reject traversal, metadata and symlinks even for missing leaves', t => {
-  const f = fixture(t); symlinkSync(tmpdir(), join(f.root, 'escape'));
+  const f = fixture(t); directoryLink(t, tmpdir(), join(f.root, 'escape'));
   for (const value of ['../outside', '/tmp', '.git/state', 'a/../../b', 'escape/new', 'escape', 'a\\b', '<placeholder>']) {
     f.put('## supervibe\n- notes: ' + value + '\n'); assert.throws(() => readHostConfig(f.root), value);
   }

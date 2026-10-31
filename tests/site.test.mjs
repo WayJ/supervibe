@@ -32,7 +32,10 @@ test('Branch Pages publishes only reviewed root copies, not repository runtime s
   const workflow = readFileSync(resolve(root, '.github/workflows/pages.yml'), 'utf8');
   assert.match(workflow, /  verify:/);
   assert.match(workflow, /node tests\/check-artifacts\.mjs/);
-  assert.match(workflow, /node --test tests\/\*\.test\.mjs/);
+  assert.match(workflow, /os: \[ubuntu-latest, windows-latest\]/);
+  assert.match(workflow, /runs-on: \$\{\{ matrix\.os \}\}/);
+  assert.match(workflow, /fail-fast: false/);
+  assert.match(workflow, /^        run: node --test\s*$/m, 'Use Node discovery rather than shell glob expansion');
   assert.doesNotMatch(workflow, /actions\/(?:configure-pages|upload-pages-artifact|deploy-pages)@/);
   assert.doesNotMatch(workflow, /pages: write|id-token: write|  deploy:/);
 });

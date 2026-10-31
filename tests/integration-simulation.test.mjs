@@ -17,7 +17,7 @@ for (const scope of ['sprint', 'roadmap']) for (const mode of ['native', 'extern
  t.after(() => rmSync(root, { recursive: true, force: true }));
  const git=(...a)=>execFileSync('git',['-C',root,...a],{encoding:'utf8',stdio:'pipe'}).trim();
  const write=(p,s)=>writeFileSync(root+'/'+p,s);
- git('init','-b','main');git('config','user.name','Fixture');git('config','user.email','fixture@example.invalid');mkdirSync(root+'/sprints');mkdirSync(root+'/acceptances');
+ git('init','-b','main');git('config','core.autocrlf','false');git('config','user.name','Fixture');git('config','user.email','fixture@example.invalid');mkdirSync(root+'/sprints');mkdirSync(root+'/acceptances');
  const document=scope==='sprint'?'sprints/S1.md':'E1.md',record='acceptances/result.md';
  const sc={...scenario,resourceGroups:['env']};
  const content=scope==='sprint'?'---\nsprint: S1\nstate: active\n---\n':'---\nepic: E1\nstatus: open\nfinal-acceptance-record: null\nfinal-accepted-at: null\n---\n## Sprint Breakdown\n| sprint | state | note |\n|---|---|---|\n| S1 | merged | landed |\n\n## Overall Acceptance\n';

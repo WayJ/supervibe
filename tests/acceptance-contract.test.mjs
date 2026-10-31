@@ -31,7 +31,7 @@ function fixture(t) {
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const git = (...args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: 'pipe' }).trim();
   const write = (path, content) => writeFileSync(join(root, path), content);
-  git('init', '-b', 'main'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
+  git('init', '-b', 'main'); git('config', 'core.autocrlf', 'false'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
   mkdirSync(join(root, 'acceptances'));
   const epic = 'E1.md', record = 'acceptances/E1.md';
   write(epic, '---\nepic: E1\nstatus: open\nfinal-acceptance-record: null\nfinal-accepted-at: null\n---\n## Sprint Breakdown\n\n| sprint | state | note |\n|---|---|---|\n| S1 | started | implemented |\n\n## Overall Acceptance\n' + planBlock('roadmap', [browser]));

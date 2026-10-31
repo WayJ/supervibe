@@ -1,18 +1,18 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,writeFileSync,rmSync,existsSync} from 'node:fs';
+import {mkdtempSync,writeFileSync,rmSync,existsSync,realpathSync,mkdirSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {initializeLedger,readLedger} from '../scripts/ledger-store.mjs';
+import {initializeLedger,readLedger,changeLedger} from '../scripts/ledger-store.mjs';
 import {iterationConfigFingerprint,validateTask,confirmIterationConfig} from '../scripts/collaboration-contract.mjs';
-import {roadmapSnapshot} from '../scripts/validate-workflow.mjs';
+import {roadmapSnapshot,snapshot} from '../scripts/validate-workflow.mjs';
 import {planBlock} from './acceptance-fixtures.mjs';
 import {mutateWorkers,activeWorkers} from '../scripts/worker-lifecycle.mjs';
 const git=(r,...args)=>execFileSync('git',['-C',r,...args],{encoding:'utf8',stdio:'pipe'}).trim();
 function fixture(t) {
  const dir=mkdtempSync(join(tmpdir(),'worker-lifecycle-')), root=join(dir,'repo');
- git(dir,'init','-b','main',root); git(root,'config','user.name','Test');git(root,'config','user.email','test@example.invalid');
+ git(dir,'init','-b','main',root); git(root,'config','core.autocrlf','false'); git(root,'config','user.name','Test');git(root,'config','user.email','test@example.invalid');
  writeFileSync(join(root,'file'),'x');git(root,'add','.');git(root,'commit','-m','fixture');
  t.after(()=>rmSync(dir,{recursive:true,force:true}));
  const config={schema:1,epic:'E1',revision:1,mode:'native',provider:'harness',maxWorkers:3,independentAcceptance:false,status:'confirmed',confirmation:{by:'user',source:'test:user',at:'2026-10-31T00:00:00Z'},allowMixed:false,workerHarness:'inherit'};
@@ -85,4 +85,125 @@ test('roadmap acceptance borrows main under same epic cap with no Sprint reserva
  assert.equal(activeWorkers(readLedger(f.root),'E1').length,1);
  const e=f.start(readLedger(f.root).workerExecutions.entries.final);f.settle(e,'blocked');
  f.call('cleanup',{id:e.id,token:e.token});assert.ok(existsSync(f.root));assert.equal(activeWorkers(readLedger(f.root)).length,0);
+});
+
+function editLegacy(f, edit) {
+ const state=readLedger(f.root);
+ changeLedger(f.root,state.revision,`legacy-${state.revision}`,'legacy-fixture',{},edit);
+}
+const abort = (f,e) => f.call('abort',{id:e.id,token:e.token,quiescence:{by:'coordinator',stopped:true,neverStarted:true,evidenceRef:'never invoked'}});
+const cleanup = (f,e) => f.call('cleanup',{id:e.id,token:e.token,preserveBranch:true});
+
+test('cleanup rejects legacy worker-owned canonical, coordinator and other Sprint carriers',t=>{
+ for(const target of ['sprint','coordinator','other-sprint']) {
+  const f=fixture(t),e=f.reserve('child');
+  const path=target==='coordinator'?f.root:target==='sprint'?f.carrier:e.task.worktree;
+  editLegacy(f,state=>{
+   if(target==='other-sprint') state.sprints.S2={...state.sprints.S1,id:'S2',worktree:path,branch:'child'};
+   state.workerExecutions.entries[e.id].task.worktree=path;
+  });
+  abort(f,e);
+  assert.throws(()=>cleanup(f,e),/Unsafe cleanup target/);
+  assert.ok(existsSync(path));
+  assert.equal(readLedger(f.root).workerExecutions.entries[e.id].cleanup,'cleanup_pending');
+ }
+});
+
+test('ignored content and foreign Git common-dir remain protected during cleanup',t=>{
+ const f=fixture(t),e=f.reserve('child'); abort(f,e);
+ writeFileSync(join(e.task.worktree,'.gitignore'),'secret\n');
+ git(e.task.worktree,'add','.gitignore');git(e.task.worktree,'commit','-m','ignore');
+ writeFileSync(join(e.task.worktree,'secret'),'valuable');
+ cleanup(f,e); assert.ok(existsSync(join(e.task.worktree,'secret')));
+ const other=fixture(t);
+ editLegacy(f,state=>{state.workerExecutions.entries[e.id].task.worktree=other.carrier;});
+ assert.throws(()=>cleanup(f,e),/same local Git common-dir/);
+ assert.ok(existsSync(other.carrier));
+});
+
+// These exercise real Windows Git worktrees, not simulated POSIX filenames.
+const windowsAlias = path => path.replaceAll('\\','/').toUpperCase();
+test('Windows case/slash aliases cannot own the canonical Sprint carrier', {skip:process.platform!=='win32'},t=>{
+ const f=fixture(t),e=f.reserve('borrowed','borrowed',f.carrier),alias=windowsAlias(f.carrier);
+ for(const ownership of ['managed','provider']) {
+  const id=`bad-${ownership}`, task={...e.task,taskId:id,workerExecutionId:id,worktree:alias};
+  assert.throws(()=>f.call('reserve',{id,task,branch:'sprint',ownership}),/borrowed, never worker-owned/);
+ }
+ const task={...e.task,taskId:'alias',workerExecutionId:'alias',worktree:alias};
+ f.call('reserve',{id:'alias',task,branch:'sprint',ownership:'borrowed'});
+ assert.equal(readLedger(f.root).workerExecutions.entries.alias.task.worktree,realpathSync(f.carrier));
+ assert.equal(validateTask(f.root,task).taskId,'alias');
+ abort(f,e);cleanup(f,e); assert.ok(existsSync(f.carrier));
+});
+test('Windows legacy alias cleanup fails closed and duplicate child ownership is rejected', {skip:process.platform!=='win32'},t=>{
+ const f=fixture(t),e=f.reserve('child');
+ const duplicate={...e.task,taskId:'duplicate',workerExecutionId:'duplicate',worktree:windowsAlias(e.task.worktree)};
+ assert.throws(()=>f.call('reserve',{id:'duplicate',task:duplicate,branch:e.branch,ownership:'managed'}),/already has an owner/);
+ editLegacy(f,state=>{state.workerExecutions.entries[e.id].task.worktree=windowsAlias(f.carrier); state.workerExecutions.entries[e.id].branch='sprint';});
+ abort(f,e); assert.throws(()=>cleanup(f,e),/Unsafe cleanup target/); assert.ok(existsSync(f.carrier));
+});
+test('Windows missing worktree registration is detected across case/slash aliases without pruning', {skip:process.platform!=='win32'},t=>{
+ const f=fixture(t),e=f.reserve('child'); abort(f,e);
+ editLegacy(f,state=>{state.workerExecutions.entries[e.id].task.worktree=windowsAlias(e.task.worktree);});
+ rmSync(e.task.worktree,{recursive:true,force:true});
+ assert.throws(()=>cleanup(f,e),/Missing directory still registered/);
+ assert.ok(git(f.root,'worktree','list','--porcelain').includes('refs/heads/child'));
+ assert.ok(git(f.root,'rev-parse','refs/heads/child'));
+});
+
+test('Windows acceptance workers accept canonical carrier aliases but not child carriers', {skip:process.platform!=='win32'},t=>{
+ const f=fixture(t),base=f.reserve('template','borrowed',f.carrier); abort(f,base);
+ const config={...readLedger(f.root).iterationConfigs.E1,revision:2,independentAcceptance:true,confirmation:{by:'user',source:'test:alias-acceptance',at:'2026-10-31T00:00:00Z'}};
+ confirmIterationConfig(f.root,{ledgerRevision:readLedger(f.root).revision,operation:'alias-acceptance',config});
+ mkdirSync(join(f.carrier,'sprints'));
+ writeFileSync(join(f.carrier,'sprints','S1.md'),'---\nsprint: S1\nepic: E1\nstate: active\n---\n'+planBlock('sprint'));
+ const task={...base.task,role:'acceptance',taskId:'accept',workerExecutionId:'accept',worktree:windowsAlias(f.carrier),iterationConfigRevision:2,iterationConfigFingerprint:iterationConfigFingerprint(config),acceptanceContext:{wakeId:'accept',wakeSequence:1,candidate:snapshot(f.carrier,'sprints/S1.md','acceptance.md').fingerprint,build:'sprint',environmentRevision:'test',record:'acceptance.md',developers:[{mode:'native',execution:{workerId:'developer'}}]}};
+ f.call('reserve',{id:'accept',task,branch:'sprint',ownership:'borrowed'});
+ assert.equal(validateTask(f.root,task).taskId,'accept');
+ const child=join(f.carrier,'..','child');git(f.root,'worktree','add','-b','child',child);
+ const other={...task,taskId:'other',workerExecutionId:'other',worktree:windowsAlias(child)};
+ assert.throws(()=>f.call('reserve',{id:'other',task:other,branch:'child',ownership:'managed'}),/Acceptance must target canonical/);
+ const e=f.start(readLedger(f.root).workerExecutions.entries.accept);f.settle(e,'blocked');cleanup(f,e);
+ assert.ok(existsSync(f.carrier));
+});
+
+test('main worktree remains borrowed even when coordinator runs from Sprint carrier',t=>{
+ const f=fixture(t),base=f.reserve('template','borrowed',f.carrier);abort(f,base);
+ for(const ownership of ['managed','provider']) {
+  const id=`main-${ownership}`,task={...base.task,taskId:id,workerExecutionId:id,worktree:process.platform==='win32'?windowsAlias(f.root):f.root};
+  assert.throws(()=>mutateWorkers(f.carrier,'reserve',{ledgerRevision:readLedger(f.root).revision,operation:id,payload:{id,task,branch:'main',ownership}}),/Cannot own main/);
+ }
+ assert.ok(existsSync(f.root));
+});
+
+test('live borrowed child blocks new ownership and legacy owned cleanup until borrower is quiescent',t=>{
+ const f=fixture(t),e=f.reserve('borrower');
+ editLegacy(f,state=>{state.workerExecutions.entries[e.id].ownership='borrowed';});
+ const borrower=f.start(e);
+ const path=process.platform==='win32'?windowsAlias(e.task.worktree):e.task.worktree;
+ for(const ownership of ['managed','provider']) {
+  const id=`owner-${ownership}`,task={...e.task,taskId:id,workerExecutionId:id,worktree:path};
+  assert.throws(()=>f.call('reserve',{id,task,branch:e.branch,ownership}),/already has an owner/);
+ }
+ const owner={...e,id:'legacy-owner',token:'legacy-owner-token',ownership:'managed',task:{...e.task,taskId:'legacy-owner',workerExecutionId:'legacy-owner',worktree:path}};
+ editLegacy(f,state=>{state.workerExecutions.entries[owner.id]=owner;});
+ abort(f,owner);
+ assert.throws(()=>cleanup(f,owner),/another active worker/);
+ assert.ok(existsSync(e.task.worktree));
+ f.settle(borrower,'failed');cleanup(f,owner);
+ assert.equal(existsSync(e.task.worktree),false);
+ assert.ok(git(f.root,'rev-parse',`refs/heads/${e.branch}`));
+});
+
+test('allowedPaths preserves repository-relative directories and wildcard scopes',t=>{
+ const f=fixture(t),e=f.reserve('borrowed','borrowed',f.carrier);
+ for(const path of ['src/','src/**','src/*.mjs','./src/']) {
+  assert.equal(validateTask(f.root,{...e.task,allowedPaths:[path]},false,true).allowedPaths[0],path);
+ }
+});
+test('Windows allowedPaths rejects metadata, drive-relative and alternate-stream aliases', {skip:process.platform!=='win32'},t=>{
+ const f=fixture(t),e=f.reserve('borrowed','borrowed',f.carrier);
+ for(const path of ['.GIT/config','src/.GiT/config','C:foo','C:/foo','src/file:stream','.git./config','.git /config','src./file','src /file']) {
+  assert.throws(()=>validateTask(f.root,{...e.task,allowedPaths:[path]},false,true),/allowedPaths must be repository-relative/);
+ }
 });

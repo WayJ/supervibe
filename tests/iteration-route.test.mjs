@@ -20,6 +20,7 @@ for (const existing of [false, true]) test(`solo routing leaves repository and $
   const dir = mkdtempSync(join(tmpdir(), 'supervibe-route-'));
   try {
     execFileSync('git', ['init', '-q'], { cwd: dir });
+    execFileSync('git', ['config', 'core.autocrlf', 'false'], { cwd: dir });
     const stateDir = join(dir, '.git', 'supervibe');
     const state = join(stateDir, 'state.json');
     const original = '{"revision":12,"sentinel":"must not change"}\n';
