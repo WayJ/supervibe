@@ -9,15 +9,32 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const site = resolve(root, 'site');
 const html = readFileSync(resolve(site, 'index.html'), 'utf8');
 
-test('Pages publishes only the reviewed static files, not repository runtime state', () => {
-  assert.deepEqual(readdirSync(site).sort(), ['app.js', 'icon.svg', 'index.html', 'styles.css']);
-  for (const name of readdirSync(site)) assert(lstatSync(resolve(site, name)).isFile());
+test('Branch Pages publishes only reviewed root copies, not repository runtime state', () => {
+  const publicFiles = ['app.js', 'icon.svg', 'index.html', 'styles.css'];
+  assert.deepEqual(readdirSync(site).sort(), publicFiles);
+  for (const name of publicFiles) {
+    assert(lstatSync(resolve(site, name)).isFile());
+    assert(lstatSync(resolve(root, name)).isFile(), 'Root publication must not use symlinks');
+    assert.deepEqual(readFileSync(resolve(root, name)), readFileSync(resolve(site, name)), name + ' root copy drifted');
+  }
+  assert(!existsSync(resolve(root, '.nojekyll')), '.nojekyll bypasses the publication exclusions');
+  const config = readFileSync(resolve(root, '_config.yml'), 'utf8');
+  assert.match(config, /^theme: null$/m);
+  assert.match(config, /^plugins: \[\]$/m);
+  assert.match(config, /^exclude:$/m);
+  assert.doesNotMatch(config, /^include:/m, 'Do not override publication exclusions');
+  const excluded = [...config.matchAll(/^  - ([A-Za-z0-9_.-]+)$/gm)].map(m => m[1]);
+  assert.equal(new Set(excluded).size, excluded.length);
+  for (const name of readdirSync(root)) {
+    if (publicFiles.includes(name)) assert(!excluded.includes(name), name + ' must be published');
+    else assert(excluded.includes(name), name + ' must be explicitly excluded from Pages');
+  }
   const workflow = readFileSync(resolve(root, '.github/workflows/pages.yml'), 'utf8');
-  assert.match(workflow, /path: site\s/);
-  assert.doesNotMatch(workflow, /path:\s*['"]?\.(?:['"]?\s|\/)/);
-  assert.match(workflow, /needs: verify/);
-  assert.match(workflow, /github\.ref == 'refs\/heads\/main'/);
+  assert.match(workflow, /  verify:/);
+  assert.match(workflow, /node tests\/check-artifacts\.mjs/);
   assert.match(workflow, /node --test tests\/\*\.test\.mjs/);
+  assert.doesNotMatch(workflow, /actions\/(?:configure-pages|upload-pages-artifact|deploy-pages)@/);
+  assert.doesNotMatch(workflow, /pages: write|id-token: write|  deploy:/);
 });
 
 test('Static anchors, local assets and repository documentation links resolve', () => {

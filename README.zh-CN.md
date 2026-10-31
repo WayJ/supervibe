@@ -244,6 +244,19 @@ node --test tests/*.test.mjs
 
 零 npm 依赖；Node ≥ 20。
 
+## 官网部署
+
+GitHub Pages 使用 **Deploy from a branch → main → /(root)**。根目录的
+`index.html`、`styles.css`、`app.js` 和 `icon.svg` 是 `site/` 中四个文件的完整发布副本；
+修改 `site/` 后，将四个文件同步复制到根目录，网站测试会检查是否一致。
+`_config.yml` 排除所有其他顶层条目，避免发布仓库文档和运行/工具文件。
+必须保留 Jekyll 处理：不要添加 `.nojekyll`。新增顶层文件或目录时，同步将其名称
+加入 `exclude` 并运行测试。
+
+`.github/workflows/pages.yml` 仅运行校验，发布由 GitHub 内置 Pages 工作流独立完成，
+分支发布不会等待这个校验任务。若发布必须受校验约束，应设置合并前必需检查。
+发布后，核对目标提交的 Pages 构建、首页及三个资源文件，并确认排除路径不可访问。
+
 ## 许可证
 
 MIT

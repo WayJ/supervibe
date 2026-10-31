@@ -272,6 +272,22 @@ node --test tests/*.test.mjs
 
 Zero npm dependencies; Node ≥ 20.
 
+## Public website deployment
+
+GitHub Pages uses **Deploy from a branch → main → /(root)**. The root
+`index.html`, `styles.css`, `app.js`, and `icon.svg` are exact publication copies
+of `site/`; after editing `site/`, copy all four files to the root. The site tests
+reject drift. `_config.yml` excludes all other top-level entries so repository
+documentation and runtime/tooling files are not published. Keep Jekyll enabled:
+do not add `.nojekyll`. When adding a top-level file or directory, also add its
+name to `exclude` and run the tests.
+
+`.github/workflows/pages.yml` runs verification only; GitHub's built-in Pages
+workflow handles publication independently. Branch publication does not wait for
+this verification job. Use required pre-merge checks if publication must be gated.
+After publishing, verify the Pages build for the pushed commit, the homepage and
+three assets, and that excluded paths are unavailable.
+
 ## License
 
 MIT
