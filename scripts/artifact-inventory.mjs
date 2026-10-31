@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import board from '../web/parser.js';
 import { frontmatter, repoPath, inspectWorktreeSprints } from './validate-workflow.mjs';
+import { samePath } from './path-identity.mjs';
 import { readLedger } from './ledger-store.mjs';
 import { doctor } from './shared-ledger.mjs';
 import { readHostConfig } from './host-config.mjs';
@@ -65,7 +66,7 @@ export function inventory(root, { epic, sprint, config = readHostConfig(root) } 
   let shared;
   try {
     shared = readLedger(root); report.ledgerRevision = shared.revision;
-    if (repoPath(root, config.sprints_dir) !== shared.sprintsDir || config.wip_limit !== shared.wipLimit) issue('ledger-config', 'Host sprint directory/WIP limit differs from shared ledger');
+    if (!samePath(resolve(root, repoPath(root, config.sprints_dir)), resolve(root, shared.sprintsDir), { allowMissing: true }) || config.wip_limit !== shared.wipLimit) issue('ledger-config', 'Host sprint directory/WIP limit differs from shared ledger');
     for (const [id, entry] of Object.entries(shared.sprints)) {
       try { doctor(root, { ...shared, sprints: { [id]: entry } }); } catch (error) { issue('ledger-projection', error.message, entry.document); }
     }

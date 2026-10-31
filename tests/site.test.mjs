@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, lstatSync, existsSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
@@ -53,7 +53,7 @@ test('Static anchors, local assets and repository documentation links resolve', 
     }
     assert(!/^[a-z]+:/i.test(value) && !value.startsWith('/'), 'Unsafe or root-relative asset: ' + value);
     const path = resolve(site, value.split(/[?#]/)[0]);
-    assert(path.startsWith(site + '/') && existsSync(path), value);
+    assert(path.startsWith(site + sep) && existsSync(path), value);
   }
 });
 

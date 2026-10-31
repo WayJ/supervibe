@@ -246,8 +246,8 @@ node --test
 安装 Node.js ≥ 20 和 Git for Windows，并确保 `node`、`git` 位于 `PATH`。
 在仓库根目录中使用 PowerShell、命令提示符或 Git Bash 运行上述命令；
 `node --test` 自动发现测试，不依赖 shell 展开通配符。CI 测试使用 LF 检出
-（全新克隆前设置 `git config --global core.autocrlf false`；此全局设置也影响其他仓库），
-本地复现测试时请保留 LF 换行符。含空格的路径需要加引号。
+；全新克隆时可用 `git clone -c core.autocrlf=false <repository-url>` 将设置限制在
+该仓库内，本地复现测试时请保留 LF 换行符。含空格的路径需要加引号。
 CLI 脚本通过 `node scripts/<name>.mjs` 运行；provider 命令也必须能够在所选
 宿主环境中执行。
 

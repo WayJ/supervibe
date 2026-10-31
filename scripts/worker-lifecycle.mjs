@@ -7,13 +7,15 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { changeLedger, commonDir } from './ledger-store.mjs';
 import { validateTask, validateResult } from './collaboration-contract.mjs';
-import { normalizePathIdentity, pathIdentity, samePath } from './path-identity.mjs';
+import { normalizePathIdentity, pathIdentity, samePath, resolvedPath } from './path-identity.mjs';
 const fail = m => { throw new Error(m); };
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], {encoding:'utf8',stdio:'pipe'}).trim();
 const text = (v, label) => { if (typeof v !== 'string' || !v.trim()) fail(`${label} required`); return v; };
 const canonical = v => Array.isArray(v) ? v.map(canonical) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k => [k,canonical(v[k])])) : v;
 const equal = (a,b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
-const selfResolved = p => normalizePathIdentity(p) === pathIdentity(p);
+// Preserve the no-symlink-placement guard without rejecting Windows 8.3 names,
+// whose expansion is handled by native resolvedPath for ownership identities.
+const selfResolved = p => normalizePathIdentity(p) === normalizePathIdentity(realpathSync(p));
 const taskBinding = task => Object.fromEntries(Object.entries(task).filter(([k]) => k !== 'validation').map(([k,v]) => [k, k === 'worktree' ? pathIdentity(v) : v]));
 const registeredWorktrees = root => git(root,'worktree','list','--porcelain','-z').split('\0').filter(line => line.startsWith('worktree ')).map(line => line.slice(9));
 const registered = (root, path) => registeredWorktrees(root).some(p => samePath(p,path,{allowMissing:true}));
@@ -59,7 +61,7 @@ export function mutateWorkers(root, command, input) {
       if (p.ownership !== 'borrowed' && p.branch === state.mainRef) fail('Cannot own main worktree; it must remain borrowed');
       if (Object.values(entries).some(e => samePath(e.task.worktree,task.worktree,{allowMissing:true}) && ((e.ownership !== 'borrowed' && e.cleanup !== 'removed') || (p.ownership !== 'borrowed' && ['pending','running','unknown'].includes(e.state))))) fail('Child worktree already has an owner');
       if (activeWorkers(state,sprint.epic).length >= state.iterationConfigs[sprint.epic].maxWorkers) fail('Confirmed worker cap exceeded');
-      task.worktree = realpathSync(task.worktree);
+      task.worktree = resolvedPath(task.worktree);
       entries[p.id] = {id:p.id,epic:sprint.epic,...(roadmap ? {scope:'roadmap'} : {sprint:task.sprint}),task,branch:p.branch,ownership:p.ownership,commonDir:commonDir(root),token:randomUUID(),state:'pending',cleanup:'pending'}; return;
     }
     const e = entries[p.id];

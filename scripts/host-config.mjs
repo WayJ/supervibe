@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Read-only host proposals; never confirms iteration policy or runs gates.
 import { readFileSync, lstatSync } from 'node:fs';
-import { resolve, relative, isAbsolute } from 'node:path';
+import { resolve, relative, isAbsolute, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateDocSyncRule } from './doc-sync-rules.mjs';
 const defaults = { roadmaps_dir: 'docs/superpowers/roadmaps/', sprints_dir: 'docs/superpowers/sprints/', acceptances_dir: 'docs/superpowers/acceptances/', notes: '.agents/notes/', debt_tracker: 'docs/tech-debt-tracker.md', wip_limit: 3 };
@@ -10,10 +10,11 @@ const keys = new Set([...Object.keys(defaults), 'collaboration_mode', 'collabora
 const fail = message => { throw new Error(message); };
 export function containedPath(root, value) {
   if (typeof value !== 'string' || !value || isAbsolute(value) || /[\\\s<>]/.test(value) || value.split('/').some(p => ['..', '.', '.git'].includes(p))) fail(`Invalid repository-relative path: ${value}`);
+  if (process.platform === 'win32' && (value.includes(':') || value.split('/').some(p => p.toLowerCase() === '.git' || /[. ]$/.test(p)))) fail(`Invalid Windows repository-relative path: ${value}`);
   const target = resolve(root, value), rel = relative(resolve(root), target);
-  if (!rel || rel.startsWith('../') || isAbsolute(rel)) fail('Path must stay inside repository');
+  if (!rel || rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) fail('Path must stay inside repository');
   let part = resolve(root);
-  for (const component of rel.split('/')) {
+  for (const component of rel.split(sep)) {
     part = resolve(part, component);
     try { if (lstatSync(part).isSymbolicLink()) fail(`Configured path traverses symlink: ${value}`); }
     catch (e) { if (e.code !== 'ENOENT') throw e; }

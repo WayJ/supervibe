@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readHostConfig } from '../scripts/host-config.mjs';
+import { readHostConfig, containedPath } from '../scripts/host-config.mjs';
 function fixture(t, body = '') {
   const root = mkdtempSync(join(tmpdir(), 'supervibe-config-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -66,5 +66,21 @@ test('HTML-commented headings do not establish configuration authority', t => {
     const example = `${prefix}\n## supervibe\n- wip_limit: 99\n## Another heading\n-->\n`;
     f.put(example); assert.throws(() => readHostConfig(f.root), /exactly one/);
     f.put(example + '## supervibe\n- wip_limit: 5\n'); assert.equal(readHostConfig(f.root).wip_limit, 5);
+  }
+});
+
+test('configured paths inspect every ancestor even when descendants do not exist', t => {
+  const f = fixture(t);
+  mkdirSync(join(f.root, 'nested'));
+  directoryLink(t, tmpdir(), join(f.root, 'nested/link'));
+  for (const value of ['nested/link', 'nested/link/missing', 'nested/link/missing/leaf.md']) {
+    assert.throws(() => containedPath(f.root, value), /traverses symlink/, value);
+  }
+  assert.equal(containedPath(f.root, 'nested/missing/leaf.md'), 'nested/missing/leaf.md');
+});
+test('Windows host paths reject drive-relative, metadata and stream aliases', { skip: process.platform !== 'win32' }, t => {
+  const f = fixture(t);
+  for (const value of ['C:outside', 'notes:stream', '.GIT/config', 'nested/.GiT/config', 'notes./leaf', 'notes /leaf']) {
+    assert.throws(() => containedPath(f.root, value), /Invalid/, value);
   }
 });

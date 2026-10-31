@@ -240,14 +240,14 @@ export function inspectWorktreeSprints(root, dirInput, limitInput = Number.MAX_S
       } else copies.set(data.sprint, { identity, data, document: path, inFlight: IN_FLIGHT.has(data.state), locations: [location] });
     }
   }
-  if (!scannedWorktrees.includes(root)) fail('Current worktree ledger directory was not scanned');
+  if (!scannedWorktrees.some(location => samePath(location, root))) fail('Current worktree ledger directory was not scanned');
   const inFlight = [...copies].filter(([, data]) => data.inFlight).map(([id]) => id).sort();
   if (inFlight.length >= limit) fail(`WIP limit ${limit} reached across linked worktrees: ${inFlight.join(', ')}`);
   return { limit, count: inFlight.length, inFlight, scannedWorktrees, missingLedgerDirs, entries: [...copies.values()] };
 }
 export function checkWip(root, dirInput, limitInput) {
   const state = readLedger(root);
-  if (state.sprintsDir !== repoPath(resolve(root), dirInput) || state.wipLimit !== Number(limitInput)) fail('Host configuration differs from shared ledger; reconcile explicitly');
+  if (!samePath(resolve(root, state.sprintsDir), resolve(root, repoPath(resolve(root), dirInput)), { allowMissing: true }) || state.wipLimit !== Number(limitInput)) fail('Host configuration differs from shared ledger; reconcile explicitly');
   const inFlight = Object.values(state.sprints).filter(e => CAPACITY_STATES.has(e.state)).map(e => e.id).sort();
   if (inFlight.length >= state.wipLimit) fail(`Shared WIP limit ${state.wipLimit} reached: ${inFlight.join(', ')}`);
   return { revision: state.revision, limit: state.wipLimit, count: inFlight.length, inFlight };

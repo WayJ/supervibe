@@ -271,9 +271,9 @@ Zero npm dependencies; Node ≥ 20.
 Install Node.js ≥ 20 and Git for Windows, and ensure `node` and `git` are on
 `PATH`. Run the commands above from the repository root in PowerShell, Command
 Prompt, or Git Bash; `node --test` discovers tests without shell wildcard expansion.
-The CI fixtures use LF checkouts (`git config --global core.autocrlf false` before
-a fresh clone); this global setting affects other repositories too. Keep LF line
-endings when reproducing the suite locally. Quote paths containing spaces. CLI scripts run via `node scripts/<name>.mjs`;
+The CI fixtures use LF checkouts. For a fresh local clone, use
+`git clone -c core.autocrlf=false <repository-url>` to keep this setting scoped
+to that repository; keep LF line endings when reproducing the suite locally. Quote paths containing spaces. CLI scripts run via `node scripts/<name>.mjs`;
 provider commands must also be executable in the selected host environment.
 
 The shared ledger flushes its temporary file before atomically replacing the state.

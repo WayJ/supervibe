@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,writeFileSync,rmSync,existsSync,realpathSync,mkdirSync} from 'node:fs';
+import {mkdtempSync,writeFileSync,rmSync,existsSync,mkdirSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -8,6 +8,7 @@ import {initializeLedger,readLedger,changeLedger} from '../scripts/ledger-store.
 import {iterationConfigFingerprint,validateTask,confirmIterationConfig} from '../scripts/collaboration-contract.mjs';
 import {roadmapSnapshot,snapshot} from '../scripts/validate-workflow.mjs';
 import {planBlock} from './acceptance-fixtures.mjs';
+import {samePath} from '../scripts/path-identity.mjs';
 import {mutateWorkers,activeWorkers} from '../scripts/worker-lifecycle.mjs';
 const git=(r,...args)=>execFileSync('git',['-C',r,...args],{encoding:'utf8',stdio:'pipe'}).trim();
 function fixture(t) {
@@ -131,7 +132,7 @@ test('Windows case/slash aliases cannot own the canonical Sprint carrier', {skip
  }
  const task={...e.task,taskId:'alias',workerExecutionId:'alias',worktree:alias};
  f.call('reserve',{id:'alias',task,branch:'sprint',ownership:'borrowed'});
- assert.equal(readLedger(f.root).workerExecutions.entries.alias.task.worktree,realpathSync(f.carrier));
+ assert.equal(samePath(readLedger(f.root).workerExecutions.entries.alias.task.worktree,f.carrier),true);
  assert.equal(validateTask(f.root,task).taskId,'alias');
  abort(f,e);cleanup(f,e); assert.ok(existsSync(f.carrier));
 });

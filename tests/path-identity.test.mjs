@@ -26,6 +26,16 @@ test('filesystem identities resolve existing paths and only allow missing paths 
   const child=join(dir,'child'); mkdirSync(child);
   assert.equal(samePath(child,join(child,'..','child')),true);
   assert.throws(()=>resolvedPath(join(child,'missing')), {code:'ENOENT'});
-  assert.equal(resolvedPath(join(child,'missing','nested'),{allowMissing:true}),join(realpathSync(child),'missing','nested'));
+  assert.equal(resolvedPath(join(child,'missing','nested'),{allowMissing:true}),join(realpathSync.native(child),'missing','nested'));
   assert.equal(samePath(join(child,'missing'),join(child,'other'),{allowMissing:true}),false);
+});
+
+test('Windows native identity reconciles OS temp aliases with long paths, including missing leaves', {skip:process.platform!=='win32'},t=>{
+  // Hosted Windows TMP uses RUNNER~1, while Git records runneradmin. Do not
+  // canonicalize the fixture input: it must retain that OS-provided alias.
+  const dir=mkdtempSync(join(tmpdir(),'long-path-identity-')); t.after(()=>rmSync(dir,{recursive:true,force:true}));
+  const native=realpathSync.native(dir);
+  assert.equal(samePath(dir,native),true);
+  assert.equal(samePath(join(dir,'absent','child'),join(native,'absent','child'),{allowMissing:true}),true);
+  assert.equal(resolvedPath(join(dir,'absent'),{allowMissing:true}),join(native,'absent'));
 });

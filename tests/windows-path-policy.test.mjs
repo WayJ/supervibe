@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { initialize, mutate } from '../scripts/shared-ledger.mjs';
 import { readLedger } from '../scripts/ledger-store.mjs';
-import { repoPath } from '../scripts/validate-workflow.mjs';
+import { repoPath, inspectWorktreeSprints, checkWip } from '../scripts/validate-workflow.mjs';
 import { planBlock } from './acceptance-fixtures.mjs';
 
 function setup(t) {
@@ -56,4 +56,12 @@ test('Windows absolute projection identity accepts Git slash and case aliases', 
   writeFileSync(join(f.worktree, 'sprints', 'S1.md'), `---\nsprint: S1\nepic: E1\nstate: active\nworktree: ${f.worktree.toUpperCase().replaceAll('\\', '/')}\n---\n` + planBlock());
   mutate(f.root, 'activate', f.options('S1'));
   assert.equal(readLedger(f.root).sprints.S1.state, 'active');
+});
+
+
+test('Windows scan membership and WIP config accept differently cased root and directory paths', { skip: process.platform !== 'win32' }, t => {
+  const f = setup(t);
+  const alias = f.root.toUpperCase().replaceAll('\\', '/');
+  assert.equal(inspectWorktreeSprints(alias, 'SPRINTS').scannedWorktrees.length, 1);
+  assert.equal(checkWip(alias, 'SPRINTS', 3).count, 0);
 });

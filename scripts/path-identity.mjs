@@ -18,7 +18,9 @@ export function normalizePathIdentity(path, platform = process.platform) {
 // are not evidence of absence and must fail closed.
 export function resolvedPath(path, { allowMissing = false } = {}) {
   if (typeof path !== 'string' || !isAbsolute(path)) throw new Error('Path identity requires an absolute path');
-  try { return realpathSync(path); }
+  // The JS realpath implementation preserves 8.3 aliases on Windows; native
+  // expands them to the same long path Git records (even for missing descendants).
+  try { return realpathSync.native(path); }
   catch (error) {
     if (!allowMissing || error.code !== 'ENOENT' || dirname(path) === path) throw error;
     return join(resolvedPath(dirname(path), { allowMissing }), basename(path));
