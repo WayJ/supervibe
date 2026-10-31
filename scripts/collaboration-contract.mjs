@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { validateConfig, validateIterationConfig, iterationConfigFingerprint, readIterationConfig } from './iteration-policy.mjs';
 export { validateConfig, validateIterationConfig, iterationConfigFingerprint, readIterationConfig } from './iteration-policy.mjs';
 import { snapshot, roadmapSnapshot, frontmatter } from './validate-workflow.mjs';
+import { readHostConfig } from './host-config.mjs';
 import { fileURLToPath } from 'node:url';
 import { commonDir, readLedger, changeLedger } from './ledger-store.mjs';
 import { validateAcceptanceTask, validateAcceptanceResult, registerAcceptanceWake } from './acceptance-worker.mjs';
@@ -18,15 +19,8 @@ const list = (value, label, nonempty = false) => {
   value.forEach(item => text(item, label)); return value;
 };
 export function readConfig(root) {
-  const source = readFileSync(resolve(root, 'AGENTS.md'), 'utf8');
-  const sections = [...source.matchAll(/^## supervibe\s*\r?\n([\s\S]*?)(?=^## |$(?![\s\S]))/gm)];
-  if (sections.length !== 1) fail('Expected exactly one host ## supervibe section');
-  const get = key => {
-    const hits = [...sections[0][1].matchAll(new RegExp(`^- ${key}:\\s*([^\\r\\n]*)`, 'gm'))];
-    if (hits.length !== 1) fail(`Declare exactly one ${key} in host ## supervibe`);
-    return hits[0][1].replace(/\s*<!--.*?-->\s*$/, '').trim();
-  };
-  return validateConfig({ mode: get('collaboration_mode'), provider: get('collaboration_provider') });
+  const config = readHostConfig(root);
+  return validateConfig({ mode: config.collaboration_mode, provider: config.collaboration_provider });
 }
 // Iteration snapshots are the execution authority; host config is only a proposal.
 export function confirmIterationConfig(root, input) {

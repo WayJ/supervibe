@@ -27,21 +27,13 @@ frontmatter 检查均是投影检查。无存储就停止，显式 init/import�
 
 ## 读取宿主配置（Read host config）
 
-任何动作之前，先在宿主 AGENTS.md 中 grep `## supervibe` 节：
-
-- 本技能读取的配置键：`sprints_dir`、`notes`；子节 `### gates` 与 `### doc_sync_map`。
-- 键缺失时的默认值：`sprints_dir: docs/superpowers/sprints/`、`notes: .agents/notes/`。
-- 该节整体缺失 → STOP：唯一合法的下一步是 `supervibe:roadmap scaffold`——指引过去，其余一律拒绝。
-- 该节确认存在后，解析本技能涉及的已配置目录（`sprints_dir`、`notes`）并核实其存在。缺失 → STOP：指引用户运行 scaffold 或修正配置路径；绝不隐式创建工件——配置路径笔误绝不能静默分叉真源。
-- `### gates` 在这里是必跑清单本身——与 accept 把它当命令来源不同：清单内每条命令都按配置原样运行。清单缺失或为空不是错误——记录「未配置任何门禁」后继续；绝不发明门禁填补沉默。
-- `### doc_sync_map` 支撑下文阶段 1 的欠账终检。
-- 本技能不消费任何模板——frontmatter 翻转遵循台账契约；收口条目遵循 notes 协议。
+在宿主仓库根目录运行 `node "<plugin base dir>/scripts/host-config.mjs" --require-dir sprints_dir --require-dir notes`，使用返回的路径、WIP、原序原样 gates 与映射；非零即停止并展示错误，缺配置/目录仅显式 scaffold 或修正，不自行建目录。roadmap 的 scaffold 可先处理缺配置，其他子命令用 `--require-dir <涉及的目录键>` 验证目录。模板始终从插件目录读取。规则与默认值见[机械预检](../../docs/mechanical-preflight.md)，不再手工 grep/补默认。映射同样约束本技能写出的工件。 阶段 1 来源预检通过后才按返回顺序运行全部 gate，空列表如实记录。
 
 然后解析受收口的 sprint。**普通状态/门禁检查之前，先按「中断与续跑」检查是否已经合并落地，不论载体是否仍存在。**恢复只记录有证据的落地，不授权新合并：
 
 - 参数是 sprint id，绝非路径——参数给了路径 → 询问它所承载 sprint 的 id。
 - 参数缺失 → 询问，列出 `sprints_dir` 中 frontmatter `state` 为 `acceptance` 的文档备选；绝不猜测。
-- 扫 `sprints_dir` 内全部文档找 frontmatter `sprint` 匹配。没有匹配 → 拒绝，言明未知的 sprint id。
+- 通过 `artifact-inventory.mjs --sprint "<sprint-id>"` 的唯一 `selection` 解析身份；非零报告 `issues`，不重新手工扫描。complete 已落地恢复先走专用恢复协议，不因缺 carrier 另造载体。
 - 状态前置：`merged` → 拒绝：已收口——点名 frontmatter 携带的 `merged-commit`。`closed` → 拒绝：已退役；`supervibe:roadmap close` 已经来过。`active` / `acceptance` → 继续；裁决归阶段 2。`state` 缺失或无法识别 → 以畸形 sprint 文档拒绝并点名——封闭枚举绝不在未知取值上继续。
 - 文档的 `worktree` frontmatter 记载承载本 sprint 的 worktree/分支——阶段 1、3、5 都在那里操作。`worktree` 空缺 → 文档畸形；点名拒绝：没有可跑门禁、可合入、可拆除的载体。
 - `worktree` 指向一条已不存在的分支 → 揭穿这处过期、与用户确认之后才信任该字段——绝不静默继续。
@@ -58,11 +50,7 @@ frontmatter 检查均是投影检查。无存储就停止，显式 init/import�
    - 在 sprint 自己的环境里跑：即 frontmatter 记载的 worktree/分支、其栈存活——而不是别处的陈旧构建。对着昨天的工件跑绿的 gate 在合并时刻证明不了任何东西。
    - **门禁证据短路（gate-evidence short-circuit）**：验收记录里的门禁证据块——运行时的分支 tip hash、按原样跑过的 gates 清单、绿的输出——当且仅当分支 tip 现在仍等于记录的 hash、且宿主 gates 清单与记录的逐字节一致时，满足本阶段：tip 没动，意味着那份绿正是对着这棵树挣来的。任何不一致——新 commit、清单变了、没有证据块——都是全量原样重跑。短路是机械等价，绝不是判断。
    - 任一红 → 停，展示失败命令的完整输出并点名该 gate。门禁红着 sprint 就不合并——没有部分分，没有替代：配置的命令要么运行，要么这个 gate 不算绿。
-   - 然后做**欠账终检**——doc-sync 纪律两个检查点核验中的第二个（accept 周期审计漂移；complete 跑欠账终检）。
-   - 枚举本 sprint 的变更路径：worktree 分支对其与 main 线 merge-base 的 diff，加上 sprint 文档 Stories & Tasks 点名的路径——与 accept 漂移审计同一套枚举；两个检查点必须看到同一个 sprint。
-   - 对 `### doc_sync_map` 中 change 模式命中任一变更路径的行，按操作化方式核验：**分支范围**（merge-base..tip）内存在**同时**触碰该变更路径与被映射文档的 commit——文档的更新搭载在欠下该变更的同一 commit 里。在更晚的分支 commit 里更新的文档仍算欠账，直到两者被压合在一起。
-   - 不存在这样的 commit → 欠账 → 停，点名该行、被映射文档与所欠内容。
-   - 未命中的行不欠什么。映射缺失或为空即干净——记录之；绝不发明行。
+   - 欠账终检：使用 accept 同一组参数运行 `doc-sync.mjs`（见[机械预检](../../docs/mechanical-preflight.md)），非零即停止并展示逐行提交/路径欠账。映射为空则如实记录。不得自行重做 glob、merge-base 或同提交判断。
    - 受认可的修复是在分支上 amend/rebase：合并**之前**允许改写分支历史——尚未有任何东西落地——让所欠文档与欠下它的变更落在同一 commit；然后本阶段重跑。complete 绝不自己动手写所欠文档，给自己的门禁刷绿。
 
 2. **验收裁决在案。**

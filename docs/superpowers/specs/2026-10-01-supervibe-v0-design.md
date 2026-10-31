@@ -143,8 +143,9 @@ Sprint 分解节桩行状态；go 决策是战略性的）与 →closed（先 sh
   周期的唯一规范真源（TD-1 收敛，2026-10-01）：merge/sync 技能只承载操作
   指令并以锚点引用本条，修订只发生在本条。**正文唯一真源 =
   签发方 sprint 文档的 Handover Clauses 节**：`{id HC#、目标 sprint、
-  触发器、义务、状态 open|discharged、证据}`；id 扫全部 sprint 文档的
-  Handover Clauses 节取 max+1（空扫描自 1 起）。目标方只存引用：目标
+  触发器、义务、状态 open|discharged、证据}`；id 由 `scripts/clause-ids.mjs reserve` 在共享台账锁/CAS 下
+  原子预留，签发方须已 reserved/active。首次显式停写 bootstrap 扫可见旧引用作为高水位；
+  日常不再扫描 max+1，中断或放弃编号不回收。正文与 discharge 仍由签发 Markdown 管理。目标方只存引用：目标
   sprint 文档已存在 → 其 frontmatter `clauses` 字段加 id；尚未存在（未来
   sprint）→ 签发方条款记录内写 `target: <epic> 分解节 S# 桩行`，start
   实体化该桩行时迁移引用。**生效（binding）**：条款自签发方 sprint 合并

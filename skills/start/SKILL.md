@@ -35,15 +35,7 @@ the same operation ID for an exact uncertain retry. Do not hand-edit the store.
 
 ## Read host config
 
-After entry routing selects iteration, grep the host AGENTS.md for the `## supervibe` section:
-
-- Config keys this skill reads: `roadmaps_dir`, `sprints_dir`, `notes`, `wip_limit`; subsection `### doc_sync_map`.
-- Defaults when a key is absent: `roadmaps_dir: docs/superpowers/roadmaps/`, `sprints_dir: docs/superpowers/sprints/`, `notes: .agents/notes/`, `wip_limit: 3`.
-- Section absent entirely → STOP: the only legal next action is `supervibe:roadmap scaffold` — direct the user there and refuse everything else.
-- Once the section exists, resolve the configured dirs this skill touches (`roadmaps_dir`, `sprints_dir`, `notes`) and verify they exist. Missing → STOP: direct the user to run `supervibe:roadmap scaffold` or fix the config path; never implicitly create artifacts — a config path typo must not silently fork the truth source.
-- Resolve templates as `<plugin base dir>/templates/<file>` (here `sprint.md` and `handover-clause.md`); never assume they live in the host repo.
-- Consult `### doc_sync_map` before writing the sprint doc: if the map covers an artifact path this skill writes, the map takes precedence — the "artifacts this skill writes owe no further doc-sync" exemption holds only for uncovered paths.
-- Gate commands from `### gates` are not this skill's concern — gates bind at accept and complete; starting runs none.
+From the host root run `node "<plugin base dir>/scripts/host-config.mjs" --require-dir roadmaps_dir --require-dir sprints_dir --require-dir notes`. Use its returned paths, WIP, ordered verbatim gates and mappings; nonzero stops with the error, never implicit directory creation. Only explicit scaffold may handle missing config/directories; roadmap non-scaffold actions add `--require-dir <touched-directory-key>`. Resolve templates from the plugin directory. See [mechanical preflight](../../docs/mechanical-preflight.md) for grammar/defaults; do not reimplement parsing. Mappings also bind artifacts this skill writes.
 
 ## Overall iteration collaboration confirmation
 
@@ -77,8 +69,7 @@ or provisioning. The protocol coordinates cooperating workers, not OS-level isol
 
 ## Locate the stub
 
-- Find the epic doc in `roadmaps_dir` whose frontmatter `epic` id matches. No doc matches → reject, naming the unknown epic id.
-- In its Sprint Breakdown section, find the stub row carrying the given sprint id — the id is mandatory because one epic may hold several `ready` stubs (parallel waves). No matching row → reject, naming the unknown sprint id. No Sprint Breakdown section at all → reject, naming the malformed epic doc — not an unknown sprint id.
+- Run `node "<plugin base dir>/scripts/artifact-inventory.mjs" --epic "<epic-id>" --sprint "<sprint-id>"`; use its unique `selection`. Nonzero blocks on the returned `issues`; never manually guess identities or repair authority.
 - The stub must be in `ready` state:
   - `planned` → reject and route to `supervibe:roadmap ready` — the go decision is strategic and is not made here.
   - `started` → reject: already materialized; name the existing sprint doc (frontmatter `sprint` match in `sprints_dir`).
@@ -100,7 +91,7 @@ Four rulings before any file is written — each either blocks the start or shap
    - Material overlap → not safe as an early start: wait, or route the overlap through ruling 4.
 4. **Deferred dependency** — implement now on the current baseline as if the depended-on sprint were already merged, and bind the future review with a handover clause.
    - Register the clause per `templates/handover-clause.md` in this sprint doc's Handover Clauses section — the issuing side is the single source of truth for clause text; every other artifact holds references only.
-   - **Clause id HC#: scan every sprint doc's Handover Clauses sections for max+1 (an empty scan starts at 1).**
+   - **Decide the obligation here; allocate its HC ID only after the sprint reservation below succeeds.** Use `clause-ids.mjs reserve`, never a Markdown max+1 scan. One-time legacy bootstrap must follow `docs/clause-id-allocation.md` with old writers quiescent; missing/unreadable state blocks allocation.
    - Target reference per the migration rule: target sprint doc exists → append the HC# to its frontmatter `clauses` list; future sprint with no doc yet → record `target: <epic> breakdown S#` inside the clause itself.
    - Two write moments: the clause body goes into the doc being created now; the target-side frontmatter append happens immediately when the target doc exists — a future target's reference migrates at its own materialization.
 
@@ -123,6 +114,17 @@ branch and registered worktree are all absent. Otherwise resume or report the
 blocker; never cancel active work. Cancelled IDs remain reserved against reuse. State is shared across linked worktrees, not independent
 clones. A missing store requires explicit init/import, never a directory scan.
 
+After the sprint is reserved, allocate each previously decided handover obligation:
+
+```sh
+node "<plugin base dir>/scripts/clause-ids.mjs" reserve --issuer "<sprint-id>" --revision "<current-revision>" --operation "<stable-clause-operation>"
+```
+
+Use the returned ID in the issuing document and target references. Read the new revision
+before the next allocation; exact retries keep the same operation and issuer. If the
+namespace is absent, stop for explicit quiescent bootstrap, not an implicit scan/reset.
+Do not allocate a clause before the issuer exists in shared reserved/active state.
+
 ## Read history first
 
 Notes are a cross-sprint knowledge asset, not a diary — read them before writing a line of plan:
@@ -134,7 +136,7 @@ Notes are a cross-sprint knowledge asset, not a diary — read them before writi
 
 ## Materialize the sprint doc
 
-Pre-flight, before creating anything — duplicate-materialization guard: scan `sprints_dir` for any doc whose frontmatter `sprint` equals this id. A doc exists while the stub says `ready` → STOP and name the collision — fork risk (a git rollback lost the stub flip, or the doc was materialized out of band); never overwrite, never create a second doc. The mirrored anomaly — stub already `started` while no doc matches → STOP and surface it (the doc was lost); never silently re-materialize.
+Immediately before creation, rerun the inventory command above; duplicate documents, ready-but-materialized or started-without-document issues block. Never overwrite or silently rematerialize.
 
 1. After successful shared reservation, create the named carrier and `<sprints_dir>/YYYY-MM-DD-<sprint>-plan.md` from `templates/sprint.md`. The file date is the materialization date (today), not the stub's planning date. Frontmatter `{sprint, epic, state: active, worktree, early-start, deferred-dependency, clauses, acceptance-record: null, accepted-at: null, merged-commit: null}`:
    - `worktree` — the worktree/branch that will carry this sprint (one sprint = one worktree/branch).
@@ -171,7 +173,7 @@ Agent collaboration has exactly two routes, confirmed per epic (host `## supervi
 - This skill owns shared `reserve` and `reserved → active` activation, plus a `ready` stub → `started` and active Markdown projection. Never planned→ready (roadmap), never acceptance/merged/closed (accept/complete/roadmap), never clause discharge (sync).
 - Never materialize a sprint doc by any other path — `sprints/` docs come only from `ready` stubs.
 - DoD verbatim, always — the epic doc is its only home.
-- HC# ids are never reused: max+1 across every sprint doc's Handover Clauses sections; an empty scan starts at 1.
+- HC# IDs come only from atomic `clause-ids.mjs reserve` receipts; interrupted/abandoned reservations are never reused. Clause bodies remain in issuing Markdown.
 - Clause text lives only in the issuing sprint doc; every other artifact holds references.
 - The sprint doc and its opening note are written in the same act — a materialized sprint without its opening note is incomplete.
 - Every mutation — stub flip, doc creation, clause registration, migrated reference — carries date + evidence link.

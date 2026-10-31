@@ -25,20 +25,15 @@ frontmatter 检查均是投影检查。无存储就停止，显式 init/import�
 
 ## 读取宿主配置（Read host config）
 
-任何动作之前，先在宿主 AGENTS.md 中 grep `## supervibe` 节：
+在宿主仓库根目录运行 `node "<plugin base dir>/scripts/host-config.mjs" --require-dir sprints_dir --require-dir notes`，使用返回的路径、WIP、原序原样 gates 与映射；非零即停止并展示错误，缺配置/目录仅显式 scaffold 或修正，不自行建目录。roadmap 的 scaffold 可先处理缺配置，其他子命令用 `--require-dir <涉及的目录键>` 验证目录。模板始终从插件目录读取。规则与默认值见[机械预检](../../docs/mechanical-preflight.md)，不再手工 grep/补默认。映射同样约束本技能写出的工件。
 
-- 本技能读取的配置键：`sprints_dir`、`notes`。
-- 键缺失时的默认值：`sprints_dir: docs/superpowers/sprints/`、`notes: .agents/notes/`。
-- 该节整体缺失 → STOP：唯一合法的下一步是 `supervibe:roadmap scaffold`——指引过去，其余一律拒绝。
-- 该节确认存在后，解析本技能涉及的已配置目录（`sprints_dir`）并核实其存在。缺失 → STOP：指引用户运行 scaffold 或修正配置路径；绝不隐式创建工件——配置路径笔误绝不能静默分叉真源。
-- 本技能不消费任何模板——条款记录本就存放在它读取的各签发方 sprint 文档里。
-- `### gates` 的 gate 命令不是本技能的事——门禁约束在 accept 与 complete；集成一条都不跑。
+全局 inventory 的结构歧义在派发前阻塞整个运行；下文“逐目标继续”仅适用于通过预检后的执行失败。
 
 先从共享条目解析目标，再打开 Markdown 投影。不能仅凭当前分支目录推断运行目标集合：
 
 - 参数是 sprint id 或 `all`，绝非路径——参数给了路径 → 询问它所承载 sprint 的 id。
 - 参数缺失 → 询问，列出 `sprints_dir` 中 frontmatter `state` 为 `active` 或 `acceptance` 的文档备选；绝不猜测。
-- sprint id → 扫 `sprints_dir` 内全部文档找 frontmatter `sprint` 匹配。没有匹配 → 拒绝，言明未知的 sprint id。
+- 通过 `artifact-inventory.mjs --sprint "<sprint-id>"` 的唯一 `selection` 解析身份；非零报告 `issues`，不重新手工扫描。
 - 可介入的状态：`active` / `acceptance` → 完整序列——merge、冲突复核清单、条款核查、兑现。`merged` / `closed` 被具名 → 只跑条款核查 + 兑现通道，不 merge：文档存续于 main 上的 `sprints_dir`，可能仍带 open 条款引用，且验证可能落在目标自身 merge 之时或之后——条款生命周期不能在那里死路。`all` 之下跳过 merged/closed——`all` 的语义恰好是 active+acceptance 集合，不再更宽。`state` 缺失或无法识别 → 在报告中揭穿该畸形文档并跳过；绝不猜测状态。
 - `all` 在空的 active+acceptance 集合上 → 没有在途线：报告后停止——空集上的 `all` 是无操作，不是错误。
 - 每个目标各得一份报告。红结束的是那个 sprint 的集成，绝不是整轮运行：其余目标照样同步，各自出各自的报告。

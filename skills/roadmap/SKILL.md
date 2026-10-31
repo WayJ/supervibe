@@ -33,15 +33,7 @@ the same operation ID for an exact uncertain retry. Do not hand-edit the store.
 
 ## Read host config first
 
-Before any subcommand, grep the host AGENTS.md for the `## supervibe` section:
-
-- Config keys: `roadmaps_dir`, `sprints_dir`, `acceptances_dir`, `notes`, `debt_tracker`, `wip_limit`; subsections `### gates` and `### doc_sync_map`.
-- Defaults when a key is absent: `roadmaps_dir: docs/superpowers/roadmaps/`, `sprints_dir: docs/superpowers/sprints/`, `acceptances_dir: docs/superpowers/acceptances/`, `notes: .agents/notes/`, `debt_tracker: docs/tech-debt-tracker.md`, `wip_limit: 3`.
-- If the section is absent entirely, the only legal next action is `scaffold` — refuse everything else and say so.
-- Once the section exists, resolve the configured dirs this subcommand touches and verify they exist. Missing → STOP: direct the user to run `scaffold` or fix the config path; never implicitly create artifacts outside `scaffold` — a config path typo must not silently fork the truth source.
-- Resolve templates as `<plugin base dir>/templates/<file>`; never assume they live in the host repo.
-- Read gate commands from `### gates`; never invent commands, runners, or stack specifics.
-- Consult `### doc_sync_map` before any edit that touches a mapped path. If the map covers an artifact path this skill writes (epic doc, sprint doc, debt tracker), the map takes precedence — the "artifacts this skill writes are themselves documentation and owe no further doc-sync" exemption applies only to paths the map does not cover.
+From the host root run `node "<plugin base dir>/scripts/host-config.mjs"`. Use its returned paths, WIP, ordered verbatim gates and mappings; nonzero stops with the error, never implicit directory creation. Only explicit scaffold may handle missing config/directories; roadmap non-scaffold actions add `--require-dir <touched-directory-key>`. Resolve templates from the plugin directory. See [mechanical preflight](../../docs/mechanical-preflight.md) for grammar/defaults; do not reimplement parsing. Mappings also bind artifacts this skill writes.
 
 Collaboration configuration has no default: `collaboration_mode` / `collaboration_provider` must be selected as `native` / `harness` or `external` / `orca`. During scaffold, explain both routes and ask the user to choose; leave them explicitly unconfigured if no choice is supplied. Existing selections are not overwritten. Missing/invalid config blocks delegation, not roadmap editing; unavailable capabilities never silently change the selection. See [collaboration modes](../../docs/collaboration-modes.md).
 

@@ -30,6 +30,8 @@ For required scenarios declaring `resourceGroups`, acquire and check the actual 
 
 ## Roadmap final integration route
 
+For Roadmap doc-sync, use the explicitly recorded iteration-start commit as `--base` and the integrated main HEAD as `--tip`; never present main diffed against itself as a whole-roadmap audit. If the baseline is unknown, clarify and record it rather than guessing the range.
+
 For `accept roadmap <epic-id or path>`, review the epic's upfront Overall
 Acceptance Scenarios, not an individual sprint. Resolve host roadmaps_dir and
 acceptances_dir; read shared status for the configured mainRef and confirm all
@@ -77,24 +79,18 @@ the same operation ID for an exact uncertain retry. Do not hand-edit the store.
 
 ## Inputs
 
-Before anything, grep the host AGENTS.md for the `## supervibe` section:
-
-- Config keys this skill reads: `sprints_dir`, `acceptances_dir`, `notes`; subsections `### gates` and `### doc_sync_map`.
-- Defaults when a key is absent: `sprints_dir: docs/superpowers/sprints/`, `acceptances_dir: docs/superpowers/acceptances/`, `notes: .agents/notes/`.
-- Section absent entirely → STOP: the only legal next action is `supervibe:roadmap scaffold` — direct the user there and refuse everything else.
-- Once the section exists, resolve the configured dirs this skill touches (`sprints_dir`, `acceptances_dir`, `notes`) and verify they exist. Missing → STOP: direct the user to run scaffold or fix the config path; never implicitly create artifacts — a config path typo must not silently fork the truth source.
-- Resolve the template as `<plugin base dir>/templates/acceptance-record.md`; never assume it lives in the host repo.
-- `### gates` is a command source, not a checklist to run wholesale: when a scenario names a gate, run the configured command verbatim; never invent commands, runners, or stack specifics.
-- Consult `### doc_sync_map` before writing the acceptance record: if the map covers an artifact path this skill writes, the map takes precedence — the "artifacts this skill writes owe no further doc-sync" exemption holds only for uncovered paths.
+From the host root run `node "<plugin base dir>/scripts/host-config.mjs" --require-dir sprints_dir --require-dir acceptances_dir --require-dir notes`. Use its returned paths, WIP, ordered verbatim gates and mappings; nonzero stops with the error, never implicit directory creation. Only explicit scaffold may handle missing config/directories; roadmap non-scaffold actions add `--require-dir <touched-directory-key>`. Resolve templates from the plugin directory. See [mechanical preflight](../../docs/mechanical-preflight.md) for grammar/defaults; do not reimplement parsing. Mappings also bind artifacts this skill writes. Run only scenario-named gates here; the helper executes none.
 
 Then resolve the sprint under review:
 
-- Argument: a sprint id or a direct sprint-doc path. Absent → ask, listing the docs in `sprints_dir` whose frontmatter `state` is `active` or `acceptance`; never guess.
-- Sprint id → scan every doc in `sprints_dir` for a frontmatter `sprint` match. No match → reject, naming the unknown sprint id. Direct path → the file must exist and carry a `sprint` frontmatter field; otherwise reject, naming the path.
+- Argument: a sprint id or a direct sprint-doc path (resolve the exact document in the inventory output, then use its unique ID). Absent → ask, listing the docs in `sprints_dir` whose frontmatter `state` is `active` or `acceptance`; never guess.
+- Resolve identity through the unique `selection` from `artifact-inventory.mjs --sprint "<sprint-id>"`; nonzero reports `issues`, not another manual scan.
 - State precondition: `active` or `acceptance` → proceed with a **full fresh review**, never reuse the old scenario verdict. `merged` / `closed` → reject: past the gate. Unknown or missing state → reject.
 - Before **every** review, call `shared-ledger.mjs review-begin` with ID/revision/operation flags, clearing shared evidence and setting shared active. Then project `state: active` and append a dated re-review note; preserve the previous record as history. This revokes the old pass before any command runs, so an interrupted review cannot leave it usable. Never rewrite the previous record.
 
 ## Bind evidence to the reviewed tree
+
+Before the initial snapshot, ensure source and owed-document changes are committed together on this branch under the applicable authorization. If committing is not authorized, pause and explain; do not commit/rewrite history merely to green a check. Acceptance records/metadata may be committed afterward; uncommitted source cannot satisfy doc-sync.
 
 From the host repository root, choose the new, not-yet-existing acceptance record path (including a suffix on re-runs), then run:
 
@@ -179,13 +175,7 @@ Each entry carries the exact command line and its observed output — a workarou
 
 ## Doc-drift audit
 
-The periodic doc-sync checkpoint of this skill — the counterpart to complete's final arrears check:
-
-- Enumerate the sprint's changed paths: the branch recorded in the sprint doc's `worktree` frontmatter diffed against its base — the merge-base with the main line — plus the paths named in the doc's Stories & Tasks.
-- For each row of the host's `### doc_sync_map`: does the row's change pattern match any changed path? Match → open the mapped doc and check that it reflects the change. No match → the row owes nothing this sprint.
-- An absent or empty map is a clean audit — record that no rows were configured; never invent rows.
-- Emit a drift report section in the record: per row — matched paths, the mapped doc's state (current / drifted), drift detail.
-- Drift on a triggered row is doc-sync arrears: direct the fix now and re-audit, or the verdict carries it — a pass cannot ride on unpaid drift on rows this sprint triggered.
+In the sprint carrier run `node "<plugin base dir>/scripts/doc-sync.mjs" --base "<stored-mainRef>" --tip HEAD --epic-document "<epic-doc>" --task-path "<explicit-task-path>"` (repeat `--task-path` for each explicit Stories & Tasks path; omit when none). Use the returned matches/arrears; nonzero cannot authorize pass. Never infer paths from prose. Open every triggered document and judge whether its content reflects the change; record current/drifted with evidence. The helper proves only paths/commit co-occurrence, not semantic correctness; drift blocks pass.
 
 ## Verdict + record
 

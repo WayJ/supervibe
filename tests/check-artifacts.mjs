@@ -189,6 +189,10 @@ function main() {
     for (const name of ['acceptance-record.md', 'roadmap-acceptance-record.md']) ok((readIf(join(TPL, name)) ?? '').includes('supervibe-resource-execution'), `${name}: conditional resource receipt`);
     ok(existsSync('scripts/iteration-policy.mjs'), 'shared iteration policy validator exists');
     ok(existsSync('scripts/acceptance-worker.mjs'), 'bounded acceptance worker validator exists');
+    for (const name of ['host-config.mjs', 'artifact-inventory.mjs', 'doc-sync.mjs', 'clause-ids.mjs']) ok(existsSync(`scripts/${name}`), `mechanical script ${name} exists`);
+    for (const skill of ['roadmap', 'start', 'accept', 'complete', 'sync']) for (const file of ['SKILL.md', 'SKILL.zh.md']) ok((readIf(join(SKILLS, skill, file)) ?? '').includes('host-config.mjs'), `${skill}/${file}: shared host parser`);
+    for (const file of ['SKILL.md', 'SKILL.zh.md']) ok((readIf(join(SKILLS, 'start', file)) ?? '').includes('clause-ids.mjs'), `start/${file}: atomic clause ID allocator`);
+    ok((readIf(join(TPL, 'handover-clause.md')) ?? '').includes('clause-ids.mjs'), 'clause template uses reserved IDs');
     checkBoard();
     ok(existsSync('scripts/validate-workflow.mjs'), 'workflow validator exists');
     ok(existsSync('scripts/shared-ledger.mjs'), 'shared ledger CLI exists');

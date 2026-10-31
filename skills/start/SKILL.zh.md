@@ -33,15 +33,7 @@ frontmatter 检查均是投影检查。无存储就停止，显式 init/import�
 
 ## 读取宿主配置（Read host config）
 
-入口分流选择迭代后，在宿主 AGENTS.md 中 grep `## supervibe` 节：
-
-- 本技能读取的配置键：`roadmaps_dir`、`sprints_dir`、`notes`、`wip_limit`；子节 `### doc_sync_map`。
-- 键缺失时的默认值：`roadmaps_dir: docs/superpowers/roadmaps/`、`sprints_dir: docs/superpowers/sprints/`、`notes: .agents/notes/`、`wip_limit: 3`。
-- 该节整体缺失 → STOP：唯一合法的下一步是 `supervibe:roadmap scaffold`——指引过去，其余一律拒绝。
-- 该节确认存在后，解析本技能涉及的已配置目录（`roadmaps_dir`、`sprints_dir`、`notes`）并核实其存在。缺失 → STOP：指引用户运行 `supervibe:roadmap scaffold` 或修正配置路径；绝不隐式创建工件——配置路径笔误绝不能静默分叉真源。
-- 模板按 `<plugin base dir>/templates/<file>` 解析（此处为 `sprint.md` 与 `handover-clause.md`）；绝不假设它们在宿主仓库里。
-- 写 sprint 文档之前先查 `### doc_sync_map`：若映射表覆盖了本技能写的工件路径，以映射表为准——「本技能写出的工件不欠进一步 doc-sync」的豁免仅适用于未覆盖的路径。
-- `### gates` 的 gate 命令与本技能无关——gate 在 accept 与 complete 处生效；start 不运行任何 gate。
+在宿主仓库根目录运行 `node "<plugin base dir>/scripts/host-config.mjs" --require-dir roadmaps_dir --require-dir sprints_dir --require-dir notes`，使用返回的路径、WIP、原序原样 gates 与映射；非零即停止并展示错误，缺配置/目录仅显式 scaffold 或修正，不自行建目录。roadmap 的 scaffold 可先处理缺配置，其他子命令用 `--require-dir <涉及的目录键>` 验证目录。模板始终从插件目录读取。规则与默认值见[机械预检](../../docs/mechanical-preflight.md)，不再手工 grep/补默认。映射同样约束本技能写出的工件。
 
 ## 整体迭代协作确认
 
@@ -69,8 +61,7 @@ epic 首个 sprint 启动前统一向用户询问一次：模式、并发 worker
 
 ## 定位桩行（Locate the stub）
 
-- 在 `roadmaps_dir` 中找到 frontmatter `epic` id 匹配的 epic 文档。没有匹配 → 拒绝，言明未知的 epic id。
-- 在其 Sprint Breakdown 节中找到携带给定 sprint id 的桩行——id 必填，因为一个 epic 可同时挂多条 `ready` 桩行（并行波次）。没有匹配行 → 拒绝，言明未知的 sprint id。根本没有 Sprint Breakdown 节 → 拒绝，点名畸形的 epic 文档——而非未知 sprint id。
+- 运行 `node "<plugin base dir>/scripts/artifact-inventory.mjs" --epic "<epic-id>" --sprint "<sprint-id>"`，使用唯一 `selection`；非零按 `issues` 阻塞，绝不自行扫描猜测或修复权威。
 - 桩行必须处于 `ready` 状态：
   - `planned` → 拒绝并路由到 `supervibe:roadmap ready`——go 决策是战略性的，不在此处做出。
   - `started` → 拒绝：已实体化；点名既存的 sprint 文档（在 `sprints_dir` 中按 frontmatter `sprint` 匹配）。
@@ -92,7 +83,7 @@ epic 首个 sprint 启动前统一向用户询问一次：模式、并发 worker
    - 实质重叠 → 作为 early start 不安全：等待，或把重叠部分路由到裁决 4。
 4. **候补依赖（deferred dependency）**——在当前基线上视同被依赖 sprint 已合入先行实现，并以交接条款绑定未来复核。
    - 按 `templates/handover-clause.md` 在本 sprint 文档的 Handover Clauses 节登记条款——签发方是条款正文的唯一真源；其他一切工件只存引用。
-   - **条款 id HC#：扫全部 sprint 文档的 Handover Clauses 节取 max+1（空集扫描从 1 起）。**
+   - **此处判断义务，待下方 sprint 预留成功后才分配 HC 编号。** 调用 `clause-ids.mjs reserve`，不再扫描 Markdown 取 max+1。首次旧数据迁移遵循 `docs/clause-id-allocation.md`，确认旧写入已停止；缺失或不可读状态阻止分配。
    - 目标引用按迁移规则：目标 sprint 文档已存在 → 把 HC# 追加进其 frontmatter `clauses` 列表；目标是尚无文档的未来 sprint → 在条款本身记录 `target: <epic> breakdown S#`。
    - 两个写入时机：条款正文写入现在创建的文档；目标侧 frontmatter 追加在目标文档已存在时立即发生——未来目标的引用在其自身实体化时迁移。
 
@@ -109,6 +100,16 @@ node "<plugin base dir>/scripts/shared-ledger.mjs" reserve --id "<sprint-id>" --
 失败启动保留槽位，不自动过期、不抢锁。仅计划路径、本地分支和登记 worktree 全部不存在时，可用 cancel-reservation 加 ID/revision/operation 显式取消未使用预留；否则恢复或报告阻碍，不取消 active。cancelled ID 保留且不复用。关联 worktree 共享状态，独立克隆不共享。
 无存储必须显式 init/import，绝不回退目录扫描。
 
+Sprint 预留完成后，为已决定的每项交接义务分配编号：
+
+```sh
+node "<plugin base dir>/scripts/clause-ids.mjs" reserve --issuer "<sprint-id>" --revision "<当前版本>" --operation "<稳定条款操作ID>"
+```
+
+将返回编号写入签发文档及目标引用。下一次分配前读取新 revision；同次重试保持 operation
+和 issuer 不变。命名空间尚未初始化则停止并显式进行停写迁移，不隐式扫描或重置。
+签发方必须已经处于共享 reserved/active 状态，不能提前分配。
+
 ## 先读史（Read history first）
 
 notes 是跨 sprint 的知识资产，不是流水账——写一行 plan 之前先读它：
@@ -120,7 +121,7 @@ notes 是跨 sprint 的知识资产，不是流水账——写一行 plan 之前
 
 ## 实体化 sprint 文档（Materialize the sprint doc）
 
-动笔创建任何东西之前先预检——防重复实体化：扫 `sprints_dir`，找出 frontmatter `sprint` 等于本 id 的文档。文档存在而桩行仍是 `ready` → STOP 并点名碰撞——分叉风险（git 回滚丢了桩行翻转，或文档被带外实体化）；绝不覆盖，绝不创建第二份文档。镜像异常——桩行已是 `started` 却无文档匹配 → STOP 并揭开异常（文档丢了）；绝不静默重新实体化。
+创建前重跑上述 inventory 命令；重复文档、ready 已实体化或 started 丢文档均阻塞，不覆盖或隐式重新实体化。
 
 1. 共享预留成功后，创建命名载体，并以 `templates/sprint.md` 创建 `<sprints_dir>/YYYY-MM-DD-<sprint>-plan.md`。文件日期是实体化日期（今天），不是桩行的规划日期。frontmatter `{sprint, epic, state: active, worktree, early-start, deferred-dependency, clauses, acceptance-record: null, accepted-at: null, merged-commit: null}`：
    - `worktree`——承载本 sprint 的 worktree/分支（一个 sprint = 一个 worktree/分支）。
@@ -157,7 +158,7 @@ Agent 协作只有两条路，按 epic 确认选择（宿主 `## supervibe` 提�
 - 本技能拥有共享 reserve 与 reserved → active 激活，外加 ready 桩行 → started 和 active Markdown 投影。绝不 planned→ready（roadmap），绝不 acceptance/merged/closed（accept/complete/roadmap），绝不做条款兑现（sync）。
 - 绝不经由其他路径实体化 sprint 文档——`sprints/` 文档只来自 `ready` 桩行。
 - DoD 永远逐字——epic 文档是其唯一归宿。
-- HC# id 绝不复用：扫全部 sprint 文档的 Handover Clauses 节取 max+1；空集扫描从 1 起。
+- HC# 编号仅来自 `clause-ids.mjs reserve` 原子预留回执；中断或放弃的编号也不复用。正文仍由签发方 Markdown 保存。
 - 条款正文只活在签发方 sprint 文档；其他一切工件只存引用。
 - sprint 文档与其开线条目在同一动作里写出——没有开线条目的实体化 sprint 是不完整的。
 - 每次变更——桩行翻转、文档创建、条款登记、迁移引用——都携带日期 + 证据链接。

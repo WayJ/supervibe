@@ -4,8 +4,9 @@
 The clause BODY lives only in the issuing sprint doc's Handover Clauses
 section — the single source of truth; every other artifact holds references
 only (a target doc's frontmatter clauses list carries the HC#, nothing
-more). Ids: HC# by max+1 across every sprint doc's Handover Clauses
-sections; an empty scan starts at 1; ids are never reused. Target reference
+more). Ids: use the receipt from scripts/clause-ids.mjs reserve after the issuer
+sprint is reserved/active. Explicit legacy bootstrap is required once; never
+scan Markdown for routine allocation, reset the counter or reuse an abandoned ID. Target reference
 rule: target doc exists → append the HC# to its frontmatter clauses list;
 future target with no doc yet → the target field below records "<epic>
 breakdown S#" and the reference migrates at that stub's materialization.
@@ -14,7 +15,7 @@ recorded back HERE in the issuing doc's clause record; never at merge. -->
 
 Field block per clause:
 
-- id HC#: <!-- placeholder: clause id, max+1 across every sprint doc's Handover Clauses sections -->
+- id HC#: <!-- placeholder: HC id returned by atomic clause-ids.mjs reserve -->
 - issuer sprint: <!-- placeholder: sprint id whose doc holds the clause text; omitted as a column when the record lands in the issuing doc's table — the doc itself is the issuer -->
 - target sprint: <!-- placeholder: target sprint id, or "<epic> breakdown S#" while no target doc exists -->
 - trigger: <!-- placeholder: incoming change that fires re-verification, as a path or feature hit -->

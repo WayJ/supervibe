@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Move mechanical host configuration, artifact inventory and per-commit document
+  obligations into shared scripts with fail-closed JSON reports. Reserve handover
+  clause IDs atomically in the local ledger after explicit legacy bootstrap.
+- Add a public static documentation site and a verified-test-gated GitHub Pages
+  workflow that uploads only `site/`, never the repository or local runtime state.
+
 - Require an explicit Roadmap independent-acceptance choice; keep coordination in
   the current main agent. Add CAS-registered Sprint/Roadmap acceptance wakes, candidate-
   bound scenario-derived preflight and durable executor independence checks;

@@ -25,12 +25,16 @@ for the code, supervibe artifacts for the iteration.
 - acceptance: node --test tests/acceptance-contract.test.mjs
 - resources: node --test tests/resource-policy.test.mjs
 - integration: node --test tests/integration-simulation.test.mjs
+- preflight: node --test tests/host-config.test.mjs tests/artifact-inventory.test.mjs tests/doc-sync.test.mjs
+- clause-ids: node --test tests/clause-ids.test.mjs
+- site: node --test tests/site.test.mjs
 - board: node --test tests/board-parser.test.mjs
 
 ### doc_sync_map
 
 | change | owes |
 |---|---|
-| `skills/**` | the matching `SKILL.zh.md` in the same commit |
-| `templates/**` | `tests/check-artifacts.mjs` assertions in the same commit |
-| `docs/superpowers/specs/**` or `docs/superpowers/plans/**` | the epic doc's Open Questions / ADR rows in the same commit |
+| `skills/**/SKILL.md` | `{dir}/SKILL.zh.md` |
+| `templates/**` | `tests/check-artifacts.mjs` |
+| `docs/superpowers/specs/**` | `{epic}` |
+| `docs/superpowers/plans/**` | `{epic}` |

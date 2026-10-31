@@ -135,6 +135,18 @@ evidence remain required. Submodules, unsupported multiline frontmatter and
 unresolved conflicts fail closed. Scaffold preserves empty owned directories
 with committed `.gitkeep`; already-landed merge recovery never merges twice.
 
+## Scripted mechanical preflight
+
+Fixed parsing and checks live in scripts, not repeated Agent checklists:
+`host-config.mjs` reads strict host configuration, `artifact-inventory.mjs`
+resolves identities and projection/carrier anomalies, and `doc-sync.mjs` checks
+per-commit document obligations. `clause-ids.mjs` reserves HC IDs atomically after
+explicit legacy bootstrap. Business judgment, authorization and real acceptance
+observations remain with the Agent. See [mechanical commands](docs/mechanical-preflight.md)
+and [clause ID migration](docs/clause-id-allocation.md).
+
+At overall iteration kickoff, ask once for the concurrent worker cap; native inherits the current harness, while Orca asks for worker harness(es) and explicit mixed-mode permission. Save the user-confirmed policy in the local shared ledger and reuse it on resume. No default cap; no automatic spawning. Cap and harness contracts are validated, but real backend capacity admission remains the coordinator’s responsibility.
+
 ## Development resource coordination
 
 Before environment-heavy parallel work, assess local CPU/memory/disk and workload
@@ -228,6 +240,18 @@ writing, TDD). Without it, the same artifact contract is produced manually —
 the artifacts are plain markdown, and the process degrades, not breaks. No hard
 dependency is declared.
 
+## Scripted mechanical preflight
+
+Fixed parsing and checks live in scripts, not repeated Agent checklists:
+`host-config.mjs` reads strict host configuration, `artifact-inventory.mjs`
+resolves identities and projection/carrier anomalies, and `doc-sync.mjs` checks
+per-commit document obligations. `clause-ids.mjs` reserves HC IDs atomically after
+explicit legacy bootstrap. Business judgment, authorization and real acceptance
+observations remain with the Agent. See [mechanical commands](docs/mechanical-preflight.md)
+and [clause ID migration](docs/clause-id-allocation.md).
+
+At overall iteration kickoff, ask once for the concurrent worker cap; native inherits the current harness, while Orca asks for worker harness(es) and explicit mixed-mode permission. Save the user-confirmed policy in the local shared ledger and reuse it on resume. No default cap; no automatic spawning. Cap and harness contracts are validated, but real backend capacity admission remains the coordinator’s responsibility.
+
 ## Development
 
 ```
@@ -241,5 +265,3 @@ Zero npm dependencies; Node ≥ 20.
 ## License
 
 MIT
-
-At overall iteration kickoff, ask once for the concurrent worker cap; native inherits the current harness, while Orca asks for worker harness(es) and explicit mixed-mode permission. Save the user-confirmed policy in the local shared ledger and reuse it on resume. No default cap; no automatic spawning. Cap and harness contracts are validated, but real backend capacity admission remains the coordinator’s responsibility.

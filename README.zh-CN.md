@@ -124,6 +124,15 @@ Markdown 与看板只是投影，不裁定 WIP。共享台账是 Git 元数据�
 必需。子模块、不支持的多行 frontmatter、未解决冲突失败关闭。scaffold 用
 已提交 `.gitkeep` 保留归属空目录，已落地合并的恢复绝不重复合并。
 
+## 固定机械步骤交给脚本
+
+`host-config.mjs` 统一解析宿主配置，`artifact-inventory.mjs` 定位 ID 并检查投影/载体异常，
+`doc-sync.mjs` 核对逐提交文档义务，`clause-ids.mjs` 在显式旧数据迁移后原子预留 HC 编号。
+Skill 调用命令并处理结果，不再重复手工执行这些固定步骤；业务判断、用户授权和真实验收仍由 Agent 负责。
+详见[机械预检命令](docs/mechanical-preflight.md)和[条款编号迁移](docs/clause-id-allocation.md)。
+
+整体迭代启动时统一询问 worker 并发上限；原生继承当前 harness，Orca 另询问 worker harness 及是否允许混用。真实用户确认后保存到本地共享台账，恢复直接复用。无默认数量，不自动启动。上限/harness 契约有校验，真实 backend 容量准入仍由 coordinator 负责。
+
 ## 开发资源协调
 
 并行运行重型环境前先评估本机 CPU、内存、磁盘和负载开销，用户确认的环境预算与 worker
@@ -208,6 +217,15 @@ SuperVibe 检测到 superpowers 则调度它（brainstorming、spec 撰写、TDD
 没有时，同一工件契约手动产出——工件是纯 markdown，流程降级而非中断。
 不声明任何硬依赖。
 
+## 固定机械步骤交给脚本
+
+`host-config.mjs` 统一解析宿主配置，`artifact-inventory.mjs` 定位 ID 并检查投影/载体异常，
+`doc-sync.mjs` 核对逐提交文档义务，`clause-ids.mjs` 在显式旧数据迁移后原子预留 HC 编号。
+Skill 调用命令并处理结果，不再重复手工执行这些固定步骤；业务判断、用户授权和真实验收仍由 Agent 负责。
+详见[机械预检命令](docs/mechanical-preflight.md)和[条款编号迁移](docs/clause-id-allocation.md)。
+
+整体迭代启动时统一询问 worker 并发上限；原生继承当前 harness，Orca 另询问 worker harness 及是否允许混用。真实用户确认后保存到本地共享台账，恢复直接复用。无默认数量，不自动启动。上限/harness 契约有校验，真实 backend 容量准入仍由 coordinator 负责。
+
 ## 开发
 
 ```
@@ -221,5 +239,3 @@ node --test tests/*.test.mjs
 ## 许可证
 
 MIT
-
-整体迭代启动时统一询问 worker 并发上限；原生继承当前 harness，Orca 另询问 worker harness 及是否允许混用。真实用户确认后保存到本地共享台账，恢复直接复用。无默认数量，不自动启动。上限/harness 契约有校验，真实 backend 容量准入仍由 coordinator 负责。

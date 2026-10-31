@@ -30,6 +30,8 @@ Sprint 验收选择 `independentAcceptance: true` 时，验收记录必须包含
 
 ## Roadmap 最终集成验收分流
 
+Roadmap 的 doc-sync 使用规划记录明确的迭代起点 commit 作为 `--base`，集成 main 的实际 HEAD 作为 `--tip`；不得把 main 对自身的空 diff 当整体审计。起点不明时先澄清并记录，不猜测范围。
+
 `accept roadmap <epic-id 或路径>` 审查 epic 计划中 Overall Acceptance Scenarios，不是某个 Sprint。解析 roadmaps_dir/acceptances_dir，读取共享账本 mainRef，并核对全部 Breakdown ID 都有同 epic 的 merged/closed 条目。不调用 sprint review-begin/review-pass、不改变 Sprint 状态、不复用旧裁决。
 
 每次最终验收或重验，在任何场景开始前先撤销旧 pass：置 status: open、final-acceptance-record: null、final-accepted-at: null。旧记录保留历史，失败或中断后绝不恢复旧指针。在既有授权下将撤销与准备输入提交；没有授权则在验收前停止。
@@ -53,24 +55,18 @@ frontmatter 检查均是投影检查。无存储就停止，显式 init/import�
 
 ## 输入（Inputs）
 
-任何动作之前，先在宿主 AGENTS.md 中 grep `## supervibe` 节：
-
-- 本技能读取的配置键：`sprints_dir`、`acceptances_dir`、`notes`；子节 `### gates` 与 `### doc_sync_map`。
-- 键缺失时的默认值：`sprints_dir: docs/superpowers/sprints/`、`acceptances_dir: docs/superpowers/acceptances/`、`notes: .agents/notes/`。
-- 该节整体缺失 → STOP：唯一合法的下一步是 `supervibe:roadmap scaffold`——指引过去，其余一律拒绝。
-- 该节确认存在后，解析本技能涉及的已配置目录（`sprints_dir`、`acceptances_dir`、`notes`）并核实其存在。缺失 → STOP：指引用户运行 scaffold 或修正配置路径；绝不隐式创建工件——配置路径笔误绝不能静默分叉真源。
-- 模板按 `<plugin base dir>/templates/acceptance-record.md` 解析；绝不假设它在宿主仓库里。
-- `### gates` 是命令来源，不是整张必跑清单：场景点名某个 gate 时，按配置原样运行该命令；绝不发明命令、runner 或栈细节。
-- 写验收记录之前先查 `### doc_sync_map`：若映射表覆盖了本技能写的工件路径，以映射表为准——「本技能写出的工件不欠进一步 doc-sync」的豁免仅适用于未覆盖的路径。
+在宿主仓库根目录运行 `node "<plugin base dir>/scripts/host-config.mjs" --require-dir sprints_dir --require-dir acceptances_dir --require-dir notes`，使用返回的路径、WIP、原序原样 gates 与映射；非零即停止并展示错误，缺配置/目录仅显式 scaffold 或修正，不自行建目录。roadmap 的 scaffold 可先处理缺配置，其他子命令用 `--require-dir <涉及的目录键>` 验证目录。模板始终从插件目录读取。规则与默认值见[机械预检](../../docs/mechanical-preflight.md)，不再手工 grep/补默认。映射同样约束本技能写出的工件。 只运行场景点名的 gate；脚本不运行命令。
 
 然后解析受审的 sprint：
 
-- 参数：sprint id 或 sprint 文档直接路径。缺失 → 询问，并列出 `sprints_dir` 中 frontmatter `state` 为 `active` 或 `acceptance` 的文档备选；绝不猜测。
-- sprint id → 扫 `sprints_dir` 内全部文档找 frontmatter `sprint` 匹配。没有匹配 → 拒绝，言明未知的 sprint id。直接路径 → 文件必须存在且带 `sprint` frontmatter 字段；否则拒绝，点名该路径。
+- 参数：sprint id 或 sprint 文档直接路径（先在 inventory 输出匹配精确文档，再使用唯一 ID）。缺失 → 询问，并列出 `sprints_dir` 中 frontmatter `state` 为 `active` 或 `acceptance` 的文档备选；绝不猜测。
+- 通过 `artifact-inventory.mjs --sprint "<sprint-id>"` 的唯一 `selection` 解析身份；非零报告 `issues`，不重新手工扫描。
 - 状态前置：`active` 或 `acceptance` → 继续，但必须**完整重新验收**，绝不复用旧场景裁决。`merged` / `closed` → 拒绝：已过此门禁。状态未知或缺失 → 拒绝。
 - **每次**评审前，先用 ID/revision/operation 参数调用 `shared-ledger.mjs review-begin`，清空共享证据并置共享 active。再投影 `state: active`、追加带日期重验说明，保留旧记录作为历史。这样先撤销旧 pass，再运行任何命令；中断不能留下仍可用的旧裁决。绝不改写旧记录。
 
 ## 将证据绑定到受审树（Bind evidence to the reviewed tree）
+
+在初始快照之前，确认源码与所欠文档已经按授权同提交落入当前分支。未获提交授权则暂停并说明；不得为过检擅自提交或改写历史。验收记录/元数据可在验收之后提交，不能用未提交源码满足 doc-sync。
 
 在宿主仓库根目录，先选择尚不存在的新验收记录路径（重跑加后缀），再运行：
 
@@ -133,13 +129,7 @@ UI 场景必须针对当前构建在真实浏览器操作：打开入口、输�
 
 ## 文档漂移审计（Doc-drift audit）
 
-本技能的周期 doc-sync 检查点——与 complete 的欠账终检相对应：
-
-- 枚举本 sprint 的变更路径：sprint 文档 frontmatter `worktree` 记载的分支对其 base——即与 main 线的 merge-base——的 diff，加上文档 Stories & Tasks 点名的路径。
-- 对宿主 `### doc_sync_map` 的每一行：该行的 change 模式是否命中任一变更路径？命中 → 打开映射文档，核对它反映了该变更。未命中 → 该行本 sprint 不欠什么。
-- 映射缺失或为空即干净审计——记录「未配置任何行」；绝不发明行。
-- 在记录中发出漂移报告节：逐行——命中路径、映射文档状态（current / drifted）、漂移细节。
-- 被触发行上的漂移就是 doc-sync 欠账：要么当场指引修复并复审，要么裁决如实承载它——pass 不能载着本 sprint 触发行上的未偿漂移。
+在 sprint 载体运行 `node "<plugin base dir>/scripts/doc-sync.mjs" --base "<stored-mainRef>" --tip HEAD --epic-document "<epic-doc>" --task-path "<explicit-task-path>"`（每个 Stories & Tasks 明确路径重复 `--task-path`，无路径则省略）。采用返回的匹配/欠账报告，非零不得宣称通过；禁止从自然语言猜路径。对每项被触发映射仍须人工打开文档，判断语义是否反映变更，在记录中写 current/drifted 与证据。脚本只证明路径和提交共现，不证明内容正确；漂移不能 pass。
 
 ## 裁决与记录（Verdict + record）
 

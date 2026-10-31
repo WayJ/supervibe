@@ -29,21 +29,13 @@ the same operation ID for an exact uncertain retry. Do not hand-edit the store.
 
 ## Read host config
 
-Before anything, grep the host AGENTS.md for the `## supervibe` section:
-
-- Config keys this skill reads: `sprints_dir`, `notes`; subsections `### gates` and `### doc_sync_map`.
-- Defaults when a key is absent: `sprints_dir: docs/superpowers/sprints/`, `notes: .agents/notes/`.
-- Section absent entirely → STOP: the only legal next action is `supervibe:roadmap scaffold` — direct the user there and refuse everything else.
-- Once the section exists, resolve the configured dirs this skill touches (`sprints_dir`, `notes`) and verify they exist. Missing → STOP: direct the user to run scaffold or fix the config path; never implicitly create artifacts — a config path typo must not silently fork the truth source.
-- `### gates` here is the checklist itself — unlike accept, where it is a command source: every command in the list runs, verbatim. An absent or empty list is not an error — record that none are configured and proceed; never invent a gate to fill the silence.
-- `### doc_sync_map` powers the arrears final check in stage 1 below.
-- This skill consumes no templates — the frontmatter flip follows the ledger contract; the closing note follows the notes protocol.
+From the host root run `node "<plugin base dir>/scripts/host-config.mjs" --require-dir sprints_dir --require-dir notes`. Use its returned paths, WIP, ordered verbatim gates and mappings; nonzero stops with the error, never implicit directory creation. Only explicit scaffold may handle missing config/directories; roadmap non-scaffold actions add `--require-dir <touched-directory-key>`. Resolve templates from the plugin directory. See [mechanical preflight](../../docs/mechanical-preflight.md) for grammar/defaults; do not reimplement parsing. Mappings also bind artifacts this skill writes. Stage 1 consumes every returned gate in order, only after its provenance preflight; record an empty list as such.
 
 Then resolve the sprint being closed out. **Before ordinary state/gate checks, inspect §Interruption and resume for an already-landed merge, regardless of whether its carrier still exists.** Recovery records an evidenced landing; it does not authorize a new merge:
 
 - Argument: a sprint id, never a path — a path argument → ask for the id of the sprint it carries.
 - Absent → ask, listing the docs in `sprints_dir` whose frontmatter `state` is `acceptance`; never guess.
-- Scan every doc in `sprints_dir` for a frontmatter `sprint` match. No match → reject, naming the unknown sprint id.
+- Resolve identity through the unique `selection` from `artifact-inventory.mjs --sprint "<sprint-id>"`; nonzero reports `issues`, not another manual scan. For already-landed complete recovery, use its dedicated protocol first; never recreate a missing carrier.
 - State precondition: `merged` → reject: already closed out — name the `merged-commit` the frontmatter carries. `closed` → reject: retired; `supervibe:roadmap close` has already been there. `active` / `acceptance` → proceed; stage 2 rules the verdict. `state` missing or unrecognized → reject as a malformed sprint doc, naming it — the closed enumeration never continues on an unknown value.
 - The doc's `worktree` frontmatter names the worktree/branch carrying this sprint — stages 1, 3 and 5 operate there. A `worktree` that names nothing → the doc is malformed; reject naming it: there is nothing to gate, merge, or tear down.
 - A `worktree` naming a branch that no longer exists → surface the staleness and confirm with the user before trusting the field — never proceed silently on it.
@@ -60,11 +52,7 @@ Seven stages, strictly ordered. Each numbered stage is a hard stop: green → th
    - Run it in the sprint's own environment: the worktree/branch the frontmatter names, its stack live — not a stale build elsewhere. A gate green against yesterday's artifact proves nothing at merge time.
    - **Gate-evidence short-circuit**: the acceptance record's gate-evidence block — branch tip hash at run time, the gates list as run, the green outputs — satisfies this stage **iff** the branch tip now equals the recorded hash and the host's gates list is byte-identical to the recorded one: a tip that has not moved means the green was earned against exactly this tree. Any mismatch — new commits, a changed list, no block at all — is a full verbatim re-run. The short-circuit is mechanical equivalence, never judgment.
    - Any red → stop, showing the failing command's full output and naming the gate. A sprint does not merge while any gate is red — no partial credit, no substitution: the configured command runs, or the gate is not green.
-   - Then the **arrears final check** — the second of the doc-sync discipline's two checkpoint verifications (accept audits drift periodically; complete runs the final arrears check).
-   - Enumerate the sprint's changed paths: the worktree branch diffed against its merge-base with the main line, plus the paths named in the sprint doc's Stories & Tasks — the same enumeration accept's drift audit uses; the two checkpoints must see the same sprint.
-   - For each `### doc_sync_map` row whose change pattern matches a changed path, verify operationally: a commit exists **in the branch range** (merge-base..tip) touching **both** the changed path and the mapped doc — the doc's update rides in the same commit as the change that owes it. A doc updated in a later branch commit still counts as arrears until the two are squashed together.
-   - No such commit → arrears → stop, naming the row, the mapped doc, and what is owed.
-   - Unmatched rows owe nothing. An absent or empty map is a clean check — record that; never invent rows.
+   - Final arrears check: run `doc-sync.mjs` with the same arguments as accept (see [mechanical preflight](../../docs/mechanical-preflight.md)); nonzero stops and exposes per-commit/path arrears. Record an empty map. Do not manually reimplement glob, merge-base or same-commit checks.
    - The sanctioned repair is amend/rebase on the branch: rewriting branch history is permitted **before** merge — nothing has landed yet — so the owed doc lands in the same commit as the change that owes it; then this stage re-runs. Complete never writes the owed doc itself to green its own gate.
 
 2. **Acceptance verdict in place.**

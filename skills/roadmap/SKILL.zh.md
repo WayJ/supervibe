@@ -31,15 +31,7 @@ frontmatter 检查均是投影检查。无存储就停止并显式 init/import�
 
 ## 先读宿主配置（Read host config first）
 
-任何子命令之前，先在宿主 AGENTS.md 中 grep `## supervibe` 节：
-
-- 配置键：`roadmaps_dir`、`sprints_dir`、`acceptances_dir`、`notes`、`debt_tracker`、`wip_limit`；子节 `### gates` 与 `### doc_sync_map`。
-- 键缺失时的默认值：`roadmaps_dir: docs/superpowers/roadmaps/`、`sprints_dir: docs/superpowers/sprints/`、`acceptances_dir: docs/superpowers/acceptances/`、`notes: .agents/notes/`、`debt_tracker: docs/tech-debt-tracker.md`、`wip_limit: 3`。
-- 若该节整体缺失，唯一合法的下一步是 `scaffold`——其余一律拒绝，并向用户言明。
-- 该节确认存在后，解析本子命令涉及的已配置目录并核实其存在。缺失 → STOP：指引用户运行 `scaffold` 或修正配置路径；绝不在 `scaffold` 之外隐式创建工件——配置路径笔误绝不能静默分叉真源。
-- 模板按 `<plugin base dir>/templates/<file>` 解析；绝不假设它们在宿主仓库里。
-- gate 命令从 `### gates` 读取；绝不发明命令、runner 或栈细节。
-- 任何触碰映射路径的编辑之前先查 `### doc_sync_map`。若映射表覆盖了本技能写的工件路径（epic 文档、sprint 文档、债务追踪器），以映射表为准——「本技能写出的工件本身即文档、不欠进一步 doc-sync」的豁免仅适用于映射表未覆盖的路径。
+在宿主仓库根目录运行 `node "<plugin base dir>/scripts/host-config.mjs"`，使用返回的路径、WIP、原序原样 gates 与映射；非零即停止并展示错误，缺配置/目录仅显式 scaffold 或修正，不自行建目录。roadmap 的 scaffold 可先处理缺配置，其他子命令用 `--require-dir <涉及的目录键>` 验证目录。模板始终从插件目录读取。规则与默认值见[机械预检](../../docs/mechanical-preflight.md)，不再手工 grep/补默认。映射同样约束本技能写出的工件。
 
 协作配置无默认值：`collaboration_mode` / `collaboration_provider` 必须选择 `native` / `harness` 或 `external` / `orca`。scaffold 时说明两条路并请用户选择；未选择则明确保持未配置。不覆盖已有选择。缺失/无效配置阻止委派，不阻止 roadmap 编辑；能力不可用绝不静默改变选择。见[协作模式](../../docs/collaboration-modes.md)。
 

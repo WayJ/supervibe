@@ -27,20 +27,15 @@ the same operation ID for an exact uncertain retry. Do not hand-edit the store.
 
 ## Read host config
 
-Before anything, grep the host AGENTS.md for the `## supervibe` section:
+From the host root run `node "<plugin base dir>/scripts/host-config.mjs" --require-dir sprints_dir --require-dir notes`. Use its returned paths, WIP, ordered verbatim gates and mappings; nonzero stops with the error, never implicit directory creation. Only explicit scaffold may handle missing config/directories; roadmap non-scaffold actions add `--require-dir <touched-directory-key>`. Resolve templates from the plugin directory. See [mechanical preflight](../../docs/mechanical-preflight.md) for grammar/defaults; do not reimplement parsing. Mappings also bind artifacts this skill writes.
 
-- Config keys this skill reads: `sprints_dir`, `notes`.
-- Defaults when a key is absent: `sprints_dir: docs/superpowers/sprints/`, `notes: .agents/notes/`.
-- Section absent entirely → STOP: the only legal next action is `supervibe:roadmap scaffold` — direct the user there and refuse everything else.
-- Once the section exists, resolve the configured dir this skill touches (`sprints_dir`) and verify it exists. Missing → STOP: direct the user to run scaffold or fix the config path; never implicitly create artifacts — a config path typo must not silently fork the truth source.
-- This skill consumes no templates — clause records already live in the issuing sprint docs it reads.
-- Gate commands from `### gates` are not this skill's concern — gates bind at accept and complete; integration runs none.
+Global inventory structural ambiguity blocks the run before dispatch; per-target continue-on-failure below applies only to execution failures after this preflight passes.
 
 Then resolve targets from the shared entries first; open their Markdown documents as projections. Do not infer the runtime target set from the current branch directory alone:
 
 - Argument: a sprint id or `all`, never a path — a path argument → ask for the id of the sprint it carries.
 - Absent → ask, listing the docs in `sprints_dir` whose frontmatter `state` is `active` or `acceptance`; never guess.
-- Sprint id → scan every doc in `sprints_dir` for a frontmatter `sprint` match. No match → reject, naming the unknown sprint id.
+- Resolve identity through the unique `selection` from `artifact-inventory.mjs --sprint "<sprint-id>"`; nonzero reports `issues`, not another manual scan.
 - States in play: `active` / `acceptance` → the full sequence — merge, conflict checklist, clause check, discharge. `merged` / `closed` named explicitly → a clause-check + discharge-only pass, no merge: the doc lives on in `sprints_dir` on main and may still carry open clause references, and a verification can land at or after the target's own merge — the clause lifecycle must not dead-end there. Under `all`, merged/closed are skipped — `all` means exactly the active+acceptance set, nothing wider. `state` missing or unrecognized → surface the malformed doc in the report and skip it; never guess a state.
 - `all` over an empty active+acceptance set → nothing is in flight: report that and stop — an empty `all` is a no-op, not an error.
 - Each target gets its own report. A red ends that sprint's integration, never the run: remaining targets still sync, each on its own report.
