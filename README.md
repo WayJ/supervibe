@@ -1,5 +1,7 @@
 # SuperVibe
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 **Iteration management for Claude Code.** SuperVibe answers *what to build, in
 what order, when a sprint is done, and when it may merge* — the strategy layer.
 It pairs with [superpowers](https://github.com/obra/superpowers), the tactics
@@ -93,11 +95,11 @@ flowchart TD
     L -->|all sprints merged| M["epic closed"]
 ```
 
-Sync side (fixed cadence, independent of the main chain):
+Sync side (event-driven after landings; a cadence also guards against drift with multiple sprints in flight):
 
 ```mermaid
 flowchart LR
-    O["origin/main"] -->|fixed cadence| SY["sync (sprint id or all)"]
+    O["origin/main"] -->|landing event or cadence| SY["sync (sprint id or all)"]
     SY --> C1["merge into in-flight sprint branches<br/>conflicts → dual-path review list"]
     SY --> C2{"clause check<br/>trigger = issuing merged-commit arrived"}
     C2 -->|triggered + verified| C3["issuing doc<br/>status: discharged<br/>independent commit on main"]
@@ -230,6 +232,8 @@ section:
 - notes: .agents/notes/
 - debt_tracker: docs/tech-debt-tracker.md
 - wip_limit: 3
+- collaboration_mode: native
+- collaboration_provider: harness
 
 ### gates
 - contracts: npm run test:contracts
@@ -242,6 +246,8 @@ section:
 ```
 
 Run `supervibe:roadmap` with `scaffold` to generate this section in a new repo.
+The example selects native/harness; confirm the route at kickoff, or use
+`external` / `orca` for Orca. Worker limits still require explicit user confirmation.
 
 ## Without superpowers
 
@@ -249,18 +255,6 @@ SuperVibe detects superpowers and dispatches to it (brainstorming, spec
 writing, TDD). Without it, the same artifact contract is produced manually —
 the artifacts are plain markdown, and the process degrades, not breaks. No hard
 dependency is declared.
-
-## Scripted mechanical preflight
-
-Fixed parsing and checks live in scripts, not repeated Agent checklists:
-`host-config.mjs` reads strict host configuration, `artifact-inventory.mjs`
-resolves identities and projection/carrier anomalies, and `doc-sync.mjs` checks
-per-commit document obligations. `clause-ids.mjs` reserves HC IDs atomically after
-explicit legacy bootstrap. Business judgment, authorization and real acceptance
-observations remain with the Agent. See [mechanical commands](docs/mechanical-preflight.md)
-and [clause ID migration](docs/clause-id-allocation.md).
-
-At overall iteration kickoff, ask once for the concurrent worker cap; native inherits the current harness, while Orca asks for worker harness(es) and explicit mixed-mode permission. Save the user-confirmed policy in the local shared ledger and reuse it on resume. No default cap; no automatic spawning. Cap and harness contracts are validated, but real backend capacity admission remains the coordinator’s responsibility.
 
 ## Development
 
