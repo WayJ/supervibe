@@ -148,10 +148,15 @@ test('WIP deduplicates matching copies, keeps stale active copies counted, rejec
   assert.equal(checkWip(f.root, 'sprints', 2).count, 1);
   f.write(f.sprint, '---\nsprint: S1\nstate: closed\n---\n');
   assert.equal(checkWip(f.root, 'sprints', 2).count, 1);
-  writeFileSync(join(other, 'sprints/duplicate.md'), '---\nsprint: S1\nstate: active\n---\n');
-  assert.throws(() => checkWip(f.root, 'sprints', 2), /Duplicate sprint id/);
+  // Exactly one S1 per worktree: only the cross-worktree path conflict applies.
   rmSync(join(other, 'sprints/S1.md'));
+  writeFileSync(join(other, 'sprints/duplicate.md'), '---\nsprint: S1\nstate: active\n---\n');
   assert.throws(() => checkWip(f.root, 'sprints', 2), /Conflicting copies of sprint S1/);
+});
+test('WIP rejects duplicate IDs within one worktree independently of directory enumeration order', t => {
+  const f = fixture(t);
+  f.write('sprints/duplicate.md', '---\nsprint: S1\nstate: active\n---\n');
+  assert.throws(() => checkWip(f.root, 'sprints', 2), /Duplicate sprint id/);
 });
 test('WIP fails closed on stale registered worktrees', t => {
   const f = fixture(t), other = `${f.root}-linked`;

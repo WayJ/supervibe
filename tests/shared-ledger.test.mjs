@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 import { execFileSync, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { initialize, mutate, checkAcceptance, doctor } from '../scripts/shared-ledger.mjs';
+import { samePath } from '../scripts/path-identity.mjs';
 import { readLedger, commonDir } from '../scripts/ledger-store.mjs';
 import { snapshot, checkWip } from '../scripts/validate-workflow.mjs';
 const cli = resolve('scripts/shared-ledger.mjs');
@@ -106,7 +107,7 @@ test('import is explicit and conflicting states cannot silently choose an author
   f.doc(other, 'S1', 'acceptance');
   assert.throws(() => initialize(f.root, 'sprints', 1, true), /Conflicting import states/);
   f.doc(other, 'S1', 'active'); const imported = initialize(f.root, 'sprints', 1, true);
-  assert.equal(imported.sprints.S1.worktree, other);
+  assert.ok(samePath(imported.sprints.S1.worktree, other), 'Import must select the linked carrier, including Windows short-name aliases');
   assert.throws(() => initialize(f.root, 'sprints', 1, true), /already exists/);
 });
 
