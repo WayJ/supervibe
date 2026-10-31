@@ -61,7 +61,9 @@ function atomicWrite(p, state) {
   try {
     fd = openSync(temp, 'wx', 0o600); writeFileSync(fd, JSON.stringify(state, null, 2) + '\n'); fsyncSync(fd); closeSync(fd); fd = undefined;
     renameSync(temp, p.file);
-    const directory = openSync(p.dir, 'r'); try { fsyncSync(directory); } finally { closeSync(directory); }
+    // Windows (and some network filesystems) cannot fsync a directory handle; the
+    // durable atomic rename above already landed the state, so tolerate EPERM/EINVAL.
+    const directory = openSync(p.dir, 'r'); try { fsyncSync(directory); } catch (e) { if (e.code !== 'EPERM' && e.code !== 'EINVAL') throw e; } finally { closeSync(directory); }
   } finally { if (fd !== undefined) closeSync(fd); try { unlinkSync(temp); } catch (e) { if (e.code !== 'ENOENT') throw e; } }
 }
 export function initializeLedger(root, state) {
