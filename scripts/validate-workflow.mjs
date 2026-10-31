@@ -47,6 +47,8 @@ export function sprintData(root, sprint) {
   if (!lstatSync(file).isFile()) fail('Sprint must be a regular file');
   const data = frontmatter(readFileSync(file, 'utf8'));
   if (!data.sprint || !STATES.has(data.state)) fail('Malformed sprint id/state');
+  if (typeof data.worktree === 'string' && /^(\.{1,2}([\\/]|$)|~[\\/])/.test(data.worktree.trim()))
+    fail('Sprint worktree must be the branch name or an absolute path, never a relative location');
   return data;
 }
 function normalizedSprint(text) {

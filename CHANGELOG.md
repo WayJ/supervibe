@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Sprint doc frontmatter `worktree` is now a machine-neutral identity: write the
+  sprint branch name; the absolute local carrier path lives only in the shared
+  ledger. Relative locations (`../dir`, `./dir`, `~/dir`) fail closed in
+  `sprintData`, shared-ledger import guidance points at branch-or-absolute forms,
+  and materialization instructions no longer suggest a filesystem path in the
+  committed doc.
+- Tolerate `EPERM`/`EINVAL` when fsyncing the ledger directory handle: Windows
+  cannot fsync directory handles, which previously failed every ledger write on
+  Windows after the durable atomic rename had already landed (test suite:
+  111 failing tests → 11, remainder are Windows symlink-privilege fixtures).
+
 - Separate Sprint WIP, worker execution slots and physical worktree cleanup. Add
   explicit-migration, fenced CAS worker lifecycle commands; register development
   child worktrees under their parent Sprint without another WIP reservation.

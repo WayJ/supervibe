@@ -192,3 +192,16 @@ test('Sprint final gate blocks missing claims declared by required scenarios', t
   f.write(f.record, '## Verdict\npass\n\n```supervibe-evidence\n' + JSON.stringify(evidence) + '\n```\n' + resultsBlock(evidence.fingerprint));
   assert.throws(() => verify(f.root, f.sprint, f.record), /supervibe-resource-execution/);
 });
+
+test('sprint worktree frontmatter rejects relative locations, accepts branch or absolute identity', t => {
+  const f = fixture(t);
+  const doc = carrier => '---\nsprint: S1\nstate: active\nworktree: ' + carrier + '\n---\n## DoD\nWorks\n' + planBlock();
+  for (const bad of ['../opentask-worktrees/S1', '..\\carriers\\S1', './carriers/S1', '~/carriers/S1']) {
+    f.write(f.sprint, doc(bad));
+    assert.throws(() => snapshot(f.root, f.sprint, f.record), /never a relative location/, bad);
+  }
+  for (const good of ['sprint/E1-S1', 'D:\\projects\\carriers\\S1']) {
+    f.write(f.sprint, doc(good));
+    assert.doesNotThrow(() => snapshot(f.root, f.sprint, f.record), good);
+  }
+});

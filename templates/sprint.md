@@ -2,7 +2,7 @@
 sprint: S1                 <!-- placeholder: sprint id -->
 epic: E1                   <!-- placeholder: owning epic id -->
 state: active              <!-- placeholder: active|acceptance|merged|closed -->
-worktree:                  <!-- placeholder: branch/worktree path -->
+worktree:                  <!-- placeholder: sprint branch name (machine-neutral identity; the absolute local carrier path lives only in the shared ledger) -->
 early-start: false         <!-- placeholder: true|false -->
 deferred-dependency: []    <!-- placeholder: list of sprint ids, e.g. [S3, S4] -->
 clauses: []                <!-- placeholder: list of HC# references, e.g. [HC2, HC5] -->
