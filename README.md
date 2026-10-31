@@ -169,6 +169,12 @@ claude --plugin-dir /path/to/supervibe
 Every skill ships bilingual: `SKILL.md` (English truth source) + `SKILL.zh.md`
 (faithful Chinese mirror).
 
+## Agent collaboration modes
+
+Exactly two explicit routes: **native / harness** uses the current harness's own orchestration (such as Claude Code subagents); **external / orca** delegates to Orca CLI for cross-session/cross-harness orchestration. SuperVibe defines the shared task/result contract, not its own scheduler. Superpowers supplies execution methods, not a third mode.
+
+Select `collaboration_mode` and `collaboration_provider` in host config; an unset or unavailable route blocks delegation, with no silent fallback. Shared state remains local to one Git common-dir. **Contract/fixture-tested, not live native/Orca E2E-verified.** See [configuration, boundaries and receipts](docs/collaboration-modes.md).
+
 ## Host configuration
 
 Zero stack assumptions: every project-specific value (paths, gate commands,

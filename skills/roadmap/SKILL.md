@@ -35,6 +35,8 @@ Before any subcommand, grep the host AGENTS.md for the `## supervibe` section:
 - Read gate commands from `### gates`; never invent commands, runners, or stack specifics.
 - Consult `### doc_sync_map` before any edit that touches a mapped path. If the map covers an artifact path this skill writes (epic doc, sprint doc, debt tracker), the map takes precedence — the "artifacts this skill writes are themselves documentation and owe no further doc-sync" exemption applies only to paths the map does not cover.
 
+Collaboration configuration has no default: `collaboration_mode` / `collaboration_provider` must be selected as `native` / `harness` or `external` / `orca`. During scaffold, explain both routes and ask the user to choose; leave them explicitly unconfigured if no choice is supplied. Existing selections are not overwritten. Missing/invalid config blocks delegation, not roadmap editing; unavailable capabilities never silently change the selection. See [collaboration modes](../../docs/collaboration-modes.md).
+
 ## scaffold
 
 Wire a repo to supervibe:

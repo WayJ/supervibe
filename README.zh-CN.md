@@ -153,6 +153,12 @@ claude --plugin-dir /path/to/supervibe
 
 每个技能双语交付：`SKILL.md`（英文真源）+ `SKILL.zh.md`（忠实中文镜像）。
 
+## Agent 协作模式
+
+明确支持两条路：**native / harness** 使用 harness 自带编排（如 Claude Code subagent）；**external / orca** 通过 Orca CLI 委派跨会话、跨 harness 协作。SuperVibe 定义统一任务/结果契约，不自建调度器。Superpowers 提供执行方法，不是第三种协作模式。
+
+在宿主配置中选择 `collaboration_mode` 与 `collaboration_provider`；未配置或能力不可用就阻止委派，不静默降级。共享状态仍局限于一个 Git common-dir。**当前为契约/fixture 验证，非真实 native/Orca 端到端验证。**详见[配置、边界与回执](docs/collaboration-modes.md)。
+
 ## 宿主配置
 
 零栈假设：一切项目 specifics（路径、门禁命令、WIP 上限、doc-sync 映射）

@@ -33,6 +33,8 @@ frontmatter 检查均是投影检查。无存储就停止并显式 init/import�
 - gate 命令从 `### gates` 读取；绝不发明命令、runner 或栈细节。
 - 任何触碰映射路径的编辑之前先查 `### doc_sync_map`。若映射表覆盖了本技能写的工件路径（epic 文档、sprint 文档、债务追踪器），以映射表为准——「本技能写出的工件本身即文档、不欠进一步 doc-sync」的豁免仅适用于映射表未覆盖的路径。
 
+协作配置无默认值：`collaboration_mode` / `collaboration_provider` 必须选择 `native` / `harness` 或 `external` / `orca`。scaffold 时说明两条路并请用户选择；未选择则明确保持未配置。不覆盖已有选择。缺失/无效配置阻止委派，不阻止 roadmap 编辑；能力不可用绝不静默改变选择。见[协作模式](../../docs/collaboration-modes.md)。
+
 ## scaffold
 
 为仓库接入 supervibe：

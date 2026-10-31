@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Define exactly two collaboration routes: native harness and external Orca,
+  with explicit configuration, read-only task/result contract validation,
+  bounded worktree placement and bilingual routing guidance. Contract/static
+  tests only; live harness/Orca execution is not yet integration-verified.
+
 - Add an authoritative Git common-dir shared runtime ledger with atomic WIP
   reservations, revision checks, idempotent operations, explicit migration and
   guarded review/landing transitions; Markdown becomes a readable projection.

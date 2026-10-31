@@ -111,11 +111,20 @@ After the carrier, sprint doc and opening note exist, call `shared-ledger.mjs ac
 
 ## Dispatch execution
 
-Execution belongs to the superpowers layer; this skill only hands over the artifact contract:
+Agent collaboration has exactly two routes, selected explicitly in host `## supervibe`: `collaboration_mode: native` + `collaboration_provider: harness`, or `external` + `orca`. Missing, unsupported, mismatched or unavailable selection blocks delegation; ask for a choice or report the missing capability, never silently switch modes. SuperVibe owns the contract, not a scheduler. See [collaboration modes](../../docs/collaboration-modes.md).
 
-- Detect first: check whether `superpowers:brainstorming` and `superpowers:writing-plans` are available as invocable skills.
-- Available → invoke `superpowers:brainstorming`, then `superpowers:writing-plans`, directing both to fill the materialized doc path. **The five-section structure and the verbatim DoD are immutable constraints** on what the execution layer produces — it extends the scaffolded doc, never replaces or rewrites it.
-- Absent → print manual instructions producing the same artifact contract by hand: decompose the epic Deliverables into the doc's Stories & Tasks, keep the DoD verbatim, specify Acceptance Scenarios (S1–Sn) before review. The tooling degrades; the contract does not.
+1. Before delegation, inspect actual capabilities. **Native:** use the current harness's documented available worker creation and result tools (plus messaging if interaction is required) (for example Claude Code subagents); do not invent tool names or assume cross-session support. **External:** locate the Orca CLI and read `orca skills get orchestration` plus relevant current references; missing CLI/skill blocks this route, not an installation request.
+2. Validate the task JSON with `node <plugin-root>/scripts/collaboration-contract.mjs task` on stdin: explicit mode/provider, sprint/task identity, objective, worktree, allowed paths and acceptance. Pass this same scope to the worker. Do not broaden permissions, install dependencies, provision credentials, or authorize commits/pushes implicitly.
+3. Native delegates using inspected tools and retains actual worker/session receipts. Orca follows the official `worker-start` / `send` / `check` / `inbox` lifecycle: launch from the validated sprint carrier, normally `--worktree current`, and require the worker to verify common-dir/carrier before its first write; retain `runId`, `taskId`, `dispatchId`, actual workspace and any terminal receipt. A Run is a work grouping, not a harness session. End the turn after dispatch and await event wakes; never loop on consuming `check`. `inbox` is history, not proof of success. Inspect an unknown/failed start before retrying; an authorized retry stays on the same task with its dispatch linkage.
+4. Verify the actual returned workspace resolves to the sprint carrier and the same Git common-dir. Do not assume Orca's new workspace belongs to this ledger. No new worktree without requested isolation or a demonstrated conflict; an incompatible workspace blocks delegation/results rather than expanding scope. Reserve WIP once per sprint, never per worker task.
+5. Collect an explicit `succeeded|failed|blocked` result with execution identities, evidence and blockers. Validate `{task, result}` on stdin with helper `result`; persist request/result and receipts in a sprint-linked task handoff note before acceptance fingerprinting. Evidence is required for success; completion events, process exits and worker claims alone do not accept a sprint. Failed/blocked results go to the owner; `supervibe:accept` still owns acceptance. Runtime state remains in the existing local common-dir ledger.
+
+### Execution methods (not collaboration providers)
+
+- Detect whether `superpowers:brainstorming` and `superpowers:writing-plans` are available as invocable skills. If available, invoke them in that order to fill the materialized doc path, within either selected collaboration route.
+- **The five-section structure and verbatim DoD remain immutable.** The execution-method layer extends the scaffold; it never replaces it.
+- Without superpowers, print manual instructions: decompose epic Deliverables into Stories & Tasks, preserve DoD verbatim, specify Acceptance Scenarios (S1–Sn) before review. This method fallback does not permit changing the configured collaboration mode.
+- Support status: contract and fixture coverage only; neither live native-harness nor Orca end-to-end integration is certified by these checks.
 
 ## Invariants
 

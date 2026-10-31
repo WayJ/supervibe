@@ -15,7 +15,7 @@ const LEDGER_KEYS = ['sprint', 'epic', 'state', 'worktree', 'early-start', 'defe
 const ACC_H2 = ['## Verdict', '## Scenario Results', '## DoD Checklist', '## Obstacles (verbatim)', '## Doc-Drift Audit', '## Acceptance Evidence'];
 const CLAUSE_LABELS = ['id HC#', 'issuer sprint', 'target sprint', 'trigger', 'obligation', 'status (open|discharged)', 'evidence'];
 const DEBT_LABELS = ['id', 'date', 'severity', 'owner', 'description', 'repayment criteria', 'status', 'evidence commit'];
-const CONFIG_KEYS = ['roadmaps_dir', 'sprints_dir', 'acceptances_dir', 'notes', 'debt_tracker', 'wip_limit'];
+const CONFIG_KEYS = ['roadmaps_dir', 'sprints_dir', 'acceptances_dir', 'notes', 'debt_tracker', 'wip_limit', 'collaboration_mode', 'collaboration_provider'];
 
 let checks = 0;
 const failures = [];

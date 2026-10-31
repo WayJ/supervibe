@@ -5,6 +5,8 @@
 - notes: .agents/notes/
 - debt_tracker: docs/tech-debt-tracker.md
 - wip_limit: 3
+- collaboration_mode: unconfigured <!-- choose native or external explicitly -->
+- collaboration_provider: unconfigured <!-- native: harness; external: orca -->
 ### gates
 - contracts: <!-- placeholder: command -->
 - tests: <!-- placeholder: command -->

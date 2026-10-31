@@ -103,11 +103,20 @@ notes 是跨 sprint 的知识资产，不是流水账——写一行 plan 之前
 
 ## 调度执行（Dispatch execution）
 
-执行归 superpowers 层；本技能只交出工件契约：
+Agent 协作只有两条路，由宿主 `## supervibe` 显式选择：`collaboration_mode: native` + `collaboration_provider: harness`，或 `external` + `orca`。缺失、不支持、不匹配或能力不可用时阻止委派；询问选择或报告缺失能力，绝不静默切换模式。SuperVibe 管契约，不自建调度器。见[协作模式](../../docs/collaboration-modes.md)。
 
-- 先探测：检查 `superpowers:brainstorming` 与 `superpowers:writing-plans` 是否可作为可调用技能使用。
-- 在场 → 先调用 `superpowers:brainstorming`，再调用 `superpowers:writing-plans`，指示两者填充已实体化的文档路径。**五节结构与逐字 DoD 是执行层产出的不可变约束**——执行层扩展脚手架文档，绝不替换或改写它。
-- 不在场 → 打印手动指令，以手工方式产出同一工件契约：把 epic Deliverables 分解进文档的 Stories & Tasks，保持 DoD 逐字，review 前写明 Acceptance Scenarios (S1–Sn)。降级的是工具，不是契约。
+1. 委派前检查真实能力。**原生：**使用当前 harness 已提供且有文档的 worker 创建与结果工具（需要交互时还需通信）（如 Claude Code subagent）；不发明工具名，不假设跨会话能力。**外部：**定位 Orca CLI，读取 `orca skills get orchestration` 及相关当前参考；缺 CLI/skill 就阻止此路由，不自动安装。
+2. 以 stdin 向 `node <plugin-root>/scripts/collaboration-contract.mjs task` 提交任务 JSON 校验：显式模式/provider、sprint/task 身份、目标、worktree、允许路径与验收要求。将同一边界交给 worker。不隐式扩大权限、安装依赖、配置凭证或授权提交/推送。
+3. 原生通过已检查工具委派，保留真实 worker/session 回执。Orca 遵循官方 `worker-start` / `send` / `check` / `inbox` 生命周期：从已校验 sprint 载体启动，通常 `--worktree current`，要求 worker 首次写入前核实 common-dir/载体；保留 `runId`、`taskId`、`dispatchId`、实际工作区及存在时的 terminal 回执。Run 是工作分组，不是 harness 会话。派发后结束回合等待事件唤醒，绝不循环调用消费式 `check`。`inbox` 是历史，不是成功证明。启动结果不确定/失败时先检查再重试；获准重试仍关联同一 task 与原 dispatch。
+4. 核实实际返回工作区解析到 sprint 载体且属于同一 Git common-dir；不假设 Orca 新工作区天然属于此台账。除非用户要求隔离或存在已证实冲突，不新建 worktree；工作区不兼容则阻止委派/结果，不扩大共享范围。WIP 每 sprint 预留一次，不为每个 worker 子任务预留。
+5. 收集明确的 `succeeded|failed|blocked` 结果、执行身份、证据和阻塞项。以 stdin 向 helper 的 `result` 提交 `{task, result}` 校验；验收指纹生成前，将请求/结果及回执持久化到关联 sprint 的任务交接笔记。成功必须有证据；完成事件、进程退出或 worker 自述不等于 sprint 验收通过。失败/阻塞交回负责人；验收仍由 `supervibe:accept` 拥有。运行状态仍留在已有本地 common-dir 台账。
+
+### 执行方法（不是协作 provider）
+
+- 探测 `superpowers:brainstorming` 与 `superpowers:writing-plans` 是否可调用；可用则依次调用，在任一选定协作路由中填充已实体化的文档。
+- **五节结构与逐字 DoD 不可变。**执行方法层只扩展脚手架，不替换它。
+- 没有 superpowers 时打印手动指令：把 epic Deliverables 分解进 Stories & Tasks，保持逐字 DoD，review 前写明 Acceptance Scenarios (S1–Sn)。方法降级不允许改变已配置的协作模式。
+- 支持状态：仅契约与 fixture 覆盖；这些检查不代表真实原生 harness 或 Orca 端到端集成已通过。
 
 ## Invariants（不变量）
 
